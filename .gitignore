@@ -1,0 +1,32 @@
+# 환경 변수 / 시크릿
+.env
+
+### Gradle / Java (backend) ###
+backend/.gradle/
+backend/build/
+*.class
+*.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
+
+### Node / React (frontend) ###
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+### IDE ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### 로그 ###
+*.log

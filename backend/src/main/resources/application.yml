@@ -20,3 +20,10 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+tourapi:
+  service-key: ${TOURAPI_SERVICE_KEY:}
+  kor-base-url: https://apis.data.go.kr/B551011/KorService2
+  eng-base-url: https://apis.data.go.kr/B551011/EngService2
+  mobile-os: ETC
+  mobile-app: HiddenGyeongbuk

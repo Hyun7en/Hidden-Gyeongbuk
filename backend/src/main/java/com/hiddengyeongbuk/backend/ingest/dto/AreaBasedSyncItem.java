@@ -1,0 +1,16 @@
+package com.hiddengyeongbuk.backend.ingest.dto;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record AreaBasedSyncItem(
+        String contentid,
+        String contenttypeid,
+        String title,
+        String addr1,
+        String mapx,
+        String mapy,
+        String tel,
+        String firstimage,
+        String showflag,
+        String modifiedtime) {}

@@ -27,3 +27,8 @@ tourapi:
   eng-base-url: https://apis.data.go.kr/B551011/EngService2
   mobile-os: ETC
   mobile-app: HiddenGyeongbuk
+
+sync:
+  # 초기 전체 적재가 끝나기 전까지는 false 유지 (TourAPI 개발계정 일 1,000건 호출 한도)
+  enabled: ${SYNC_ENABLED:false}
+  cron: ${SYNC_CRON:0 0 3 * * *}

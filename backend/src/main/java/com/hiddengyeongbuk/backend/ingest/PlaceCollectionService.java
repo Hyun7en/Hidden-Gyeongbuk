@@ -124,6 +124,9 @@ public class PlaceCollectionService {
         LocalDateTime sourceModifiedAt = parseModifiedTime(item.modifiedtime());
         Optional<Place> existing = placeRepository.findByContentId(item.contentid());
         if (isUnchanged(existing, sourceModifiedAt)) {
+            // 상세 재조회(TourAPI 호출)만 건너뛴다. 태그는 로컬 데이터만으로 계산하는
+            // 무료 연산이라, 태그 규칙이 나중에 바뀌어도 다음 실행에서 자동으로 반영되게 한다.
+            assignTags(existing.get());
             counters.unchanged++;
             return;
         }

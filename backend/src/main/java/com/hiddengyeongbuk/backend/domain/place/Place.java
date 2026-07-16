@@ -13,9 +13,12 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -101,4 +104,8 @@ public class Place {
 
     @Column(name = "source_modified_at")
     private LocalDateTime sourceModifiedAt;
+
+    @OneToMany(mappedBy = "place", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<PlaceTag> tags = new ArrayList<>();
 }

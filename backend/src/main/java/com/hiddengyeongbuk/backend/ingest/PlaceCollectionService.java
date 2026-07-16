@@ -11,6 +11,7 @@ import com.hiddengyeongbuk.backend.ingest.dto.AreaBasedSyncItem;
 import com.hiddengyeongbuk.backend.ingest.dto.DetailCommonItem;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -22,14 +23,16 @@ import org.springframework.transaction.annotation.Transactional;
  * 국문(KorService2) 목록을 기준으로 국문/영문 상세를 병행 수집해 place에 upsert한다.
  * 외부 API 연동 설계서 2.5~2.6 흐름 참고.
  *
- * 이 메서드는 "수집 로직" 검증이 목적이라 maxItems로 처리 건수를 제한한다.
- * 지역 전체(수백 건) 수집과 스케줄링·재시도는 후속 작업(증분 수집 배치)에서 다룬다.
- * TourAPI 개발계정 일 1,000건 한도를 넘지 않도록 항상 제한된 건수로 테스트할 것.
+ * showflag!=1 이거나 지원하지 않는 contentTypeId는 건너뛴다. 이미 저장된 place는
+ * TourAPI가 내려주는 modifiedtime을 place.sourceModifiedAt과 비교해, 변경이 없으면
+ * 상세 조회(국문+영문 2회)를 생략한다 — TourAPI 개발계정 일 1,000건 호출 한도를 아끼기 위함.
  */
 @Service
 public class PlaceCollectionService {
 
     private static final Logger log = LoggerFactory.getLogger(PlaceCollectionService.class);
+    private static final DateTimeFormatter MODIFIED_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final int PAGE_SIZE = 100;
 
     private final TourApiClient tourApiClient;
     private final ContentTypeMapper contentTypeMapper;
@@ -47,58 +50,115 @@ public class PlaceCollectionService {
         this.dataSyncLogRepository = dataSyncLogRepository;
     }
 
+    /**
+     * 로직 검증·소규모 테스트용. maxItems로 처리 건수를 제한해 1페이지만 조회한다.
+     */
     @Transactional
     public CollectionResult collectRegion(Region region, int maxItems) {
         LocalDateTime startedAt = LocalDateTime.now();
-        int saved = 0;
-        int skipped = 0;
+        Counters counters = new Counters();
         String failMessage = null;
 
         try {
             List<AreaBasedSyncItem> items = tourApiClient.fetchAreaBasedSyncList(
                     region.getLdongRegnCd(), region.getLdongSignguCd(), 1, maxItems);
-
             for (AreaBasedSyncItem item : items) {
-                if (!"1".equals(item.showflag())) {
-                    skipped++;
-                    continue;
-                }
-                Optional<PlaceCategory> category = contentTypeMapper.categoryOfKor(item.contenttypeid());
-                if (category.isEmpty()) {
-                    skipped++;
-                    continue;
-                }
-
-                Optional<DetailCommonItem> korDetail = tourApiClient.fetchDetailCommonKor(item.contentid());
-                if (korDetail.isEmpty()) {
-                    skipped++;
-                    continue;
-                }
-                Optional<DetailCommonItem> engDetail = tourApiClient.fetchDetailCommonEng(item.contentid());
-
-                Place place = placeRepository
-                        .findByContentId(item.contentid())
-                        .orElseGet(() -> Place.builder().build());
-                applyDetail(place, item, korDetail.get(), engDetail, category.get(), region);
-                placeRepository.save(place);
-                saved++;
+                collectItem(item, region, counters);
             }
         } catch (RuntimeException e) {
             failMessage = e.getMessage();
             log.error("지역 {} 수집 중 오류", region.getNameKo(), e);
         }
 
-        SyncStatus status = failMessage == null ? SyncStatus.SUCCESS : (saved > 0 ? SyncStatus.PARTIAL : SyncStatus.FAIL);
+        return finishAndLog(region, "제한 수집(maxItems=" + maxItems + ")", startedAt, counters, failMessage);
+    }
+
+    /**
+     * 지역 전체를 페이지네이션으로 순회하는 증분 수집. 스케줄러에서 사용한다.
+     */
+    @Transactional
+    public CollectionResult collectRegionIncremental(Region region) {
+        LocalDateTime startedAt = LocalDateTime.now();
+        Counters counters = new Counters();
+        String failMessage = null;
+
+        try {
+            int pageNo = 1;
+            List<AreaBasedSyncItem> page;
+            do {
+                page = tourApiClient.fetchAreaBasedSyncList(
+                        region.getLdongRegnCd(), region.getLdongSignguCd(), pageNo, PAGE_SIZE);
+                for (AreaBasedSyncItem item : page) {
+                    collectItem(item, region, counters);
+                }
+                pageNo++;
+            } while (page.size() == PAGE_SIZE);
+        } catch (RuntimeException e) {
+            failMessage = e.getMessage();
+            log.error("지역 {} 증분 수집 중 오류", region.getNameKo(), e);
+        }
+
+        return finishAndLog(region, "전체 수집(페이지네이션)", startedAt, counters, failMessage);
+    }
+
+    private void collectItem(AreaBasedSyncItem item, Region region, Counters counters) {
+        if (!"1".equals(item.showflag())) {
+            counters.skipped++;
+            return;
+        }
+        Optional<PlaceCategory> category = contentTypeMapper.categoryOfKor(item.contenttypeid());
+        if (category.isEmpty()) {
+            counters.skipped++;
+            return;
+        }
+
+        LocalDateTime sourceModifiedAt = parseModifiedTime(item.modifiedtime());
+        Optional<Place> existing = placeRepository.findByContentId(item.contentid());
+        if (isUnchanged(existing, sourceModifiedAt)) {
+            counters.unchanged++;
+            return;
+        }
+
+        Optional<DetailCommonItem> korDetail = tourApiClient.fetchDetailCommonKor(item.contentid());
+        if (korDetail.isEmpty()) {
+            counters.skipped++;
+            return;
+        }
+        Optional<DetailCommonItem> engDetail = tourApiClient.fetchDetailCommonEng(item.contentid());
+
+        Place place = existing.orElseGet(() -> Place.builder().build());
+        applyDetail(place, item, korDetail.get(), engDetail, category.get(), region, sourceModifiedAt);
+        placeRepository.save(place);
+        counters.saved++;
+    }
+
+    private static boolean isUnchanged(Optional<Place> existing, LocalDateTime sourceModifiedAt) {
+        if (existing.isEmpty() || sourceModifiedAt == null) {
+            return false;
+        }
+        LocalDateTime existingModifiedAt = existing.get().getSourceModifiedAt();
+        return existingModifiedAt != null && !sourceModifiedAt.isAfter(existingModifiedAt);
+    }
+
+    private CollectionResult finishAndLog(
+            Region region, String scopeLabel, LocalDateTime startedAt, Counters counters, String failMessage) {
+        SyncStatus status = failMessage == null
+                ? SyncStatus.SUCCESS
+                : (counters.saved > 0 ? SyncStatus.PARTIAL : SyncStatus.FAIL);
+        String message = failMessage != null
+                ? failMessage
+                : "%s, skipped=%d, unchanged=%d".formatted(scopeLabel, counters.skipped, counters.unchanged);
+
         dataSyncLogRepository.save(DataSyncLog.builder()
                 .target("KorService2/EngService2:areaBasedSyncList2:" + region.getNameKo())
                 .startedAt(startedAt)
                 .finishedAt(LocalDateTime.now())
                 .status(status)
-                .recordCount(saved)
-                .message(failMessage != null ? failMessage : "skipped=" + skipped)
+                .recordCount(counters.saved)
+                .message(message)
                 .build());
 
-        return new CollectionResult(saved, skipped, status);
+        return new CollectionResult(counters.saved, counters.skipped, counters.unchanged, status);
     }
 
     private void applyDetail(
@@ -107,7 +167,8 @@ public class PlaceCollectionService {
             DetailCommonItem korDetail,
             Optional<DetailCommonItem> engDetail,
             PlaceCategory category,
-            Region region) {
+            Region region,
+            LocalDateTime sourceModifiedAt) {
         place.setContentId(item.contentid());
         place.setContentTypeId(Integer.valueOf(item.contenttypeid()));
         place.setCategory(category);
@@ -122,6 +183,7 @@ public class PlaceCollectionService {
         place.setOverviewEn(engDetail.map(DetailCommonItem::overview).orElse(null));
         place.setFirstImage(korDetail.firstimage());
         place.setHasEn(engDetail.isPresent());
+        place.setSourceModifiedAt(sourceModifiedAt);
     }
 
     private static BigDecimal parseCoordinate(String value) {
@@ -131,5 +193,18 @@ public class PlaceCollectionService {
         return new BigDecimal(value);
     }
 
-    public record CollectionResult(int saved, int skipped, SyncStatus status) {}
+    private static LocalDateTime parseModifiedTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return LocalDateTime.parse(value, MODIFIED_TIME_FORMAT);
+    }
+
+    private static final class Counters {
+        int saved;
+        int skipped;
+        int unchanged;
+    }
+
+    public record CollectionResult(int saved, int skipped, int unchanged, SyncStatus status) {}
 }

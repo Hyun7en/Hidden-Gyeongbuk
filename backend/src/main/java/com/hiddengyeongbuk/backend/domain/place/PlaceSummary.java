@@ -38,7 +38,7 @@ public class PlaceSummary {
     private Place place;
 
     @Lob
-    @Column(name = "summary_en", nullable = false)
+    @Column(name = "summary_en", nullable = false, columnDefinition = "LONGTEXT")
     private String summaryEn;
 
     @Enumerated(EnumType.STRING)

@@ -78,11 +78,11 @@ public class Place {
     private String tel;
 
     @Lob
-    @Column(name = "overview_ko")
+    @Column(name = "overview_ko", columnDefinition = "LONGTEXT")
     private String overviewKo;
 
     @Lob
-    @Column(name = "overview_en")
+    @Column(name = "overview_en", columnDefinition = "LONGTEXT")
     private String overviewEn;
 
     @Column(name = "first_image", length = 500)

@@ -31,8 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class PlaceQueryService {
 
-    private static final String LANG_EN = "en";
-
     private final PlaceRepository placeRepository;
     private final PlaceSummaryRepository placeSummaryRepository;
     private final PlaceImageRepository placeImageRepository;
@@ -73,7 +71,7 @@ public class PlaceQueryService {
                         p, GeoUtils.haversineKm(lat, lng, p.getLat().doubleValue(), p.getLng().doubleValue())))
                 .filter(c -> c.distanceKm() <= radiusKm)
                 .sorted(Comparator.comparingDouble(Candidate::distanceKm))
-                .map(c -> new PlaceNearbyResponse(toSummary(c.place(), LANG_EN), c.distanceKm()))
+                .map(c -> new PlaceNearbyResponse(toSummary(c.place(), LangFallback.EN), c.distanceKm()))
                 .toList();
     }
 
@@ -114,7 +112,7 @@ public class PlaceQueryService {
         List<String> images = placeImageRepository.findByPlaceIdOrderBySortOrder(place.getId()).stream()
                 .map(PlaceImage::getImageUrl)
                 .toList();
-        PlaceDetailResponse.SummaryResponse summary = LANG_EN.equalsIgnoreCase(lang)
+        PlaceDetailResponse.SummaryResponse summary = LangFallback.EN.equalsIgnoreCase(lang)
                 ? placeSummaryRepository
                         .findById(place.getId())
                         .map(s -> new PlaceDetailResponse.SummaryResponse(s.getSummaryEn(), s.getSource().name()))
@@ -143,17 +141,11 @@ public class PlaceQueryService {
     }
 
     private static String resolveTitle(Place place, String lang) {
-        if (LANG_EN.equalsIgnoreCase(lang) && place.getTitleEn() != null && !place.getTitleEn().isBlank()) {
-            return place.getTitleEn();
-        }
-        return place.getTitleKo();
+        return LangFallback.title(place, lang);
     }
 
     private static String resolveOverview(Place place, String lang) {
-        if (LANG_EN.equalsIgnoreCase(lang) && place.getOverviewEn() != null && !place.getOverviewEn().isBlank()) {
-            return place.getOverviewEn();
-        }
-        return place.getOverviewKo();
+        return LangFallback.overview(place, lang);
     }
 
     private static List<String> tagNames(Place place) {

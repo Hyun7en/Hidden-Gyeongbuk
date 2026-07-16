@@ -148,6 +148,9 @@ public class PlaceCollectionService {
     private void assignTags(Place place) {
         Set<String> tags = placeTagAssigner.assign(place.getCategory(), place.getTitleKo(), place.getOverviewKo());
         placeTagRepository.deleteByPlaceId(place.getId());
+        // flush 없이 바로 insert하면 Hibernate가 같은 트랜잭션 내 insert를 delete보다 먼저
+        // 내보내 uk_place_tag(place_id, tag) 유니크 제약을 어길 수 있다(같은 태그 재부여 시).
+        placeTagRepository.flush();
         for (String tag : tags) {
             placeTagRepository.save(PlaceTag.builder().place(place).tag(tag).build());
         }

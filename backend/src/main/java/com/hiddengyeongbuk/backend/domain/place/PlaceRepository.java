@@ -13,4 +13,6 @@ public interface PlaceRepository extends JpaRepository<Place, Long>, JpaSpecific
 
     @Query("SELECT DISTINCT p FROM Place p LEFT JOIN FETCH p.tags WHERE p.region.id IN :regionIds")
     List<Place> findByRegionIdInWithTags(@Param("regionIds") List<Long> regionIds);
+
+    List<Place> findByHasEnFalse();
 }

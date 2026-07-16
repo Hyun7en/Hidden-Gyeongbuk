@@ -12,6 +12,7 @@ import com.hiddengyeongbuk.backend.domain.sync.SyncStatus;
 import com.hiddengyeongbuk.backend.ingest.client.TourApiClient;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
 import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
+import com.hiddengyeongbuk.backend.ingest.summary.EnglishSummaryService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +45,7 @@ public class PlaceCollectionService {
     private final PlaceRepository placeRepository;
     private final PlaceTagRepository placeTagRepository;
     private final DataSyncLogRepository dataSyncLogRepository;
+    private final EnglishSummaryService englishSummaryService;
 
     public PlaceCollectionService(
             TourApiClient tourApiClient,
@@ -51,13 +53,15 @@ public class PlaceCollectionService {
             PlaceTagAssigner placeTagAssigner,
             PlaceRepository placeRepository,
             PlaceTagRepository placeTagRepository,
-            DataSyncLogRepository dataSyncLogRepository) {
+            DataSyncLogRepository dataSyncLogRepository,
+            EnglishSummaryService englishSummaryService) {
         this.tourApiClient = tourApiClient;
         this.contentTypeMapper = contentTypeMapper;
         this.placeTagAssigner = placeTagAssigner;
         this.placeRepository = placeRepository;
         this.placeTagRepository = placeTagRepository;
         this.dataSyncLogRepository = dataSyncLogRepository;
+        this.englishSummaryService = englishSummaryService;
     }
 
     /**
@@ -139,7 +143,10 @@ public class PlaceCollectionService {
         if (isUnchanged(existing, sourceModifiedAt)) {
             // 상세 재조회(TourAPI 호출)만 건너뛴다. 태그는 로컬 데이터만으로 계산하는
             // 무료 연산이라, 태그 규칙이 나중에 바뀌어도 다음 실행에서 자동으로 반영되게 한다.
+            // 영문 요약도 마찬가지로 place_summary에 이미 있으면 재호출하지 않으므로 매번
+            // 시도해도 안전하다 — 이 기능이 추가되기 전에 수집된 place도 다음 실행에서 채워진다.
             assignTags(existing.get());
+            englishSummaryService.ensureSummary(existing.get());
             counters.unchanged++;
             return;
         }
@@ -155,6 +162,7 @@ public class PlaceCollectionService {
         applyDetail(place, item, korDetail.get(), engDetail, category.get(), region, sourceModifiedAt);
         placeRepository.save(place);
         assignTags(place);
+        englishSummaryService.ensureSummary(place);
         counters.saved++;
     }
 

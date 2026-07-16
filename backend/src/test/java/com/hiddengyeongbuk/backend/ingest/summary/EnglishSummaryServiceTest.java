@@ -109,6 +109,24 @@ class EnglishSummaryServiceTest {
         verify(geminiClient, times(2)).generateSummary(anyString());
     }
 
+    @Test
+    void 전부_실패해도_limit_시도_횟수에서_멈춘다() {
+        // 설정 오류 등으로 Gemini 호출이 전부 실패하는 상황 — limit이 "성공 개수"에만 걸리면
+        // 남은 후보 전체를 계속 두드리게 된다. 시도 횟수 자체에 limit을 걸어 이를 막는다.
+        Place p1 = place(1L, false, "설명1");
+        Place p2 = place(2L, false, "설명2");
+        Place p3 = place(3L, false, "설명3");
+        given(placeRepository.findByHasEnFalse()).willReturn(List.of(p1, p2, p3));
+        given(placeSummaryRepository.existsById(any())).willReturn(false);
+        given(geminiClient.generateSummary(anyString())).willThrow(new GeminiException("boom", null));
+
+        EnglishSummaryService.BackfillResult result = service.backfill(2);
+
+        assertThat(result.generated()).isZero();
+        assertThat(result.failed()).isEqualTo(2);
+        verify(geminiClient, times(2)).generateSummary(anyString());
+    }
+
     private static Place place(long id, boolean hasEn, String overviewKo) {
         return Place.builder()
                 .id(id)

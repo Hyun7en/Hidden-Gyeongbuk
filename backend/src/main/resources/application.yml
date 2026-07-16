@@ -36,5 +36,9 @@ sync:
 gemini:
   api-key: ${GEMINI_API_KEY:}
   base-url: https://generativelanguage.googleapis.com/v1beta
-  # 실측 미검증 — 처음 호출 시 모델명 오류가 나면 Google AI Studio에서 최신 모델명으로 교체할 것.
-  model: ${GEMINI_MODEL:gemini-2.0-flash}
+  # 2026-07-16 실측: gemini-2.0-flash 단종(429), gemini-2.5-flash 신규계정 차단(404),
+  # gemini-3-flash라는 이름은 아예 존재하지 않음(정확한 이름은 gemini-3-flash-preview였음, 404) —
+  # ListModels(GET /v1beta/models)로 실제 지원 모델 목록을 확인해서 알아냄.
+  # 특정 버전을 박아두면 이 문제가 계속 반복되므로, 구글이 "현재 권장 Flash 모델"을 자동으로
+  # 가리켜주는 별칭 gemini-flash-latest를 쓴다.
+  model: ${GEMINI_MODEL:gemini-flash-latest}

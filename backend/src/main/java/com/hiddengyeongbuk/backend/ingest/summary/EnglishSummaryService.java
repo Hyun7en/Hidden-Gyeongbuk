@@ -56,8 +56,10 @@ public class EnglishSummaryService {
             return SummaryResult.FAILED;
         }
 
+        // placeId는 세팅하지 않는다 — @MapsId가 place로부터 자동으로 채운다. 직접 세팅하면
+        // Spring Data가 새 행인데도 "이미 존재하는 detached 엔티티"로 착각해 merge()가
+        // update를 시도하다 ObjectOptimisticLockingFailureException으로 실패한다.
         placeSummaryRepository.save(PlaceSummary.builder()
-                .placeId(place.getId())
                 .place(place)
                 .summaryEn(summaryEn)
                 .source(SummarySource.LLM)
@@ -69,7 +71,10 @@ public class EnglishSummaryService {
     /**
      * 이미 수집된(재수집 없이) has_en=false 장소를 일괄 백필한다. TourAPI 호출 없이 Gemini만
      * 쓰므로 SyncAdminController의 지역 재수집과 별개로, Gemini 무료 티어 분당/일일 한도를
-     * 감안해 limit만큼만 실제로 생성하고 멈춘다.
+     * 감안해 limit만큼만 실제로 시도하고 멈춘다.
+     *
+     * limit은 "성공 개수"가 아니라 "Gemini 호출 시도 횟수"에 건다 — 설정 오류(잘못된 키·모델명
+     * 등)로 전부 실패하는 상황에서 limit이 안 걸려 남은 후보 전체를 연달아 두드리는 걸 막기 위함.
      */
     @Transactional
     public BackfillResult backfill(int limit) {
@@ -78,16 +83,23 @@ public class EnglishSummaryService {
         int alreadyExists = 0;
         int skippedNoOverview = 0;
         int failed = 0;
+        int attempts = 0;
 
         for (Place place : candidates) {
-            if (generated >= limit) {
+            if (attempts >= limit) {
                 break;
             }
             switch (ensureSummary(place)) {
-                case GENERATED -> generated++;
+                case GENERATED -> {
+                    generated++;
+                    attempts++;
+                }
+                case FAILED -> {
+                    failed++;
+                    attempts++;
+                }
                 case ALREADY_EXISTS -> alreadyExists++;
                 case SKIPPED_NO_OVERVIEW -> skippedNoOverview++;
-                case FAILED -> failed++;
                 case SKIPPED_HAS_EN -> {
                     // findByHasEnFalse로 이미 걸러졌으니 도달하지 않는다.
                 }

@@ -56,3 +56,26 @@ tasks.withType(Test).configureEach {
 		showStandardStreams = true
 	}
 }
+
+// 루트 .env를 읽어 bootRun/test/integrationTest 실행 시 환경변수로 자동 주입한다.
+// 셸에서 이미 export된 값이 있으면 그쪽이 우선한다(putIfAbsent). 매번 `set -a; source ../.env; set +a`를
+// 직접 칠 필요 없이 `./gradlew bootRun` / `./gradlew integrationTest ...`만 실행하면 된다.
+def dotenvFile = file("${rootDir}/../.env")
+def dotenv = [:]
+if (dotenvFile.exists()) {
+	dotenvFile.eachLine { line ->
+		line = line.trim()
+		if (line && !line.startsWith('#') && line.contains('=')) {
+			def idx = line.indexOf('=')
+			dotenv[line.substring(0, idx).trim()] = line.substring(idx + 1).trim()
+		}
+	}
+}
+
+tasks.withType(JavaExec).configureEach {
+	dotenv.each { key, value -> environment.putIfAbsent(key, value) }
+}
+
+tasks.withType(Test).configureEach {
+	dotenv.each { key, value -> environment.putIfAbsent(key, value) }
+}

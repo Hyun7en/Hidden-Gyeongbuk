@@ -111,6 +111,18 @@ public class PlaceCollectionService {
     }
 
     private void collectItem(AreaBasedSyncItem item, Region region, Counters counters) {
+        try {
+            collectItemInternal(item, region, counters);
+        } catch (RuntimeException e) {
+            // 네트워크 타임아웃 등 항목 하나의 일시적 오류로 지역 전체 수집이 중단되지 않도록,
+            // 여기서 잡아 이 항목만 건너뛴다. sourceModifiedAt이 저장되지 않았으므로 다음
+            // 수집 때 unchanged로 잘못 스킵되지 않고 자동으로 재시도된다.
+            counters.failed++;
+            log.warn("항목 {} 처리 중 오류 — 건너뜀: {}", item.contentid(), e.getMessage());
+        }
+    }
+
+    private void collectItemInternal(AreaBasedSyncItem item, Region region, Counters counters) {
         if (!"1".equals(item.showflag())) {
             counters.skipped++;
             return;
@@ -166,12 +178,18 @@ public class PlaceCollectionService {
 
     private CollectionResult finishAndLog(
             Region region, String scopeLabel, LocalDateTime startedAt, Counters counters, String failMessage) {
-        SyncStatus status = failMessage == null
-                ? SyncStatus.SUCCESS
-                : (counters.saved > 0 ? SyncStatus.PARTIAL : SyncStatus.FAIL);
+        SyncStatus status;
+        if (failMessage != null) {
+            status = counters.saved > 0 ? SyncStatus.PARTIAL : SyncStatus.FAIL;
+        } else if (counters.failed > 0) {
+            status = SyncStatus.PARTIAL;
+        } else {
+            status = SyncStatus.SUCCESS;
+        }
         String message = failMessage != null
                 ? failMessage
-                : "%s, skipped=%d, unchanged=%d".formatted(scopeLabel, counters.skipped, counters.unchanged);
+                : "%s, skipped=%d, unchanged=%d, failed=%d"
+                        .formatted(scopeLabel, counters.skipped, counters.unchanged, counters.failed);
 
         dataSyncLogRepository.save(DataSyncLog.builder()
                 .target("KorService2/EngService2:areaBasedSyncList2:" + region.getNameKo())
@@ -182,7 +200,7 @@ public class PlaceCollectionService {
                 .message(message)
                 .build());
 
-        return new CollectionResult(counters.saved, counters.skipped, counters.unchanged, status);
+        return new CollectionResult(counters.saved, counters.skipped, counters.unchanged, counters.failed, status);
     }
 
     private void applyDetail(
@@ -233,7 +251,8 @@ public class PlaceCollectionService {
         int saved;
         int skipped;
         int unchanged;
+        int failed;
     }
 
-    public record CollectionResult(int saved, int skipped, int unchanged, SyncStatus status) {}
+    public record CollectionResult(int saved, int skipped, int unchanged, int failed, SyncStatus status) {}
 }

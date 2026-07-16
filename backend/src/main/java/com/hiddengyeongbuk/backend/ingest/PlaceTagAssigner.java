@@ -4,6 +4,7 @@ import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,6 +30,8 @@ public class PlaceTagAssigner {
     private static final List<String> NATURE_KEYWORDS =
             List.of("산", "계곡", "폭포", "호수", "저수지", "공원", "휴양림", "생태", "숲", "해변", "바다", "강");
     private static final List<String> MARKET_KEYWORDS = List.of("시장", "오일장");
+    // TourAPI는 동명이인 장소를 "개목사(안동)"처럼 지역명 괄호로 구분한다 — 접미사 매칭 전에 제거한다.
+    private static final Pattern TRAILING_PAREN = Pattern.compile("\\s*\\([^)]*\\)$");
 
     public Set<String> assign(PlaceCategory category, String titleKo, String overviewKo) {
         if (category == PlaceCategory.음식점) {
@@ -58,10 +61,11 @@ public class PlaceTagAssigner {
 
     private Set<String> assignForAttraction(String titleKo, String overviewKo) {
         String title = titleKo == null ? "" : titleKo;
+        String normalizedTitle = TRAILING_PAREN.matcher(title).replaceAll("");
         String text = title + " " + (overviewKo == null ? "" : overviewKo);
 
         Set<String> tags = new LinkedHashSet<>();
-        if (containsAny(text, TEMPLE_KEYWORDS) || endsWithAny(title, TEMPLE_TITLE_SUFFIXES)) {
+        if (containsAny(text, TEMPLE_KEYWORDS) || endsWithAny(normalizedTitle, TEMPLE_TITLE_SUFFIXES)) {
             tags.add(TAG_TEMPLE);
         }
         if (containsAny(text, TRADITION_KEYWORDS)) {

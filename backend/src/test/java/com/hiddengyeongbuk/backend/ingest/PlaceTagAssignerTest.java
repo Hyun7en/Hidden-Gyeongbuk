@@ -45,6 +45,11 @@ class PlaceTagAssignerTest {
     }
 
     @Test
+    void 동명이인_구분_괄호가_붙어도_사찰_접미사를_인식한다() {
+        assertThat(assigner.assign(PlaceCategory.관광지, "개목사(안동)", null)).contains("사찰");
+    }
+
+    @Test
     void 전통시장_키워드가_있으면_쇼핑은_전통_태그를_부여한다() {
         assertThat(assigner.assign(PlaceCategory.쇼핑, "안동 구시장", "전통시장으로 먹거리가 풍부하다")).containsExactly("전통");
     }

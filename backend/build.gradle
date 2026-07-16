@@ -35,4 +35,24 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// *IT 클래스는 실제 DB·외부 API가 필요한 통합 테스트라 기본 test에서 제외한다.
+	// 실행: ./gradlew integrationTest
+	exclude '**/*IT.class'
+}
+
+tasks.register('integrationTest', Test) {
+	useJUnitPlatform()
+	include '**/*IT.class'
+	shouldRunAfter test
+}
+
+tasks.withType(Test).configureEach {
+	testLogging {
+		events "passed", "skipped", "failed"
+		exceptionFormat = "full"
+		showStackTraces = true
+		showExceptions = true
+		showCauses = true
+		showStandardStreams = true
+	}
 }

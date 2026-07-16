@@ -1,15 +1,9 @@
--- Hidden Gyeongbuk: hub 4개 + region 15곳 초기 데이터
+-- hub 4개 + region 15곳 초기 데이터
 -- 지역 코드 매핑표 v1.2 기준 (lDongRegnCd=47, signgu 3자리)
 --
--- 좌표 출처 안내:
---   hub(안동역/동대구역/포항역)은 웹 검색으로 확인한 실측 좌표.
---   hub(북부내륙)은 대표 지점(상주시)의 시청 좌표로 근사.
---   region 15곳은 각 시군청 소재지 좌표(근사치, 위키백과/일반 지리 정보 기준).
---   region.lat/lng는 추천 점수 산정에는 쓰이지 않고(장소 단위 Haversine만 사용),
---   지역 목록 표시/참고용이라 이 정밀도로 충분함(ERD/DB 설계서 6장 참고).
---
--- 실행 방법: DBeaver에서 hidden_gyeongbuk 커넥션 열고 SQL 편집기에 붙여넣어 실행.
--- 이미 실행한 뒤 재실행하면 중복 INSERT 되므로, 재실행 전엔 TRUNCATE 필요.
+-- 좌표 출처: hub(안동역/동대구역/포항역)는 실측 좌표, hub(북부내륙)은 대표 지점(상주시) 좌표로 근사.
+-- region 15곳은 각 시군청 소재지 좌표(근사치). region.lat/lng는 지역 목록 표시용이며
+-- 추천 점수 산정에는 장소(place) 단위 좌표만 쓰인다 (ERD/DB 설계서 6장 참고).
 
 INSERT INTO hub (name_ko, name_en, lat, lng, description) VALUES
 ('안동', 'Andong', 36.5750, 128.6747, '전통·자연·사찰'),
@@ -33,8 +27,3 @@ INSERT INTO region (ldong_regn_cd, ldong_signgu_cd, name_ko, name_en, hub_id, la
 ('47', '940', '울릉', 'Ulleung',    (SELECT hub_id FROM hub WHERE name_ko = '포항'),     37.4844, 130.9057),
 ('47', '280', '문경', 'Mungyeong',  (SELECT hub_id FROM hub WHERE name_ko = '북부내륙'), 36.5967, 128.1867),
 ('47', '250', '상주', 'Sangju',     (SELECT hub_id FROM hub WHERE name_ko = '북부내륙'), 36.4109, 128.1591);
-
--- 확인용
--- SELECT h.name_ko AS hub, r.name_ko AS region, r.ldong_regn_cd, r.ldong_signgu_cd
--- FROM region r JOIN hub h ON r.hub_id = h.hub_id
--- ORDER BY h.hub_id, r.region_id;

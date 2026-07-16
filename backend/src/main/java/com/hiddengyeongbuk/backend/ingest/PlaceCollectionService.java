@@ -3,6 +3,8 @@ package com.hiddengyeongbuk.backend.ingest;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTagRepository;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.sync.DataSyncLog;
 import com.hiddengyeongbuk.backend.domain.sync.DataSyncLogRepository;
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,17 +39,23 @@ public class PlaceCollectionService {
 
     private final TourApiClient tourApiClient;
     private final ContentTypeMapper contentTypeMapper;
+    private final PlaceTagAssigner placeTagAssigner;
     private final PlaceRepository placeRepository;
+    private final PlaceTagRepository placeTagRepository;
     private final DataSyncLogRepository dataSyncLogRepository;
 
     public PlaceCollectionService(
             TourApiClient tourApiClient,
             ContentTypeMapper contentTypeMapper,
+            PlaceTagAssigner placeTagAssigner,
             PlaceRepository placeRepository,
+            PlaceTagRepository placeTagRepository,
             DataSyncLogRepository dataSyncLogRepository) {
         this.tourApiClient = tourApiClient;
         this.contentTypeMapper = contentTypeMapper;
+        this.placeTagAssigner = placeTagAssigner;
         this.placeRepository = placeRepository;
+        this.placeTagRepository = placeTagRepository;
         this.dataSyncLogRepository = dataSyncLogRepository;
     }
 
@@ -129,7 +138,16 @@ public class PlaceCollectionService {
         Place place = existing.orElseGet(() -> Place.builder().build());
         applyDetail(place, item, korDetail.get(), engDetail, category.get(), region, sourceModifiedAt);
         placeRepository.save(place);
+        assignTags(place);
         counters.saved++;
+    }
+
+    private void assignTags(Place place) {
+        Set<String> tags = placeTagAssigner.assign(place.getCategory(), place.getTitleKo(), place.getOverviewKo());
+        placeTagRepository.deleteByPlaceId(place.getId());
+        for (String tag : tags) {
+            placeTagRepository.save(PlaceTag.builder().place(place).tag(tag).build());
+        }
     }
 
     private static boolean isUnchanged(Optional<Place> existing, LocalDateTime sourceModifiedAt) {

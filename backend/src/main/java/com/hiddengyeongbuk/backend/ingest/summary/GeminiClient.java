@@ -2,12 +2,16 @@ package com.hiddengyeongbuk.backend.ingest.summary;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hiddengyeongbuk.backend.support.Retry;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -23,12 +27,19 @@ import org.springframework.web.client.RestClientException;
 @Component
 class GeminiClient {
 
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long INITIAL_BACKOFF_MS = 1_000;
+
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final GeminiProperties properties;
 
     GeminiClient(RestClient.Builder builder, ObjectMapper objectMapper, GeminiProperties properties) {
-        this.restClient = builder.build();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(5_000);
+        // Gemini flash-latest는 thinking 모델이라 응답에 시간이 좀 걸릴 수 있어 여유를 둔다.
+        requestFactory.setReadTimeout(30_000);
+        this.restClient = builder.requestFactory(requestFactory).build();
         this.objectMapper = objectMapper;
         this.properties = properties;
     }
@@ -39,19 +50,27 @@ class GeminiClient {
         Map<String, Object> body =
                 Map.of("contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))));
 
-        String responseBody;
-        try {
-            responseBody = restClient
-                    .post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-        } catch (RestClientException e) {
-            throw new GeminiException("Gemini API 호출 실패: " + e.getMessage(), e);
-        }
+        String responseBody = Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, GeminiClient::isTransient, () -> {
+            try {
+                return restClient
+                        .post()
+                        .uri(url)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(body)
+                        .retrieve()
+                        .body(String.class);
+            } catch (RestClientException e) {
+                throw new GeminiException("Gemini API 호출 실패: " + e.getMessage(), e);
+            }
+        });
         return extractText(responseBody);
+    }
+
+    // 네트워크 타임아웃·5xx(예: 오늘 실측한 503 "high demand")만 재시도한다. 401/404 같은
+    // 설정 오류나 429(쿼터 초과, 수십 초 단위 대기가 필요)는 짧은 재시도로 풀리지 않는다.
+    private static boolean isTransient(RuntimeException e) {
+        Throwable cause = e.getCause();
+        return cause instanceof ResourceAccessException || cause instanceof HttpServerErrorException;
     }
 
     private String extractText(String responseBody) {

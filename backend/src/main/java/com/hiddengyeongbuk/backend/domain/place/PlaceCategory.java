@@ -4,5 +4,6 @@ public enum PlaceCategory {
     관광지,
     음식점,
     숙박,
-    축제
+    축제,
+    쇼핑
 }

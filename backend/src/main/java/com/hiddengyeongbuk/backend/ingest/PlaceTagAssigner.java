@@ -28,6 +28,7 @@ public class PlaceTagAssigner {
             List.of("한옥", "고택", "서원", "향교", "종택", "정자", "누각", "읍성", "유적", "고분", "전통마을");
     private static final List<String> NATURE_KEYWORDS =
             List.of("산", "계곡", "폭포", "호수", "저수지", "공원", "휴양림", "생태", "숲", "해변", "바다", "강");
+    private static final List<String> MARKET_KEYWORDS = List.of("시장", "오일장");
 
     public Set<String> assign(PlaceCategory category, String titleKo, String overviewKo) {
         if (category == PlaceCategory.음식점) {
@@ -39,7 +40,20 @@ public class PlaceTagAssigner {
         if (category == PlaceCategory.축제) {
             return Set.of(TAG_FESTIVAL);
         }
+        if (category == PlaceCategory.쇼핑) {
+            return assignForShopping(titleKo, overviewKo);
+        }
         return assignForAttraction(titleKo, overviewKo);
+    }
+
+    private Set<String> assignForShopping(String titleKo, String overviewKo) {
+        String text = (titleKo == null ? "" : titleKo) + " " + (overviewKo == null ? "" : overviewKo);
+        // 전통시장류만 "전통" 태그를 부여한다. 나머지 쇼핑(상점가 등)은 기존 6개 태그
+        // 분류 어디에도 맞지 않아 태그 없이 카테고리/지역으로만 조회되게 둔다.
+        if (containsAny(text, MARKET_KEYWORDS)) {
+            return Set.of(TAG_TRADITION);
+        }
+        return Set.of();
     }
 
     private Set<String> assignForAttraction(String titleKo, String overviewKo) {

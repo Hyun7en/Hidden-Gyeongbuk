@@ -43,4 +43,14 @@ class PlaceTagAssignerTest {
     void 매칭되는_키워드가_없으면_자연을_기본값으로_부여한다() {
         assertThat(assigner.assign(PlaceCategory.관광지, "이상한 이름의 전시관", "특별한 설명 없음")).containsExactly("자연");
     }
+
+    @Test
+    void 전통시장_키워드가_있으면_쇼핑은_전통_태그를_부여한다() {
+        assertThat(assigner.assign(PlaceCategory.쇼핑, "안동 구시장", "전통시장으로 먹거리가 풍부하다")).containsExactly("전통");
+    }
+
+    @Test
+    void 시장_키워드가_없는_쇼핑은_태그가_없다() {
+        assertThat(assigner.assign(PlaceCategory.쇼핑, "안동 특산품 판매점", "안동포와 간고등어를 판매한다")).isEmpty();
+    }
 }

@@ -1,4 +1,4 @@
-package com.hiddengyeongbuk.backend.ingest;
+package com.hiddengyeongbuk.backend.ingest.admin;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import com.hiddengyeongbuk.backend.domain.sync.SyncStatus;
+import com.hiddengyeongbuk.backend.ingest.PlaceCollectionService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package com.hiddengyeongbuk.backend.ingest;
+package com.hiddengyeongbuk.backend.ingest.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

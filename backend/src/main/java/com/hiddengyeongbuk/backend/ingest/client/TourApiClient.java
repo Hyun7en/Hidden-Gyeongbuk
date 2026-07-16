@@ -1,9 +1,9 @@
-package com.hiddengyeongbuk.backend.ingest;
+package com.hiddengyeongbuk.backend.ingest.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hiddengyeongbuk.backend.ingest.dto.AreaBasedSyncItem;
-import com.hiddengyeongbuk.backend.ingest.dto.DetailCommonItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

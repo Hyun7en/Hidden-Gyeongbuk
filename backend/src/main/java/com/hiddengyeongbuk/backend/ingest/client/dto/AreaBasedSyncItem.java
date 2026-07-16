@@ -1,4 +1,4 @@
-package com.hiddengyeongbuk.backend.ingest.dto;
+package com.hiddengyeongbuk.backend.ingest.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

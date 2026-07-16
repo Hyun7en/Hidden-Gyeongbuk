@@ -1,4 +1,4 @@
-package com.hiddengyeongbuk.backend.ingest;
+package com.hiddengyeongbuk.backend.ingest.client;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

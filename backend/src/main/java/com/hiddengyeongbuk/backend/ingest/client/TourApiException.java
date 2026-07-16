@@ -1,4 +1,4 @@
-package com.hiddengyeongbuk.backend.ingest;
+package com.hiddengyeongbuk.backend.ingest.client;
 
 public class TourApiException extends RuntimeException {
 

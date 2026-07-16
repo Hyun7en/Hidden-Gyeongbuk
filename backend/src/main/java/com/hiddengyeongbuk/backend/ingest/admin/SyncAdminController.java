@@ -1,7 +1,8 @@
-package com.hiddengyeongbuk.backend.ingest;
+package com.hiddengyeongbuk.backend.ingest.admin;
 
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
+import com.hiddengyeongbuk.backend.ingest.PlaceCollectionService;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;

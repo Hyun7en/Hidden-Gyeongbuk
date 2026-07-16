@@ -204,11 +204,16 @@ public class PlaceCollectionService {
         place.setSourceModifiedAt(sourceModifiedAt);
     }
 
-    private static BigDecimal parseCoordinate(String value) {
+    static BigDecimal parseCoordinate(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
-        return new BigDecimal(value);
+        BigDecimal parsed = new BigDecimal(value);
+        // TourAPI는 좌표를 확보하지 못한 항목을 "0"으로 내려주기도 한다 — 결측치로 취급한다.
+        if (parsed.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return parsed;
     }
 
     private static LocalDateTime parseModifiedTime(String value) {

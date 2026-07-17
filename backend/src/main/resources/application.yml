@@ -21,6 +21,9 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 tourapi:
   service-key: ${TOURAPI_SERVICE_KEY:}
   kor-base-url: https://apis.data.go.kr/B551011/KorService2

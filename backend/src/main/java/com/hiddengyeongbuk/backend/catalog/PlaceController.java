@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/places")
 public class PlaceController {
 
+    // size가 그대로 조회 규모·캐시 엔트리 크기가 되므로 상한을 둔다(초과 시 400).
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final PlaceQueryService placeQueryService;
 
     public PlaceController(PlaceQueryService placeQueryService) {
@@ -31,14 +34,17 @@ public class PlaceController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "en") String lang) {
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("size는 1~" + MAX_PAGE_SIZE + " 사이여야 합니다: " + size);
+        }
         PlaceCategory categoryEnum = category == null ? null : PlaceCategory.valueOf(category);
         String tagKo = tag == null ? null : Interest.valueOf(tag).labelKo();
-        return placeQueryService.search(regionId, categoryEnum, tagKo, keyword, lang, page, size);
+        return placeQueryService.search(regionId, categoryEnum, tagKo, keyword, LangFallback.normalize(lang), page, size);
     }
 
     @GetMapping("/{placeId}")
     public PlaceDetailResponse detail(@PathVariable Long placeId, @RequestParam(defaultValue = "en") String lang) {
-        return placeQueryService.getDetail(placeId, lang);
+        return placeQueryService.getDetail(placeId, LangFallback.normalize(lang));
     }
 
     @GetMapping("/nearby")

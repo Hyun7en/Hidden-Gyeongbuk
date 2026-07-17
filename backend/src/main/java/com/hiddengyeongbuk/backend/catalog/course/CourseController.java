@@ -3,6 +3,7 @@ package com.hiddengyeongbuk.backend.catalog.course;
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.catalog.Interest;
+import com.hiddengyeongbuk.backend.catalog.LangFallback;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseRecommendRequest;
 import java.util.List;
@@ -29,7 +30,7 @@ public class CourseController {
     public CourseListResponse recommend(
             @RequestBody CourseRecommendRequest request, @RequestParam(defaultValue = "en") String lang) {
         return courseRecommendationService.recommend(
-                request.hubId(), request.duration(), toSet(request.interests()), request.difficulty(), lang);
+                request.hubId(), request.duration(), toSet(request.interests()), request.difficulty(), LangFallback.normalize(lang));
     }
 
     @GetMapping
@@ -39,7 +40,7 @@ public class CourseController {
             @RequestParam(required = false) List<Interest> interests,
             @RequestParam Difficulty difficulty,
             @RequestParam(defaultValue = "en") String lang) {
-        return courseRecommendationService.recommend(hubId, duration, toSet(interests), difficulty, lang);
+        return courseRecommendationService.recommend(hubId, duration, toSet(interests), difficulty, LangFallback.normalize(lang));
     }
 
     private static Set<Interest> toSet(List<Interest> interests) {

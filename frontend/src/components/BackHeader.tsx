@@ -1,19 +1,10 @@
-import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Container from './Container'
 import KeyfretStrip from './KeyfretStrip'
 import LanguageSwitch from './LanguageSwitch'
 
-function BackHeader({
-  backTo = '/',
-  onBack,
-  rightSlot,
-}: {
-  backTo?: string
-  onBack?: () => void
-  rightSlot?: ReactNode
-}) {
+function BackHeader({ backTo = '/', onBack }: { backTo?: string; onBack?: () => void }) {
   const { t } = useTranslation()
   return (
     <header className="sticky top-0 z-10 bg-bg-elevated">
@@ -27,10 +18,7 @@ function BackHeader({
             {t('common.back')}
           </Link>
         )}
-        <div className="flex shrink-0 items-center gap-4">
-          {rightSlot ? <span className="text-[13px] text-accent md:text-sm">{rightSlot}</span> : null}
-          <LanguageSwitch />
-        </div>
+        <LanguageSwitch />
       </Container>
       <KeyfretStrip />
     </header>

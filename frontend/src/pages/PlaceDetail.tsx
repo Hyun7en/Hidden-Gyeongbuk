@@ -8,6 +8,7 @@ import type { PlaceDetailResponse } from '../api/types'
 import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
 import FiberBackground from '../components/FiberBackground'
+import ShareButton from '../components/ShareButton'
 
 function PlaceDetail() {
   const { t } = useTranslation()
@@ -61,7 +62,7 @@ function PlaceDetail() {
     <div className="relative min-h-screen bg-bg">
       <FiberBackground />
       <div className="relative z-10">
-        <BackHeader onBack={() => navigate(-1)} rightSlot={t('common.share')} />
+        <BackHeader onBack={() => navigate(-1)} />
         <Container className="py-8 md:py-14">
           <h1 className="mb-6 text-2xl font-bold md:text-3xl">
             {titleKo ? (
@@ -121,7 +122,8 @@ function PlaceDetail() {
               ) : null}
             </div>
 
-            <div className="mt-8 h-[200px] border border-line bg-bg-elevated md:mt-0 md:h-full">
+            <div className="relative mt-8 h-[200px] border border-line bg-bg-elevated md:mt-0 md:h-full">
+              <ShareButton title={place.title} />
               <div className="flex h-full items-center justify-center text-[11px] text-text-soft">[ Map ]</div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
 import FiberBackground from '../components/FiberBackground'
+import ShareButton from '../components/ShareButton'
 import type { CourseResponse } from '../api/types'
 import { translateCategory } from '../api/labels'
 import { useLanguage } from '../context/LanguageContext'
@@ -45,7 +46,7 @@ function CourseDetail() {
     <div className="relative min-h-screen bg-bg">
       <FiberBackground />
       <div className="relative z-10">
-        <BackHeader onBack={() => navigate(-1)} rightSlot={t('common.share')} />
+        <BackHeader onBack={() => navigate(-1)} />
 
         <Container className="py-8 md:py-14">
           <h1 className="mb-6 text-2xl font-bold md:text-3xl">{t('common.courseRank', { rank: course.rank })}</h1>
@@ -110,6 +111,7 @@ function CourseDetail() {
               </div>
 
               <div className="relative mt-8 h-[160px] border border-line bg-bg-elevated md:h-[220px]">
+                <ShareButton title={t('common.courseRank', { rank: course.rank })} />
                 <div className="flex h-full items-center justify-center text-[11px] text-text-soft">[ Route map ]</div>
               </div>
             </div>

@@ -2,6 +2,7 @@
   "common": {
     "back": "← Back",
     "share": "Share",
+    "copied": "Copied!",
     "loading": "Loading…",
     "courseRank": "Course {{rank}}"
   },

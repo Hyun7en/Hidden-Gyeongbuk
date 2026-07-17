@@ -11,6 +11,7 @@ import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -25,8 +26,8 @@ import org.springframework.web.client.RestClientException;
 @Component
 class TranslateClient {
 
-    private static final int MAX_ATTEMPTS = 3;
-    private static final long INITIAL_BACKOFF_MS = 1_000;
+    private static final int MAX_ATTEMPTS = 4;
+    private static final long INITIAL_BACKOFF_MS = 3_000;
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -62,9 +63,19 @@ class TranslateClient {
         return extractTranslations(responseBody, texts.size());
     }
 
+    // 429가 아니라 403으로 내려오는 게 이 API의 특징이라(레거시 v2 인터페이스), 응답 본문에서
+    // "userRateLimitExceeded" 문자열로 판별해야 한다 — 권한 오류(잘못된 키 등) 403과 구분하기
+    // 위함. 재시도 없이 실패 처리했던 초당/분당 속도 제한(2026-07-17 실측, 백필 47건 연속 실패)을
+    // 여기서 재시도 대상에 포함시켜 해결한다.
     private static boolean isTransient(RuntimeException e) {
         Throwable cause = e.getCause();
-        return cause instanceof ResourceAccessException || cause instanceof HttpServerErrorException;
+        if (cause instanceof ResourceAccessException || cause instanceof HttpServerErrorException) {
+            return true;
+        }
+        if (cause instanceof HttpClientErrorException.Forbidden forbidden) {
+            return forbidden.getResponseBodyAsString().contains("userRateLimitExceeded");
+        }
+        return false;
     }
 
     private List<String> extractTranslations(String responseBody, int expectedCount) {

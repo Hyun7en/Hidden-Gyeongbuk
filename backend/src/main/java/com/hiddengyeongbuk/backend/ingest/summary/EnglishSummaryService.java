@@ -60,25 +60,23 @@ public class EnglishSummaryService {
             return SummaryResult.SKIPPED_NO_OVERVIEW;
         }
 
-        List<String> translated;
         try {
-            translated = translateClient.translate(List.of(place.getTitleKo(), truncate(overview)));
+            List<String> translated = translateClient.translate(List.of(place.getTitleKo(), truncate(overview)));
+            // placeId는 세팅하지 않는다 — @MapsId가 place로부터 자동으로 채운다. 직접 세팅하면
+            // Spring Data가 새 행인데도 "이미 존재하는 detached 엔티티"로 착각해 merge()가
+            // update를 시도하다 ObjectOptimisticLockingFailureException으로 실패한다.
+            placeSummaryRepository.save(PlaceSummary.builder()
+                    .place(place)
+                    .titleEn(translated.get(0))
+                    .summaryEn(translated.get(1))
+                    .source(SummarySource.LLM)
+                    .generatedAt(LocalDateTime.now())
+                    .build());
+            return SummaryResult.GENERATED;
         } catch (RuntimeException e) {
             log.warn("장소 {} 영문 번역 생성 실패: {}", place.getId(), e.getMessage());
             return SummaryResult.FAILED;
         }
-
-        // placeId는 세팅하지 않는다 — @MapsId가 place로부터 자동으로 채운다. 직접 세팅하면
-        // Spring Data가 새 행인데도 "이미 존재하는 detached 엔티티"로 착각해 merge()가
-        // update를 시도하다 ObjectOptimisticLockingFailureException으로 실패한다.
-        placeSummaryRepository.save(PlaceSummary.builder()
-                .place(place)
-                .titleEn(translated.get(0))
-                .summaryEn(translated.get(1))
-                .source(SummarySource.LLM)
-                .generatedAt(LocalDateTime.now())
-                .build());
-        return SummaryResult.GENERATED;
     }
 
     /**
@@ -87,8 +85,14 @@ public class EnglishSummaryService {
      *
      * limit은 "성공 개수"가 아니라 "호출 시도 횟수"에 건다 — 설정 오류(잘못된 키 등)로 전부
      * 실패하는 상황에서 limit이 안 걸려 남은 후보 전체를 연달아 두드리는 걸 막기 위함.
+     *
+     * 이 메서드 자체엔 @Transactional을 걸지 않는다 — 걸면 루프 전체가 트랜잭션 하나가 되어,
+     * 배치 중간에 한 건이라도 DB 저장에서 예외가 나면 그 전까지 성공한 항목들까지 전부
+     * 롤백된다(같은 클래스 안에서 ensureSummary()를 호출하는 self-invocation이라 그 메서드의
+     * @Transactional은 여기선 안 먹는다 — Spring AOP 프록시를 안 거치기 때문). 대신 각 place의
+     * save()가 자기 호출 안에서(SimpleJpaRepository 자체가 @Transactional) 독립적으로
+     * 커밋되게 둬서 진짜 항목별 격리가 되도록 한다.
      */
-    @Transactional
     public BackfillResult backfill(int limit) {
         List<Place> candidates = placeRepository.findByHasEnFalse();
         int generated = 0;
@@ -105,10 +109,12 @@ public class EnglishSummaryService {
                 case GENERATED -> {
                     generated++;
                     attempts++;
+                    pace();
                 }
                 case FAILED -> {
                     failed++;
                     attempts++;
+                    pace();
                 }
                 case ALREADY_EXISTS -> alreadyExists++;
                 case SKIPPED_NO_OVERVIEW -> skippedNoOverview++;
@@ -125,6 +131,17 @@ public class EnglishSummaryService {
 
     private static String truncate(String overview) {
         return overview.length() > MAX_OVERVIEW_CHARS ? overview.substring(0, MAX_OVERVIEW_CHARS) : overview;
+    }
+
+    // 번역 API 호출 직후에만 쉰다 — 딜레이 없이 연달아 부르면 "초당/분당 요청 수" 한도(하루
+    // 글자수 한도와는 별개)에 걸려 403 userRateLimitExceeded가 난다(2026-07-17 실측, 0.3초
+    // 간격으로도 부족해서 1초로 올림 — TranslateClient의 재시도 로직과 함께 방어).
+    private static void pace() {
+        try {
+            Thread.sleep(1_000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public enum SummaryResult {

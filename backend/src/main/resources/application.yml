@@ -36,6 +36,14 @@ sync:
   enabled: ${SYNC_ENABLED:false}
   cron: ${SYNC_CRON:0 0 3 * * *}
 
+translate:
+  # 장소 제목/설명 번역 전용(Google Cloud Translation API v2). 2026-07-17부터 이 용도의
+  # 엔진을 Gemini에서 여기로 옮김 — 순수 번역엔 전용 API가 더 간단·저렴·안정적이고,
+  # Gemini 무료 티어는 향후 챗봇 등 LLM이 실제로 필요한 기능을 위해 남겨둔다.
+  api-key: ${TRANSLATE_API_KEY:}
+  base-url: https://translation.googleapis.com/language/translate/v2
+
+# Gemini는 지금 어디서도 안 쓰지만, 향후 챗봇 등 LLM 기능을 위해 설정을 남겨둔다.
 gemini:
   api-key: ${GEMINI_API_KEY:}
   base-url: https://generativelanguage.googleapis.com/v1beta

@@ -2,7 +2,7 @@ package com.hiddengyeongbuk.backend.ingest.summary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -25,7 +25,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class EnglishSummaryServiceTest {
 
     @Mock
-    private GeminiClient geminiClient;
+    private TranslateClient translateClient;
 
     @Mock
     private PlaceRepository placeRepository;
@@ -40,17 +40,17 @@ class EnglishSummaryServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new EnglishSummaryService(geminiClient, placeRepository, placeSummaryRepository, eventPublisher);
+        service = new EnglishSummaryService(translateClient, placeRepository, placeSummaryRepository, eventPublisher);
     }
 
     @Test
-    void has_en이_true면_제미니를_부르지_않는다() {
+    void has_en이_true면_번역_API를_부르지_않는다() {
         Place place = place(1L, true, "설명");
 
         EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
 
         assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.SKIPPED_HAS_EN);
-        verify(geminiClient, never()).generateSummary(anyString());
+        verify(translateClient, never()).translate(anyList());
     }
 
     @Test
@@ -61,7 +61,7 @@ class EnglishSummaryServiceTest {
         EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
 
         assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.ALREADY_EXISTS);
-        verify(geminiClient, never()).generateSummary(anyString());
+        verify(translateClient, never()).translate(anyList());
     }
 
     @Test
@@ -72,14 +72,15 @@ class EnglishSummaryServiceTest {
         EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
 
         assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.SKIPPED_NO_OVERVIEW);
-        verify(geminiClient, never()).generateSummary(anyString());
+        verify(translateClient, never()).translate(anyList());
     }
 
     @Test
-    void 정상_응답이면_영문_요약을_저장한다() {
+    void 정상_응답이면_영문_제목과_설명을_저장한다() {
         Place place = place(1L, false, "안동 하회마을은 전통 한옥 마을이다");
         given(placeSummaryRepository.existsById(1L)).willReturn(false);
-        given(geminiClient.generateSummary(anyString())).willReturn("Hahoe Village is a traditional hanok village.");
+        given(translateClient.translate(anyList()))
+                .willReturn(List.of("Andong Hahoe Village", "Hahoe Village is a traditional hanok village."));
 
         EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
 
@@ -88,10 +89,10 @@ class EnglishSummaryServiceTest {
     }
 
     @Test
-    void 제미니_호출이_실패하면_예외를_던지지_않고_실패로_처리한다() {
+    void 번역_호출이_실패하면_예외를_던지지_않고_실패로_처리한다() {
         Place place = place(1L, false, "설명");
         given(placeSummaryRepository.existsById(1L)).willReturn(false);
-        given(geminiClient.generateSummary(anyString())).willThrow(new GeminiException("boom", null));
+        given(translateClient.translate(anyList())).willThrow(new TranslateException("boom", null));
 
         EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
 
@@ -106,31 +107,31 @@ class EnglishSummaryServiceTest {
         Place p3 = place(3L, false, "설명3");
         given(placeRepository.findByHasEnFalse()).willReturn(List.of(p1, p2, p3));
         given(placeSummaryRepository.existsById(any())).willReturn(false);
-        given(geminiClient.generateSummary(anyString())).willReturn("summary");
+        given(translateClient.translate(anyList())).willReturn(List.of("title", "summary"));
 
         EnglishSummaryService.BackfillResult result = service.backfill(2);
 
         assertThat(result.generated()).isEqualTo(2);
-        verify(geminiClient, times(2)).generateSummary(anyString());
+        verify(translateClient, times(2)).translate(anyList());
         verify(eventPublisher, times(1)).publishEvent(any(PlaceDataChangedEvent.class));
     }
 
     @Test
     void 전부_실패해도_limit_시도_횟수에서_멈춘다() {
-        // 설정 오류 등으로 Gemini 호출이 전부 실패하는 상황 — limit이 "성공 개수"에만 걸리면
+        // 설정 오류 등으로 번역 API 호출이 전부 실패하는 상황 — limit이 "성공 개수"에만 걸리면
         // 남은 후보 전체를 계속 두드리게 된다. 시도 횟수 자체에 limit을 걸어 이를 막는다.
         Place p1 = place(1L, false, "설명1");
         Place p2 = place(2L, false, "설명2");
         Place p3 = place(3L, false, "설명3");
         given(placeRepository.findByHasEnFalse()).willReturn(List.of(p1, p2, p3));
         given(placeSummaryRepository.existsById(any())).willReturn(false);
-        given(geminiClient.generateSummary(anyString())).willThrow(new GeminiException("boom", null));
+        given(translateClient.translate(anyList())).willThrow(new TranslateException("boom", null));
 
         EnglishSummaryService.BackfillResult result = service.backfill(2);
 
         assertThat(result.generated()).isZero();
         assertThat(result.failed()).isEqualTo(2);
-        verify(geminiClient, times(2)).generateSummary(anyString());
+        verify(translateClient, times(2)).translate(anyList());
         verify(eventPublisher, never()).publishEvent(any(PlaceDataChangedEvent.class));
     }
 
@@ -139,6 +140,7 @@ class EnglishSummaryServiceTest {
                 .id(id)
                 .contentId("c" + id)
                 .contentTypeId(12)
+                .titleKo("장소" + id)
                 .hasEn(hasEn)
                 .overviewKo(overviewKo)
                 .build();

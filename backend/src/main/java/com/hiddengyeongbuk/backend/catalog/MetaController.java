@@ -5,6 +5,7 @@ import com.hiddengyeongbuk.backend.catalog.dto.MetaOptionsResponse.Option;
 import com.hiddengyeongbuk.backend.domain.hub.HubRepository;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +21,7 @@ public class MetaController {
     }
 
     @GetMapping("/options")
+    @Cacheable("metaOptions")
     public MetaOptionsResponse options() {
         List<Option> durations =
                 Arrays.stream(Duration.values()).map(d -> new Option(d.name(), d.labelKo(), d.labelEn())).toList();

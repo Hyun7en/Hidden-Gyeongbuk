@@ -5,10 +5,12 @@ import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceSummary;
 import com.hiddengyeongbuk.backend.domain.place.PlaceSummaryRepository;
 import com.hiddengyeongbuk.backend.domain.place.SummarySource;
+import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,12 +28,17 @@ public class EnglishSummaryService {
     private final GeminiClient geminiClient;
     private final PlaceRepository placeRepository;
     private final PlaceSummaryRepository placeSummaryRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public EnglishSummaryService(
-            GeminiClient geminiClient, PlaceRepository placeRepository, PlaceSummaryRepository placeSummaryRepository) {
+            GeminiClient geminiClient,
+            PlaceRepository placeRepository,
+            PlaceSummaryRepository placeSummaryRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.geminiClient = geminiClient;
         this.placeRepository = placeRepository;
         this.placeSummaryRepository = placeSummaryRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /** 수집 파이프라인(PlaceCollectionService)에서 place 하나를 저장할 때마다 호출한다. */
@@ -104,6 +111,9 @@ public class EnglishSummaryService {
                     // findByHasEnFalse로 이미 걸러졌으니 도달하지 않는다.
                 }
             }
+        }
+        if (generated > 0) {
+            eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
         }
         return new BackfillResult(generated, alreadyExists, skippedNoOverview, failed);
     }

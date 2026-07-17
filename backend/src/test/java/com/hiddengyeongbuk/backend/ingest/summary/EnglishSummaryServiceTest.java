@@ -12,12 +12,14 @@ import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceSummary;
 import com.hiddengyeongbuk.backend.domain.place.PlaceSummaryRepository;
+import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class EnglishSummaryServiceTest {
@@ -31,11 +33,14 @@ class EnglishSummaryServiceTest {
     @Mock
     private PlaceSummaryRepository placeSummaryRepository;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private EnglishSummaryService service;
 
     @BeforeEach
     void setUp() {
-        service = new EnglishSummaryService(geminiClient, placeRepository, placeSummaryRepository);
+        service = new EnglishSummaryService(geminiClient, placeRepository, placeSummaryRepository, eventPublisher);
     }
 
     @Test
@@ -107,6 +112,7 @@ class EnglishSummaryServiceTest {
 
         assertThat(result.generated()).isEqualTo(2);
         verify(geminiClient, times(2)).generateSummary(anyString());
+        verify(eventPublisher, times(1)).publishEvent(any(PlaceDataChangedEvent.class));
     }
 
     @Test
@@ -125,6 +131,7 @@ class EnglishSummaryServiceTest {
         assertThat(result.generated()).isZero();
         assertThat(result.failed()).isEqualTo(2);
         verify(geminiClient, times(2)).generateSummary(anyString());
+        verify(eventPublisher, never()).publishEvent(any(PlaceDataChangedEvent.class));
     }
 
     private static Place place(long id, boolean hasEn, String overviewKo) {

@@ -13,6 +13,7 @@ import com.hiddengyeongbuk.backend.ingest.client.TourApiClient;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
 import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
 import com.hiddengyeongbuk.backend.ingest.summary.EnglishSummaryService;
+import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,7 @@ public class PlaceCollectionService {
     private final PlaceTagRepository placeTagRepository;
     private final DataSyncLogRepository dataSyncLogRepository;
     private final EnglishSummaryService englishSummaryService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PlaceCollectionService(
             TourApiClient tourApiClient,
@@ -54,7 +57,8 @@ public class PlaceCollectionService {
             PlaceRepository placeRepository,
             PlaceTagRepository placeTagRepository,
             DataSyncLogRepository dataSyncLogRepository,
-            EnglishSummaryService englishSummaryService) {
+            EnglishSummaryService englishSummaryService,
+            ApplicationEventPublisher eventPublisher) {
         this.tourApiClient = tourApiClient;
         this.contentTypeMapper = contentTypeMapper;
         this.placeTagAssigner = placeTagAssigner;
@@ -62,6 +66,7 @@ public class PlaceCollectionService {
         this.placeTagRepository = placeTagRepository;
         this.dataSyncLogRepository = dataSyncLogRepository;
         this.englishSummaryService = englishSummaryService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -209,6 +214,9 @@ public class PlaceCollectionService {
                 .message(message)
                 .build());
 
+        if (counters.saved > 0) {
+            eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
+        }
         return new CollectionResult(counters.saved, counters.skipped, counters.unchanged, counters.failed, status);
     }
 

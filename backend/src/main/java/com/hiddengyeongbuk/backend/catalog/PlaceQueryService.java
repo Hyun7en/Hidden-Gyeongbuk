@@ -17,6 +17,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
@@ -47,6 +48,7 @@ public class PlaceQueryService {
         this.festivalDetailRepository = festivalDetailRepository;
     }
 
+    @Cacheable("placeSearch")
     public PageResponse<PlaceSummaryResponse> search(
             Long regionId, PlaceCategory category, String tagKo, String keyword, String lang, int page, int size) {
         Specification<Place> spec = buildSpecification(regionId, category, tagKo, keyword);
@@ -56,11 +58,14 @@ public class PlaceQueryService {
         return new PageResponse<>(content, result.getNumber(), result.getSize(), result.getTotalElements());
     }
 
+    @Cacheable("placeDetail")
     public PlaceDetailResponse getDetail(Long placeId, String lang) {
         Place place = placeRepository.findById(placeId).orElseThrow(() -> new PlaceNotFoundException(placeId));
         return toDetail(place, lang);
     }
 
+    // nearby는 캐싱하지 않는다 — lat/lng가 사실상 연속값이라 키 공간이 무한대에 가까워
+    // 캐시 적중률이 거의 0이고 엔트리만 계속 쌓인다(ConcurrentMapCache는 만료·크기 제한이 없음).
     public List<PlaceNearbyResponse> nearby(double lat, double lng, double radiusKm, PlaceCategory category) {
         Specification<Place> spec = category == null ? null : (root, query, cb) -> cb.equal(root.get("category"), category);
         List<Place> candidates = spec == null ? placeRepository.findAll() : placeRepository.findAll(spec);

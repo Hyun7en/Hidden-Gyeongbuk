@@ -4,6 +4,7 @@ import com.hiddengyeongbuk.backend.catalog.dto.RegionResponse;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,6 +21,7 @@ public class RegionController {
     }
 
     @GetMapping
+    @Cacheable("regions")
     public List<RegionResponse> list(@RequestParam(required = false) Long hubId) {
         List<Region> regions = hubId != null ? regionRepository.findByHubId(hubId) : regionRepository.findAll();
         return regions.stream()

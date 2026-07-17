@@ -17,7 +17,7 @@ import org.springframework.web.client.RestClientException;
 
 /**
  * Gemini Flash generateContent REST 호출(외부 API 연동 설계서 4장). has_en=false인 장소의
- * 국문 overview를 쉬운 영어 요약으로 바꾸는 용도로만 쓴다.
+ * 국문 제목·overview를 영어로 전문 번역하는 용도로만 쓴다(2026-07-17부터 요약이 아니라 번역).
  *
  * gemini.model 기본값은 gemini-flash-latest다 — 구글이 "현재 권장 Flash 모델"을 계속
  * 가리켜주는 별칭이라, 특정 버전을 박아두면 몇 달 뒤 또 단종/차단으로 깨지는 문제를 피한다

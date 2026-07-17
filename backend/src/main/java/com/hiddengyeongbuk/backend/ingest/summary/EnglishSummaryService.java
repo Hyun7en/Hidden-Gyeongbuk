@@ -8,6 +8,8 @@ import com.hiddengyeongbuk.backend.domain.place.SummarySource;
 import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -15,15 +17,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * has_en=false인 장소(EngService2에 영문이 없는 장소)의 국문 overview를 Gemini Flash로 쉬운
- * 영어 요약으로 바꿔 place_summary에 저장한다(외부 API 연동 설계서 4장). 장소별 1회만 호출하고,
- * 이미 저장된 요약이 있으면 다시 부르지 않는다 — Gemini 무료 티어 호출량을 아끼기 위함.
+ * has_en=false인 장소(EngService2에 영문이 없는 장소)의 국문 제목·overview를 Gemini Flash로
+ * "요약"이 아니라 "전문 번역"해서 place_summary에 저장한다(외부 API 연동 설계서 4장 개정).
+ * 원래는 2~3문장 요약이었지만, 정보 손실 없이 원문을 그대로 옮기는 게 관광 정보 앱에는 더
+ * 유용하다고 판단해 전환함(2026-07-17) — "AI다운" 창작적 활용(예: 챗봇)은 별도 기능으로 남겨둔다.
+ * 장소별 1회만 호출하고, 이미 저장된 번역이 있으면 다시 부르지 않는다 — Gemini 무료 티어
+ * 호출량을 아끼기 위함.
  */
 @Service
 public class EnglishSummaryService {
 
     private static final Logger log = LoggerFactory.getLogger(EnglishSummaryService.class);
-    private static final int MAX_OVERVIEW_CHARS = 1500;
+    private static final int MAX_OVERVIEW_CHARS = 3000;
+    private static final Pattern TITLE_PATTERN = Pattern.compile("TITLE:\\s*(.*)");
+    private static final Pattern DESCRIPTION_PATTERN = Pattern.compile("DESCRIPTION:\\s*(.*)", Pattern.DOTALL);
 
     private final GeminiClient geminiClient;
     private final PlaceRepository placeRepository;
@@ -55,20 +62,22 @@ public class EnglishSummaryService {
             return SummaryResult.SKIPPED_NO_OVERVIEW;
         }
 
-        String summaryEn;
+        String raw;
         try {
-            summaryEn = geminiClient.generateSummary(buildPrompt(truncate(overview)));
+            raw = geminiClient.generateSummary(buildPrompt(place.getTitleKo(), truncate(overview)));
         } catch (RuntimeException e) {
-            log.warn("장소 {} 영문 요약 생성 실패: {}", place.getId(), e.getMessage());
+            log.warn("장소 {} 영문 번역 생성 실패: {}", place.getId(), e.getMessage());
             return SummaryResult.FAILED;
         }
+        Translation translation = parse(raw);
 
         // placeId는 세팅하지 않는다 — @MapsId가 place로부터 자동으로 채운다. 직접 세팅하면
         // Spring Data가 새 행인데도 "이미 존재하는 detached 엔티티"로 착각해 merge()가
         // update를 시도하다 ObjectOptimisticLockingFailureException으로 실패한다.
         placeSummaryRepository.save(PlaceSummary.builder()
                 .place(place)
-                .summaryEn(summaryEn)
+                .titleEn(translation.title())
+                .summaryEn(translation.description())
                 .source(SummarySource.LLM)
                 .generatedAt(LocalDateTime.now())
                 .build());
@@ -118,20 +127,37 @@ public class EnglishSummaryService {
         return new BackfillResult(generated, alreadyExists, skippedNoOverview, failed);
     }
 
-    private static String buildPrompt(String overviewKo) {
+    private static String buildPrompt(String titleKo, String overviewKo) {
         return """
-                Summarize the following Korean tourist attraction description in 2-3 simple English \
-                sentences for a foreign tourist audience. Only use facts present in the text — do not \
-                add information that isn't there. Respond with the summary only, no preamble.
+                Translate the following Korean tourist attraction name and description into clear, \
+                natural English for a foreign tourist audience. Translate faithfully — do not \
+                summarize, omit details, or add information that isn't there.
 
+                Respond in exactly this format (no other text):
+                TITLE: <translated name>
+                DESCRIPTION: <translated description>
+
+                Korean name: %s
                 Korean description:
                 %s"""
-                .formatted(overviewKo);
+                .formatted(titleKo, overviewKo);
+    }
+
+    /** Gemini가 지시한 "TITLE: .. / DESCRIPTION: .." 형식을 못 지켰으면 전체를 description으로 취급한다. */
+    private static Translation parse(String raw) {
+        Matcher titleMatcher = TITLE_PATTERN.matcher(raw);
+        Matcher descriptionMatcher = DESCRIPTION_PATTERN.matcher(raw);
+        if (titleMatcher.find() && descriptionMatcher.find()) {
+            return new Translation(titleMatcher.group(1).trim(), descriptionMatcher.group(1).trim());
+        }
+        return new Translation(null, raw.trim());
     }
 
     private static String truncate(String overview) {
         return overview.length() > MAX_OVERVIEW_CHARS ? overview.substring(0, MAX_OVERVIEW_CHARS) : overview;
     }
+
+    private record Translation(String title, String description) {}
 
     public enum SummaryResult {
         GENERATED,

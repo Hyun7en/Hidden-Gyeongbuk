@@ -120,7 +120,8 @@ public class PlaceQueryService {
         PlaceDetailResponse.SummaryResponse summary = LangFallback.EN.equalsIgnoreCase(lang)
                 ? placeSummaryRepository
                         .findById(place.getId())
-                        .map(s -> new PlaceDetailResponse.SummaryResponse(s.getSummaryEn(), s.getSource().name()))
+                        .map(s -> new PlaceDetailResponse.SummaryResponse(
+                                s.getTitleEn(), s.getSummaryEn(), s.getSource().name()))
                         .orElse(null)
                 : null;
         PlaceDetailResponse.FestivalResponse festival = festivalDetailRepository

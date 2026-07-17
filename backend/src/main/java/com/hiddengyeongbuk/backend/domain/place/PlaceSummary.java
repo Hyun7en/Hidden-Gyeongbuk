@@ -41,6 +41,9 @@ public class PlaceSummary {
     @Column(name = "summary_en", nullable = false, columnDefinition = "LONGTEXT")
     private String summaryEn;
 
+    @Column(name = "title_en")
+    private String titleEn;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     private SummarySource source;

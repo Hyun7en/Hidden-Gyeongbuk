@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * has_en=false인 장소(EngService2에 영문이 없는 장소)의 국문 제목·overview를 Google Cloud
@@ -46,8 +45,13 @@ public class EnglishSummaryService {
         this.eventPublisher = eventPublisher;
     }
 
-    /** 수집 파이프라인(PlaceCollectionService)에서 place 하나를 저장할 때마다 호출한다. */
-    @Transactional
+    /**
+     * 수집 파이프라인(PlaceCollectionService)에서 place 하나를 저장할 때마다 호출한다.
+     *
+     * @Transactional을 걸지 않는다 — 쓰기가 save() 하나뿐이라 묶을 게 없고, 걸면 번역 HTTP
+     * 호출(재시도 포함 최악 수십 초)이 DB 커넥션을 붙든 채 돌게 된다(PlaceWriter 주석의
+     * 같은 문제 참고). save()는 SimpleJpaRepository 자체 트랜잭션으로 커밋된다.
+     */
     public SummaryResult ensureSummary(Place place) {
         if (place.isHasEn()) {
             return SummaryResult.SKIPPED_HAS_EN;
@@ -83,6 +87,12 @@ public class EnglishSummaryService {
         } catch (RuntimeException e) {
             log.warn("장소 {} 영문 번역 생성 실패: {}", place.getId(), e.getMessage());
             return SummaryResult.FAILED;
+        } finally {
+            // 성공·실패와 무관하게 번역 API를 실제로 부른 경우에만 쉰다. backfill뿐 아니라
+            // 수집 경로(PlaceCollectionService)도 unchanged 항목에서는 TourAPI 호출 없이
+            // 빠르게 돌며 여기로 들어오므로, 페이싱은 호출부가 아니라 여기서 걸어야
+            // 두 경로 모두 초당 요청 수 한도(403 userRateLimitExceeded)를 넘지 않는다.
+            pace();
         }
     }
 
@@ -93,12 +103,10 @@ public class EnglishSummaryService {
      * limit은 "성공 개수"가 아니라 "호출 시도 횟수"에 건다 — 설정 오류(잘못된 키 등)로 전부
      * 실패하는 상황에서 limit이 안 걸려 남은 후보 전체를 연달아 두드리는 걸 막기 위함.
      *
-     * 이 메서드 자체엔 @Transactional을 걸지 않는다 — 걸면 루프 전체가 트랜잭션 하나가 되어,
+     * 이 메서드에도 @Transactional을 걸지 않는다 — 걸면 루프 전체가 트랜잭션 하나가 되어,
      * 배치 중간에 한 건이라도 DB 저장에서 예외가 나면 그 전까지 성공한 항목들까지 전부
-     * 롤백된다(같은 클래스 안에서 ensureSummary()를 호출하는 self-invocation이라 그 메서드의
-     * @Transactional은 여기선 안 먹는다 — Spring AOP 프록시를 안 거치기 때문). 대신 각 place의
-     * save()가 자기 호출 안에서(SimpleJpaRepository 자체가 @Transactional) 독립적으로
-     * 커밋되게 둬서 진짜 항목별 격리가 되도록 한다.
+     * 롤백된다. 각 place의 save()가 자기 호출 안에서(SimpleJpaRepository 자체가
+     * @Transactional) 독립적으로 커밋되므로 진짜 항목별 격리가 된다.
      */
     public BackfillResult backfill(int limit) {
         List<Place> candidates = placeRepository.findByHasEnFalse();
@@ -116,12 +124,10 @@ public class EnglishSummaryService {
                 case GENERATED -> {
                     generated++;
                     attempts++;
-                    pace();
                 }
                 case FAILED -> {
                     failed++;
                     attempts++;
-                    pace();
                 }
                 case ALREADY_EXISTS -> alreadyExists++;
                 case SKIPPED_NO_OVERVIEW -> skippedNoOverview++;

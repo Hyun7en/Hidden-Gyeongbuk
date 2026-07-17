@@ -136,7 +136,7 @@ function Home() {
                 </div>
                 <div className="mt-[18px] inline-flex items-center gap-1.5 text-[11px] font-semibold text-seal md:text-xs">
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center bg-seal text-[9px] text-bg-elevated">印</span>
-                  Sourced from public tourism data (TourAPI)
+                  Sourced from public tourism open data
                 </div>
               </div>
             </div>
@@ -179,7 +179,7 @@ function Home() {
         </section>
 
         <footer className="py-5 pb-7 text-center md:py-8">
-          <p className="text-[11px] text-text-soft md:text-xs">Hidden Gyeongbuk · Built from Korea Tourism Organization open data</p>
+          <p className="text-[11px] text-text-soft md:text-xs">Hidden Gyeongbuk · Built from public tourism open data</p>
         </footer>
       </div>
     </div>

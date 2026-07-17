@@ -4,6 +4,7 @@ import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.catalog.Interest;
 import com.hiddengyeongbuk.backend.catalog.LangFallback;
+import com.hiddengyeongbuk.backend.catalog.TranslatedTitleLookup;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseResponse;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,18 +41,21 @@ public class CourseRecommendationService {
     private final PlaceRepository placeRepository;
     private final CourseAssembler courseAssembler;
     private final CourseScorer courseScorer;
+    private final TranslatedTitleLookup translatedTitleLookup;
 
     public CourseRecommendationService(
             HubRepository hubRepository,
             RegionRepository regionRepository,
             PlaceRepository placeRepository,
             CourseAssembler courseAssembler,
-            CourseScorer courseScorer) {
+            CourseScorer courseScorer,
+            TranslatedTitleLookup translatedTitleLookup) {
         this.hubRepository = hubRepository;
         this.regionRepository = regionRepository;
         this.placeRepository = placeRepository;
         this.courseAssembler = courseAssembler;
         this.courseScorer = courseScorer;
+        this.translatedTitleLookup = translatedTitleLookup;
     }
 
     @Cacheable("courseRecommend")
@@ -102,21 +107,32 @@ public class CourseRecommendationService {
                 .toList();
 
         String shareUrl = buildShareUrl(hubId, duration, effectiveInterests, difficulty);
+        Map<Long, String> translatedTitles = translatedTitleLookup.forPlaces(placesOf(ranked), lang);
         List<CourseResponse> courses = new ArrayList<>();
         int rank = 1;
         for (ScoredCandidate scored : ranked) {
-            courses.add(toResponse(rank++, scored, hub, shareUrl, lang));
+            courses.add(toResponse(rank++, scored, hub, shareUrl, lang, translatedTitles));
         }
         return new CourseListResponse(courses);
     }
 
+    /** 상위 코스들에 등장하는 모든 장소(방문지+숙박)를 모아 번역 제목 일괄 조회에 쓴다. */
+    private static List<Place> placesOf(List<ScoredCandidate> ranked) {
+        return ranked.stream()
+                .flatMap(s -> s.candidate().days().stream())
+                .flatMap(day -> Stream.concat(day.places().stream(), Stream.ofNullable(day.lodging())))
+                .toList();
+    }
+
     private record ScoredCandidate(CourseCandidate candidate, CourseScorer.Breakdown breakdown) {}
 
-    private CourseResponse toResponse(int rank, ScoredCandidate scored, Hub hub, String shareUrl, String lang) {
+    private CourseResponse toResponse(
+            int rank, ScoredCandidate scored, Hub hub, String shareUrl, String lang, Map<Long, String> translatedTitles) {
         CourseCandidate candidate = scored.candidate();
         CourseScorer.Breakdown b = scored.breakdown();
-        List<CourseResponse.DayResponse> days =
-                candidate.days().stream().map(day -> toDayResponse(day, lang)).toList();
+        List<CourseResponse.DayResponse> days = candidate.days().stream()
+                .map(day -> toDayResponse(day, lang, translatedTitles))
+                .toList();
         return new CourseResponse(
                 rank,
                 round2(b.total()),
@@ -128,16 +144,23 @@ public class CourseRecommendationService {
                 shareUrl);
     }
 
-    private CourseResponse.DayResponse toDayResponse(CourseDay day, String lang) {
+    private CourseResponse.DayResponse toDayResponse(CourseDay day, String lang, Map<Long, String> translatedTitles) {
         List<CourseResponse.CoursePlaceResponse> places = new ArrayList<>();
         int order = 1;
         for (Place place : day.places()) {
             places.add(new CourseResponse.CoursePlaceResponse(
-                    order++, place.getId(), place.getCategory().name(), LangFallback.title(place, lang), place.getLat(), place.getLng()));
+                    order++,
+                    place.getId(),
+                    place.getCategory().name(),
+                    LangFallback.title(place, translatedTitles.get(place.getId()), lang),
+                    place.getLat(),
+                    place.getLng()));
         }
         CourseResponse.LodgingResponse lodging = day.lodging() == null
                 ? null
-                : new CourseResponse.LodgingResponse(day.lodging().getId(), LangFallback.title(day.lodging(), lang));
+                : new CourseResponse.LodgingResponse(
+                        day.lodging().getId(),
+                        LangFallback.title(day.lodging(), translatedTitles.get(day.lodging().getId()), lang));
         return new CourseResponse.DayResponse(day.day(), places, lodging);
     }
 

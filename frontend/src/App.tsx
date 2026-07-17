@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import PatternDefs from './components/PatternDefs'
 import Home from './pages/Home'
 import RecommendInput from './pages/RecommendInput'
@@ -8,15 +9,19 @@ import PlaceExplore from './pages/PlaceExplore'
 import PlaceDetail from './pages/PlaceDetail'
 import Placeholder from './pages/Placeholder'
 import { useHubs } from './hooks/useHubs'
+import { useLanguage } from './context/LanguageContext'
 
 function HubPlaceholder() {
+  const { t } = useTranslation()
   const { hubId } = useParams()
   const { hubs } = useHubs()
+  const { lang } = useLanguage()
   const hub = hubs.find((h) => String(h.hubId) === hubId)
+  const hubName = hub ? (lang === 'ko' ? hub.nameKo : hub.nameEn) : null
   return (
     <Placeholder
-      title={hub ? `${hub.nameEn} Hub` : 'Hub'}
-      cta={{ to: `/recommend?hub=${hubId}`, label: 'Get a course recommendation →' }}
+      title={hubName ? t('placeholder.hubTitle', { name: hubName }) : t('placeholder.hubTitleFallback')}
+      cta={{ to: `/recommend?hub=${hubId}`, label: t('home.ctaRecommend') }}
     />
   )
 }

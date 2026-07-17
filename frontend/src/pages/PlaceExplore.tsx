@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { searchPlaces } from '../api/client'
 import { translateTag } from '../api/labels'
+import { useLanguage } from '../context/LanguageContext'
 import type { PlaceSummaryResponse } from '../api/types'
 import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
@@ -10,6 +12,8 @@ import Tag from '../components/Tag'
 import { INTEREST_OPTIONS, type Interest } from '../types/course'
 
 function PlaceExplore() {
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
   const [activeTag, setActiveTag] = useState<Interest | null>(null)
   const [keyword, setKeyword] = useState('')
   const [places, setPlaces] = useState<PlaceSummaryResponse[] | null>(null)
@@ -21,7 +25,7 @@ function PlaceExplore() {
     // 최신 필터의 결과를 stale 응답으로 덮어쓸 수 있다.
     let cancelled = false
     const handle = setTimeout(() => {
-      searchPlaces({ tag: activeTag ?? undefined, keyword: keyword || undefined })
+      searchPlaces({ tag: activeTag ?? undefined, keyword: keyword || undefined }, lang)
         .then((res) => {
           if (!cancelled) setPlaces(res.content)
         })
@@ -33,7 +37,7 @@ function PlaceExplore() {
       cancelled = true
       clearTimeout(handle)
     }
-  }, [activeTag, keyword])
+  }, [activeTag, keyword, lang])
 
   return (
     <div className="relative min-h-screen bg-bg">
@@ -41,30 +45,30 @@ function PlaceExplore() {
       <div className="relative z-10">
         <BackHeader backTo="/" />
         <Container className="py-8 md:py-14">
-          <h1 className="mb-6 text-2xl font-bold md:mb-8 md:text-3xl">Browse Places</h1>
+          <h1 className="mb-6 text-2xl font-bold md:mb-8 md:text-3xl">{t('placeExplore.title')}</h1>
           <input
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Search places…"
+            placeholder={t('placeExplore.searchPlaceholder') ?? undefined}
             className="mb-4 h-11 w-full border border-line bg-bg-elevated px-3 text-sm text-text placeholder:text-text-soft md:h-12 md:max-w-sm md:text-base"
           />
           <div className="mb-8 flex flex-wrap gap-2 md:mb-10">
             <Tag active={activeTag === null} onClick={() => setActiveTag(null)}>
-              All
+              {t('placeExplore.all')}
             </Tag>
             {INTEREST_OPTIONS.map((opt) => (
               <Tag key={opt.value} active={activeTag === opt.value} onClick={() => setActiveTag(opt.value)}>
-                {opt.label}
+                {t(opt.labelKey)}
               </Tag>
             ))}
           </div>
           {error ? (
-            <p className="text-sm text-text-soft">Couldn't load places — is the backend running? ({error})</p>
+            <p className="text-sm text-text-soft">{t('placeExplore.error', { error })}</p>
           ) : places === null ? (
-            <p className="text-sm text-text-soft">Loading…</p>
+            <p className="text-sm text-text-soft">{t('common.loading')}</p>
           ) : places.length === 0 ? (
-            <p className="text-sm text-text-soft">No places match your filters.</p>
+            <p className="text-sm text-text-soft">{t('placeExplore.empty')}</p>
           ) : (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
               {places.map((place) => (
@@ -74,7 +78,7 @@ function PlaceExplore() {
                     placeId: place.placeId,
                     title: place.title,
                     addr: place.addr,
-                    tags: place.tags.map(translateTag),
+                    tags: lang === 'en' ? place.tags.map(translateTag) : place.tags,
                     hasImage: Boolean(place.firstImage),
                   }}
                 />

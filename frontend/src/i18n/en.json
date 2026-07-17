@@ -1,0 +1,103 @@
+{
+  "common": {
+    "back": "← Back",
+    "share": "Share",
+    "loading": "Loading…",
+    "courseRank": "Course {{rank}}"
+  },
+  "home": {
+    "eyebrow": "Gyeongsangbuk-do, South Korea",
+    "heroTitle": "The Korea beyond Seoul is fifteen quiet counties wide.",
+    "heroSubtitle": "Hub-and-spoke day trips and overnight courses built from real local data — temples, markets, mountains no guidebook covers.",
+    "ctaRecommend": "Get a course recommendation →",
+    "ctaBrowse": "Browse places",
+    "whereEyebrow": "Where is this",
+    "whereTitle": "Gyeongsangbuk-do sits inland, east of Daegu.",
+    "whereBody": "Korea's largest province by area, wrapping the country's southeastern coast and mountainous interior. Most visitors pass through on the KTX without stopping — this app is built around four transit hubs you can actually reach.",
+    "mapPin": "● Andong Hub",
+    "whyEyebrow": "Why these 15 counties",
+    "whyTitle": "Officially declining. Still worth the detour.",
+    "whyBody": "The Korean government designates counties losing population fastest as \"population-declining regions.\" All 15 in Gyeongsangbuk-do are here — not because they're empty, but because they're where local life hasn't been rebuilt for tourists yet.",
+    "statCounties": "counties covered",
+    "statHubs": "transit hubs",
+    "sourcedFrom": "Sourced from public tourism open data",
+    "startEyebrow": "Start from",
+    "startTitle": "Four hubs, fifteen spokes",
+    "startSubtitle": "Pick the transit hub you're arriving from.",
+    "hubsError": "Couldn't load hubs — is the backend running? ({{error}})",
+    "loadingHubs": "Loading hubs…",
+    "footer": "Hidden Gyeongbuk · Built from public tourism open data"
+  },
+  "placeExplore": {
+    "title": "Browse Places",
+    "searchPlaceholder": "Search places…",
+    "all": "All",
+    "error": "Couldn't load places — is the backend running? ({{error}})",
+    "empty": "No places match your filters."
+  },
+  "placeDetail": {
+    "error": "Couldn't load this place — is the backend running? ({{error}})",
+    "translatedBadge": "Translated from Korean (AI)",
+    "noTranslationYet": "English description not available yet — original Korean text:"
+  },
+  "recommendInput": {
+    "title": "Course Recommendation",
+    "subtitle": "Tell us what you're after — we'll match it against real place data for your hub and build a course around it.",
+    "startingFrom": "Starting from",
+    "startingFromBody": "Hidden Gyeongbuk is hub-and-spoke: these four are the transit points you can actually reach from Seoul or Busan. Every course starts and ends at the hub you pick — the 15 counties fan out from there.",
+    "hubsError": "Couldn't load hubs — is the backend running? ({{error}})",
+    "loadingHubs": "Loading hubs…",
+    "gettingThereFallback": "Getting there: check the nearest KTX/SRT station or intercity bus terminal for this hub.",
+    "tripLength": "Trip length",
+    "pace": "Pace",
+    "interests": "Interests (optional, pick any)",
+    "submit": "Get recommendations →"
+  },
+  "recommendResults": {
+    "title": "Recommended Courses",
+    "error": "Couldn't load recommendations — is the backend running? ({{error}})",
+    "building": "Building your courses…",
+    "empty": "No courses matched yet — {{hub}} may not have enough collected place data for this combination.",
+    "summary": "{{count}} courses matched for {{hub}} · {{duration}} · {{difficulty}}"
+  },
+  "courseDetail": {
+    "notAvailable": "Course details aren't available directly — please go back and pick a course from the results list.",
+    "day": "Day {{day}}",
+    "lodging": "Lodging: {{title}}",
+    "scoreBreakdown": "Score breakdown",
+    "breakdown": {
+      "interest": "Interest match",
+      "access": "Access",
+      "stay": "Stay quality",
+      "dispersion": "Dispersion",
+      "completeness": "Data completeness"
+    }
+  },
+  "placeholder": {
+    "comingSoon": "Coming soon",
+    "body": "This page is under construction.",
+    "home": "← Home",
+    "hubTitle": "{{name}} Hub",
+    "hubTitleFallback": "Hub"
+  },
+  "options": {
+    "duration": {
+      "ONE_DAY": "One day",
+      "ONE_NIGHT": "One night",
+      "TWO_NIGHT": "Two nights"
+    },
+    "difficulty": {
+      "EASY": "Easy",
+      "NORMAL": "Normal",
+      "LOCAL": "Local experience"
+    },
+    "interest": {
+      "NATURE": "Nature",
+      "FOOD": "Food",
+      "TRADITION": "Tradition",
+      "TEMPLE": "Temple",
+      "FESTIVAL": "Festival",
+      "REST": "Rest"
+    }
+  }
+}

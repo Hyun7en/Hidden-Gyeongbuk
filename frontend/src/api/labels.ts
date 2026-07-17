@@ -24,11 +24,3 @@ export const KO_TO_EN_CATEGORY: Record<string, string> = {
 export function translateCategory(categoryKo: string): string {
   return KO_TO_EN_CATEGORY[categoryKo] ?? categoryKo
 }
-
-/**
- * 백엔드 LangFallback.overview()는 overviewEn이 없으면 overviewKo를 그대로 돌려준다 —
- * 필드 하나에 언어가 섞여 나오므로, 프론트에서 한글 포함 여부로 폴백 여부를 판별한다.
- */
-export function containsHangul(text: string): boolean {
-  return /[가-힣]/.test(text)
-}

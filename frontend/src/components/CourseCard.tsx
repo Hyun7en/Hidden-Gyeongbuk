@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { CourseResponse } from '../api/types'
 
 function CourseCard({ course, durationLabel }: { course: CourseResponse; durationLabel: string }) {
+  const { t } = useTranslation()
   const route = course.days
     .flatMap((d) => d.places)
     .map((p) => p.title.split(' ')[0])
@@ -17,7 +19,9 @@ function CourseCard({ course, durationLabel }: { course: CourseResponse; duratio
       className="block border border-line bg-bg-elevated p-4 md:p-6"
     >
       <div className="mb-2.5 flex items-start justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-soft md:text-xs">Course {course.rank}</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-text-soft md:text-xs">
+          {t('common.courseRank', { rank: course.rank })}
+        </span>
         <span className="inline-flex items-baseline gap-[3px] bg-seal-tint px-[9px] py-[3px] text-sm font-bold tabular-nums text-seal md:text-base">
           {course.score.toFixed(1)}
           <small className="text-[10px] font-semibold">pt</small>

@@ -44,6 +44,9 @@ public class PlaceSummary {
     @Column(name = "title_en")
     private String titleEn;
 
+    @Column(name = "addr_en")
+    private String addrEn;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     private SummarySource source;

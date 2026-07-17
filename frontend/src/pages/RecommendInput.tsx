@@ -51,10 +51,11 @@ function RecommendInput() {
     <div className="relative min-h-screen bg-bg">
       <FiberBackground />
       <div className="relative z-10">
-        <BackHeader title="Course Recommendation" backTo="/" />
+        <BackHeader backTo="/" />
 
         <Container className="py-8 md:py-14">
           <div className="mx-auto max-w-2xl">
+            <h1 className="mb-6 text-2xl font-bold md:mb-8 md:text-3xl">Course Recommendation</h1>
             <p className="mb-8 text-sm leading-relaxed text-text-soft md:mb-12 md:text-base">
               Tell us what you're after — we'll match it against real place data for your hub and build a course
               around it.

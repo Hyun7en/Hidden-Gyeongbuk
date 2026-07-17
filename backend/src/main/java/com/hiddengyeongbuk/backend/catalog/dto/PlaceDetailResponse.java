@@ -20,7 +20,7 @@ public record PlaceDetailResponse(
         SummaryResponse summary,
         FestivalResponse festival) {
 
-    public record SummaryResponse(String titleEn, String text, String source) {}
+    public record SummaryResponse(String titleEn, String addrEn, String text, String source) {}
 
     public record FestivalResponse(LocalDate startDate, LocalDate endDate) {}
 }

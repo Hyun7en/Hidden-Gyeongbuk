@@ -29,8 +29,9 @@ function PlaceExplore() {
     <div className="relative min-h-screen bg-bg">
       <FiberBackground />
       <div className="relative z-10">
-        <BackHeader title="Browse Places" backTo="/" />
+        <BackHeader backTo="/" />
         <Container className="py-8 md:py-14">
+          <h1 className="mb-6 text-2xl font-bold md:mb-8 md:text-3xl">Browse Places</h1>
           <input
             type="text"
             value={keyword}

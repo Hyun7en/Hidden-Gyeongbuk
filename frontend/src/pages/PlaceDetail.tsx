@@ -27,7 +27,7 @@ function PlaceDetail() {
       <div className="relative min-h-screen bg-bg">
         <FiberBackground />
         <div className="relative z-10">
-          <BackHeader title="Place" onBack={() => navigate(-1)} />
+          <BackHeader onBack={() => navigate(-1)} />
           <Container className="py-16 text-center">
             <p className="text-sm text-text-soft">Couldn't load this place — is the backend running? ({error})</p>
           </Container>
@@ -41,7 +41,7 @@ function PlaceDetail() {
       <div className="relative min-h-screen bg-bg">
         <FiberBackground />
         <div className="relative z-10">
-          <BackHeader title="Place" onBack={() => navigate(-1)} />
+          <BackHeader onBack={() => navigate(-1)} />
           <Container className="py-16 text-center">
             <p className="text-sm text-text-soft">Loading…</p>
           </Container>
@@ -50,15 +50,24 @@ function PlaceDetail() {
     )
   }
 
-  const titleHasHangul = containsHangul(place.title)
-  const displayTitle = titleHasHangul && place.summary?.titleEn ? place.summary.titleEn : place.title
+  const translatedTitle = containsHangul(place.title) ? place.summary?.titleEn : null
+  const translatedAddr = containsHangul(place.addr) ? place.summary?.addrEn : null
 
   return (
     <div className="relative min-h-screen bg-bg">
       <FiberBackground />
       <div className="relative z-10">
-        <BackHeader title={displayTitle} onBack={() => navigate(-1)} rightSlot="Share" />
+        <BackHeader onBack={() => navigate(-1)} rightSlot="Share" />
         <Container className="py-8 md:py-14">
+          <h1 className="mb-6 text-2xl font-bold md:text-3xl">
+            {translatedTitle ? (
+              <>
+                {translatedTitle} <span className="text-lg font-normal text-text-soft md:text-xl">({place.title})</span>
+              </>
+            ) : (
+              place.title
+            )}
+          </h1>
           <div className="md:grid md:grid-cols-[1.2fr_1fr] md:gap-16">
             <div>
               <div
@@ -72,11 +81,6 @@ function PlaceDetail() {
                       }
                 }
               />
-              {displayTitle !== place.title ? (
-                <p className="mt-3 text-sm text-text-soft" lang="ko">
-                  {place.title}
-                </p>
-              ) : null}
               <div className="mt-5 flex flex-wrap gap-1.5">
                 <span className="border border-line px-2.5 py-1 text-[11px] uppercase text-text-soft md:text-xs">
                   {translateCategory(place.category)}
@@ -87,7 +91,9 @@ function PlaceDetail() {
                   </span>
                 ))}
               </div>
-              <p className="mt-4 text-sm text-text-soft md:text-base">{place.addr}</p>
+              <p className="mt-4 text-sm text-text-soft md:text-base">
+                {translatedAddr ? `${translatedAddr} (${place.addr})` : place.addr}
+              </p>
 
               {place.summary ? (
                 <>

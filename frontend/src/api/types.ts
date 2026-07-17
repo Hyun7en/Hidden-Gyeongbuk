@@ -51,7 +51,7 @@ export interface PlaceDetailResponse {
   firstImage: string | null
   images: string[]
   tags: string[]
-  summary: { titleEn: string | null; text: string; source: string } | null
+  summary: { titleEn: string | null; addrEn: string | null; text: string; source: string } | null
   festival: { startDate: string; endDate: string } | null
 }
 

@@ -60,8 +60,14 @@ public class EnglishSummaryService {
             return SummaryResult.SKIPPED_NO_OVERVIEW;
         }
 
+        // addr는 nullable 컬럼이라(titleKo와 달리) 없는 place가 있을 수 있어 있을 때만 번역 대상에 넣는다.
+        boolean hasAddr = place.getAddr() != null && !place.getAddr().isBlank();
+        List<String> texts = hasAddr
+                ? List.of(place.getTitleKo(), truncate(overview), place.getAddr())
+                : List.of(place.getTitleKo(), truncate(overview));
+
         try {
-            List<String> translated = translateClient.translate(List.of(place.getTitleKo(), truncate(overview)));
+            List<String> translated = translateClient.translate(texts);
             // placeId는 세팅하지 않는다 — @MapsId가 place로부터 자동으로 채운다. 직접 세팅하면
             // Spring Data가 새 행인데도 "이미 존재하는 detached 엔티티"로 착각해 merge()가
             // update를 시도하다 ObjectOptimisticLockingFailureException으로 실패한다.
@@ -69,6 +75,7 @@ public class EnglishSummaryService {
                     .place(place)
                     .titleEn(translated.get(0))
                     .summaryEn(translated.get(1))
+                    .addrEn(hasAddr ? translated.get(2) : null)
                     .source(SummarySource.LLM)
                     .generatedAt(LocalDateTime.now())
                     .build());

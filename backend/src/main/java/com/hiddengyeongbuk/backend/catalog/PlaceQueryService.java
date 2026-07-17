@@ -121,7 +121,7 @@ public class PlaceQueryService {
                 ? placeSummaryRepository
                         .findById(place.getId())
                         .map(s -> new PlaceDetailResponse.SummaryResponse(
-                                s.getTitleEn(), s.getSummaryEn(), s.getSource().name()))
+                                s.getTitleEn(), s.getAddrEn(), s.getSummaryEn(), s.getSource().name()))
                         .orElse(null)
                 : null;
         PlaceDetailResponse.FestivalResponse festival = festivalDetailRepository

@@ -25,8 +25,9 @@ function CourseDetail() {
       <div className="relative min-h-screen bg-bg">
         <FiberBackground />
         <div className="relative z-10">
-          <BackHeader title={`Course ${rank ?? ''}`} onBack={() => navigate(-1)} />
+          <BackHeader onBack={() => navigate(-1)} />
           <Container className="py-16 text-center">
+            <h1 className="mb-6 text-2xl font-bold md:text-3xl">Course {rank ?? ''}</h1>
             <p className="text-sm text-text-soft">
               Course details aren't available directly — please go back and pick a course from the results list.
             </p>
@@ -42,9 +43,10 @@ function CourseDetail() {
     <div className="relative min-h-screen bg-bg">
       <FiberBackground />
       <div className="relative z-10">
-        <BackHeader title={`Course ${course.rank}`} onBack={() => navigate(-1)} rightSlot="Share" />
+        <BackHeader onBack={() => navigate(-1)} rightSlot="Share" />
 
         <Container className="py-8 md:py-14">
+          <h1 className="mb-6 text-2xl font-bold md:text-3xl">Course {course.rank}</h1>
           <div className="md:grid md:grid-cols-[1.3fr_1fr] md:gap-16">
             <div>
               <div className="mb-6 flex items-center gap-3">

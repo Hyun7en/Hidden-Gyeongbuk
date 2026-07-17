@@ -17,12 +17,22 @@ function PlaceExplore() {
 
   useEffect(() => {
     setError(null)
+    // cancelled 없이 setTimeout만 지우면, 이미 발사된 이전 요청이 늦게 도착해
+    // 최신 필터의 결과를 stale 응답으로 덮어쓸 수 있다.
+    let cancelled = false
     const handle = setTimeout(() => {
       searchPlaces({ tag: activeTag ?? undefined, keyword: keyword || undefined })
-        .then((res) => setPlaces(res.content))
-        .catch((err: Error) => setError(err.message))
+        .then((res) => {
+          if (!cancelled) setPlaces(res.content)
+        })
+        .catch((err: Error) => {
+          if (!cancelled) setError(err.message)
+        })
     }, 250)
-    return () => clearTimeout(handle)
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
   }, [activeTag, keyword])
 
   return (

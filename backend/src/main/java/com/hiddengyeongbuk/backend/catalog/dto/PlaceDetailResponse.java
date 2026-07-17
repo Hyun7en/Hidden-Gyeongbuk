@@ -9,6 +9,7 @@ public record PlaceDetailResponse(
         String contentId,
         String category,
         String title,
+        String titleKo,
         String addr,
         String tel,
         BigDecimal lat,

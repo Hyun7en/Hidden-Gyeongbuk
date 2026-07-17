@@ -149,6 +149,7 @@ public class PlaceQueryService {
                 place.getContentId(),
                 place.getCategory().name(),
                 LangFallback.title(place, placeSummary.map(PlaceSummary::getTitleEn).orElse(null), lang),
+                place.getTitleKo(),
                 place.getAddr(),
                 place.getTel(),
                 place.getLat(),

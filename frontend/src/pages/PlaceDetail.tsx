@@ -50,7 +50,7 @@ function PlaceDetail() {
     )
   }
 
-  const translatedTitle = containsHangul(place.title) ? place.summary?.titleEn : null
+  const titleKo = place.titleKo !== place.title ? place.titleKo : null
   const translatedAddr = containsHangul(place.addr) ? place.summary?.addrEn : null
 
   return (
@@ -60,9 +60,9 @@ function PlaceDetail() {
         <BackHeader onBack={() => navigate(-1)} rightSlot="Share" />
         <Container className="py-8 md:py-14">
           <h1 className="mb-6 text-2xl font-bold md:text-3xl">
-            {translatedTitle ? (
+            {titleKo ? (
               <>
-                {translatedTitle} <span className="text-lg font-normal text-text-soft md:text-xl">({place.title})</span>
+                {place.title} <span className="text-lg font-normal text-text-soft md:text-xl">({titleKo})</span>
               </>
             ) : (
               place.title

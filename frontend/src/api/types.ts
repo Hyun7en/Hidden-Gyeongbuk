@@ -43,6 +43,7 @@ export interface PlaceDetailResponse {
   contentId: string
   category: string
   title: string
+  titleKo: string
   addr: string
   tel: string | null
   lat: number | null

@@ -37,7 +37,7 @@ npm run build      # tsc -b + vite build
 ### 백엔드 패키지 규칙 (`com.hiddengyeongbuk.backend`)
 
 - `domain.{hub,region,place,sync}` — JPA 엔티티+레포지토리
-- `ingest` — TourAPI 수집 파이프라인. `ingest.client`(TourAPI 통신), `ingest.summary`(번역: TranslateClient·EnglishSummaryService), `ingest.admin`(수동 트리거)
+- `ingest` — TourAPI 수집 파이프라인. `ingest.client`(TourAPI 통신), `ingest.summary`(번역: TranslateClient·PlaceTranslationService), `ingest.admin`(수동 트리거)
 - `catalog` — 프론트향 조회·추천 API. `catalog.course`(추천 엔진), `catalog.dto`
 - `support` — 도메인 무관 공용(Retry, GeoUtils, WebConfig, PlaceDataChangedEvent)
 
@@ -57,13 +57,15 @@ npm run build      # tsc -b + vite build
 ### 번역 (ingest.summary)
 
 - has_en=false 장소의 국문 제목·설명·주소를 Google Cloud Translation v2로 **한 번의 호출에 함께** 번역해 `place_summary`(title_en/summary_en/addr_en)에 장소별 1회 캐싱(ADR-013). Gemini 코드는 향후 LLM 기능용 예비 — 번역에 쓰지 말 것.
-- 속도 제한: 연속 호출 시 403 `userRateLimitExceeded`(429 아님, 레거시 v2 특성). `ensureSummary` 내부에서 1초 페이싱 + 이 에러만 재시도. 무료 한도는 월 50만 자 — 전량 백필은 하루 16,000자 페이스로 분할 진행 중(사용자 결정, 완전 무료 유지).
+- 속도 제한: 연속 호출 시 403 `userRateLimitExceeded`(429 아님, 레거시 v2 특성). `ensureTranslation` 내부에서 1초 페이싱 + 이 에러만 재시도. 무료 한도는 월 50만 자 — 전량 백필은 하루 16,000자 페이스로 분할 진행 중(사용자 결정, 완전 무료 유지).
+- 새 place_summary 행의 source는 `TRANSLATE`(V7) — `LLM`은 Gemini 요약 시절 레거시 값으로 신규 사용 금지.
 - 외부 API 재시도는 `support.Retry.withBackoff` + transient 오류(타임아웃·5xx·TourAPI 05)만 대상. 실패 루프의 상한은 "성공 횟수"가 아니라 "시도 횟수"에 걸 것.
 
 ### 조회·추천 (catalog)
 
 - 언어: `lang`은 컨트롤러에서 `LangFallback.normalize()`로 en/ko 두 값으로 정규화 후 서비스에 전달(캐시 키 공간 고정). 제목은 3단계 폴백 — TourAPI 영문 → 번역(`place_summary.title_en`) → 국문. 번역 제목은 `TranslatedTitleLookup`으로 페이지 단위 일괄 조회(장소별 findById 금지, N+1).
-- 캐싱: `@Cacheable` + 만료 없는 ConcurrentMapCache. **키 공간이 유한한 인자만 캐시 키에 넣을 것** — nearby(좌표)와 keyword 검색이 캐싱에서 빠진 이유. place 데이터를 바꾸는 새 쓰기 경로를 추가하면 반드시 `PlaceDataChangedEvent`를 발행할 것(안 하면 캐시가 stale로 남는다).
+- 캐싱: `@Cacheable` + Caffeine(`CacheConfig`, maximumSize 2000·12h TTL — page 같은 무한 키 인자 방어). **키 공간이 유한한 인자만 캐시 키에 넣을 것** — nearby(좌표)와 keyword 검색이 캐싱에서 빠진 이유. place 데이터를 바꾸는 새 쓰기 경로를 추가하면 반드시 `PlaceDataChangedEvent`를 발행할 것(안 하면 캐시가 stale로 남는다).
+- 페이지네이션 조회는 반드시 정렬 키를 고정할 것(현재 PK ASC) — ORDER BY 없는 페이지는 페이지 간 중복/누락이 난다. 태그 어휘는 `domain.place.PlaceTagType`이 단일 출처 — ingest/catalog에 한글 라벨을 중복 정의하지 말 것.
 - 추천 엔진(`catalog.course`)은 추천 알고리즘 명세서 4~5장을 그대로 구현 — 가중치·조립 규칙 변경은 명세서 갱신과 함께.
 
 ### 프론트 (frontend/src)
@@ -77,7 +79,7 @@ npm run build      # tsc -b + vite build
 - **@MapsId 연관관계(PlaceSummary·FestivalDetail)**: ID를 직접 세팅하지 말 것 — 연관 엔티티만 세팅하면 자동으로 채워진다. 직접 세팅하면 merge가 update를 시도하다 낙관적 락 예외.
 - **delete 후 같은 트랜잭션에서 같은 유니크 키 재삽입**(태그 재부여 패턴): delete 직후 `flush()` 필수 — 안 하면 Hibernate가 insert를 먼저 내보내 유니크 위반.
 - **TourAPI**: serviceKey에 `+`가 있으면 UriComponentsBuilder 기본 인코딩이 그대로 통과시켜 401 — `URLEncoder`로 직접 인코딩(TourApiClient.get 참고). detailCommon2(v2)는 v1의 YN 플래그를 안 받는다. contentTypeId는 국문(12/14/15/28/32/38/39)과 영문(76/78/85/75/80/79/82)이 다르다. 여행코스(25)는 영구 제외(ADR-003/009와 충돌).
-- **`/internal/*` 엔드포인트**(수집·백필 트리거)는 인증 없는 로컬 전용 — 배포 전 제거/접근 제한 필수(P4 태스크).
+- **`/internal/*` 엔드포인트**(수집·백필 트리거)는 인증 없는 로컬 전용이며 `@Profile("local")` 빈이다. 프로파일 미지정 실행은 local로 동작(`spring.profiles.default`), **운영 배포는 반드시 `SPRING_PROFILES_ACTIVE=prod`** — 그러면 이 엔드포인트가 아예 안 뜨고 show-sql도 꺼진다.
 - **공모전 규정**: 서비스 화면·카피에 "한국관광공사"/"KTO" 명칭·로고 사용 금지.
 - **통합 테스트(*IT)**: 테스트 데이터는 전용 접두사로 격리하고 컬럼 길이 제약을 먼저 확인. 정리는 저장 시 받은 엔티티를 기본 CRUD `delete(entity)`로 — 파생 삭제 쿼리는 앰비언트 트랜잭션이 없는 teardown에서 실패한다. `TestRestTemplate`는 별도 커넥션이라 테스트 `@Transactional` 롤백 패턴을 쓰지 말 것.
 - **Kakao Maps/Share**: JS SDK는 반드시 "JavaScript 키"(`VITE_KAKAO_MAP_KEY`)를 쓸 것 — REST API 키를 쓰면 에러. 카카오맵은 2024-12-01 이후 신규 앱이면 카카오 디벨로퍼스 콘솔의 앱 관리 > [카카오맵] > [사용 설정]을 ON으로 켜야 API 호출이 동작함(비즈 앱 전환은 불필요, 콘솔 설정이라 Claude가 대신 못 함 — 사용자 확인 필요). 카카오톡 공유는 별도 사용 설정 토글이 없고 앱 생성만으로 기본 제공되지만, 대신 공유 메시지의 webUrl/mobileWebUrl 도메인을 [앱] > [제품 링크 관리] > [웹 도메인]에 등록해야 함(카카오맵이 쓰는 [플랫폼] Web 도메인 목록과는 다른 목록). 두 제품 다 같은 앱의 JS 키를 공유해서 쓴다.

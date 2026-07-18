@@ -123,7 +123,11 @@ function PlaceDetail() {
             </div>
 
             <div className="relative mt-8 h-[200px] border border-line bg-bg-elevated md:mt-0 md:h-full">
-              <ShareButton title={place.title} />
+              <ShareButton
+                title={place.title}
+                description={(lang === 'en' ? (place.summary?.text ?? place.overview) : place.overview) ?? undefined}
+                imageUrl={place.firstImage ?? undefined}
+              />
               <div className="flex h-full items-center justify-center text-[11px] text-text-soft">[ Map ]</div>
             </div>
           </div>

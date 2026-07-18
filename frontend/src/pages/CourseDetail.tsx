@@ -111,7 +111,10 @@ function CourseDetail() {
               </div>
 
               <div className="relative mt-8 h-[160px] border border-line bg-bg-elevated md:h-[220px]">
-                <ShareButton title={t('common.courseRank', { rank: course.rank })} />
+                <ShareButton
+                  title={t('common.courseRank', { rank: course.rank })}
+                  description={`${state?.durationLabel ?? ''} · ${placeCount} places · ${course.totalDistanceKm.toFixed(1)}km`}
+                />
                 <div className="flex h-full items-center justify-center text-[11px] text-text-soft">[ Route map ]</div>
               </div>
             </div>

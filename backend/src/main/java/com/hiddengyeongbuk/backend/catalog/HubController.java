@@ -22,7 +22,8 @@ public class HubController {
     @Cacheable("hubs")
     public List<HubResponse> list() {
         return hubRepository.findAll().stream()
-                .map(h -> new HubResponse(h.getId(), h.getNameKo(), h.getNameEn(), h.getLat(), h.getLng(), h.getDescription()))
+                .map(h -> new HubResponse(
+                        h.getId(), h.getNameKo(), h.getNameEn(), h.getLat(), h.getLng(), h.getDescription(), h.getDescriptionEn()))
                 .toList();
     }
 }

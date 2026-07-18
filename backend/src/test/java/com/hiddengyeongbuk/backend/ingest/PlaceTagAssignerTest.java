@@ -40,8 +40,9 @@ class PlaceTagAssignerTest {
     }
 
     @Test
-    void 매칭되는_키워드가_없으면_자연을_기본값으로_부여한다() {
-        assertThat(assigner.assign(PlaceCategory.관광지, "이상한 이름의 전시관", "특별한 설명 없음")).containsExactly("자연");
+    void 매칭되는_키워드가_없으면_태그를_부여하지_않는다() {
+        // 예전 기본값("자연")은 전시관·박물관까지 자연 코스에 섞이게 해 관심사 매칭을 오염시켰다.
+        assertThat(assigner.assign(PlaceCategory.관광지, "이상한 이름의 전시관", "특별한 설명 없음")).isEmpty();
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.hiddengyeongbuk.backend.ingest;
 
 import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTagType;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -8,7 +9,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * place_tag(자연/음식/전통/사찰/축제/휴식)를 카테고리·제목·설명 텍스트 키워드 규칙으로 채운다.
+ * place_tag({@link PlaceTagType} 어휘)를 카테고리·제목·설명 텍스트 키워드 규칙으로 채운다.
  * TourAPI의 신분류체계(lclsSystm) 코드는 실제 응답 필드를 별도 실측해야 해서(외부 API 연동
  * 설계서 6장 후속 과제) 이번 범위에서는 제외하고, 추가 API 호출이 필요 없는 키워드 매칭으로
  * MVP 수준의 태그를 부여한다.
@@ -16,12 +17,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class PlaceTagAssigner {
 
-    private static final String TAG_NATURE = "자연";
-    private static final String TAG_FOOD = "음식";
-    private static final String TAG_TRADITION = "전통";
-    private static final String TAG_TEMPLE = "사찰";
-    private static final String TAG_FESTIVAL = "축제";
-    private static final String TAG_REST = "휴식";
+    private static final String TAG_NATURE = PlaceTagType.NATURE.labelKo();
+    private static final String TAG_FOOD = PlaceTagType.FOOD.labelKo();
+    private static final String TAG_TRADITION = PlaceTagType.TRADITION.labelKo();
+    private static final String TAG_TEMPLE = PlaceTagType.TEMPLE.labelKo();
+    private static final String TAG_FESTIVAL = PlaceTagType.FESTIVAL.labelKo();
+    private static final String TAG_REST = PlaceTagType.REST.labelKo();
 
     private static final List<String> TEMPLE_KEYWORDS = List.of("사찰", "암자", "본찰", "대웅전");
     private static final List<String> TEMPLE_TITLE_SUFFIXES = List.of("사", "암");
@@ -75,9 +76,9 @@ public class PlaceTagAssigner {
             tags.add(TAG_NATURE);
         }
 
-        if (tags.isEmpty()) {
-            tags.add(TAG_NATURE);
-        }
+        // 아무 키워드에도 안 걸리면 무태그로 둔다(쇼핑과 동일). 예전엔 "자연"을 기본값으로
+        // 부여했는데, 박물관·전시관까지 자연 코스에 섞여 들어가 관심사 매칭을 오염시켰다.
+        // 무태그 장소는 관심사 필터에는 안 걸리지만 카테고리·지역 조회와 코스 후보에는 그대로 포함된다.
         return tags;
     }
 

@@ -24,9 +24,9 @@ import org.springframework.stereotype.Service;
  * 장소별 1회만 호출하고, 이미 저장된 번역이 있으면 다시 부르지 않는다.
  */
 @Service
-public class EnglishSummaryService {
+public class PlaceTranslationService {
 
-    private static final Logger log = LoggerFactory.getLogger(EnglishSummaryService.class);
+    private static final Logger log = LoggerFactory.getLogger(PlaceTranslationService.class);
     private static final int MAX_OVERVIEW_CHARS = 3000;
 
     private final TranslateClient translateClient;
@@ -34,7 +34,7 @@ public class EnglishSummaryService {
     private final PlaceSummaryRepository placeSummaryRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public EnglishSummaryService(
+    public PlaceTranslationService(
             TranslateClient translateClient,
             PlaceRepository placeRepository,
             PlaceSummaryRepository placeSummaryRepository,
@@ -52,16 +52,16 @@ public class EnglishSummaryService {
      * 호출(재시도 포함 최악 수십 초)이 DB 커넥션을 붙든 채 돌게 된다(PlaceWriter 주석의
      * 같은 문제 참고). save()는 SimpleJpaRepository 자체 트랜잭션으로 커밋된다.
      */
-    public SummaryResult ensureSummary(Place place) {
+    public TranslationResult ensureTranslation(Place place) {
         if (place.isHasEn()) {
-            return SummaryResult.SKIPPED_HAS_EN;
+            return TranslationResult.SKIPPED_HAS_EN;
         }
         if (placeSummaryRepository.existsById(place.getId())) {
-            return SummaryResult.ALREADY_EXISTS;
+            return TranslationResult.ALREADY_EXISTS;
         }
         String overview = place.getOverviewKo();
         if (overview == null || overview.isBlank()) {
-            return SummaryResult.SKIPPED_NO_OVERVIEW;
+            return TranslationResult.SKIPPED_NO_OVERVIEW;
         }
 
         // addr는 nullable 컬럼이라(titleKo와 달리) 없는 place가 있을 수 있어 있을 때만 번역 대상에 넣는다.
@@ -80,13 +80,13 @@ public class EnglishSummaryService {
                     .titleEn(translated.get(0))
                     .summaryEn(translated.get(1))
                     .addrEn(hasAddr ? translated.get(2) : null)
-                    .source(SummarySource.LLM)
+                    .source(SummarySource.TRANSLATE)
                     .generatedAt(LocalDateTime.now())
                     .build());
-            return SummaryResult.GENERATED;
+            return TranslationResult.GENERATED;
         } catch (RuntimeException e) {
             log.warn("장소 {} 영문 번역 생성 실패: {}", place.getId(), e.getMessage());
-            return SummaryResult.FAILED;
+            return TranslationResult.FAILED;
         } finally {
             // 성공·실패와 무관하게 번역 API를 실제로 부른 경우에만 쉰다. backfill뿐 아니라
             // 수집 경로(PlaceCollectionService)도 unchanged 항목에서는 TourAPI 호출 없이
@@ -120,7 +120,7 @@ public class EnglishSummaryService {
             if (attempts >= limit) {
                 break;
             }
-            switch (ensureSummary(place)) {
+            switch (ensureTranslation(place)) {
                 case GENERATED -> {
                     generated++;
                     attempts++;
@@ -157,7 +157,7 @@ public class EnglishSummaryService {
         }
     }
 
-    public enum SummaryResult {
+    public enum TranslationResult {
         GENERATED,
         ALREADY_EXISTS,
         SKIPPED_HAS_EN,

@@ -10,7 +10,7 @@ import com.hiddengyeongbuk.backend.domain.sync.SyncStatus;
 import com.hiddengyeongbuk.backend.ingest.client.TourApiClient;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
 import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
-import com.hiddengyeongbuk.backend.ingest.summary.EnglishSummaryService;
+import com.hiddengyeongbuk.backend.ingest.summary.PlaceTranslationService;
 import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -47,7 +47,7 @@ public class PlaceCollectionService {
     private final PlaceRepository placeRepository;
     private final PlaceWriter placeWriter;
     private final DataSyncLogRepository dataSyncLogRepository;
-    private final EnglishSummaryService englishSummaryService;
+    private final PlaceTranslationService placeTranslationService;
     private final ApplicationEventPublisher eventPublisher;
 
     public PlaceCollectionService(
@@ -56,14 +56,14 @@ public class PlaceCollectionService {
             PlaceRepository placeRepository,
             PlaceWriter placeWriter,
             DataSyncLogRepository dataSyncLogRepository,
-            EnglishSummaryService englishSummaryService,
+            PlaceTranslationService placeTranslationService,
             ApplicationEventPublisher eventPublisher) {
         this.tourApiClient = tourApiClient;
         this.contentTypeMapper = contentTypeMapper;
         this.placeRepository = placeRepository;
         this.placeWriter = placeWriter;
         this.dataSyncLogRepository = dataSyncLogRepository;
-        this.englishSummaryService = englishSummaryService;
+        this.placeTranslationService = placeTranslationService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -152,7 +152,7 @@ public class PlaceCollectionService {
             // 영문 요약도 마찬가지로 place_summary에 이미 있으면 재호출하지 않으므로 매번
             // 시도해도 안전하다 — 이 기능이 추가되기 전에 수집된 place도 다음 실행에서 채워진다.
             placeWriter.reassignTags(existing.get());
-            countSummary(englishSummaryService.ensureSummary(existing.get()), counters);
+            countSummary(placeTranslationService.ensureTranslation(existing.get()), counters);
             counters.unchanged++;
             return;
         }
@@ -169,12 +169,12 @@ public class PlaceCollectionService {
         // 이미 있던 place는 detached라 save()가 merge()로 처리하므로, 영속 인스턴스는 인자가
         // 아니라 반환값이다 — 이후 단계는 반환된 saved를 쓴다.
         Place saved = placeWriter.savePlaceWithTags(place);
-        countSummary(englishSummaryService.ensureSummary(saved), counters);
+        countSummary(placeTranslationService.ensureTranslation(saved), counters);
         counters.saved++;
     }
 
-    private static void countSummary(EnglishSummaryService.SummaryResult result, Counters counters) {
-        if (result == EnglishSummaryService.SummaryResult.GENERATED) {
+    private static void countSummary(PlaceTranslationService.TranslationResult result, Counters counters) {
+        if (result == PlaceTranslationService.TranslationResult.GENERATED) {
             counters.summarized++;
         }
     }
@@ -204,8 +204,9 @@ public class PlaceCollectionService {
                 : "%s, skipped=%d, unchanged=%d, failed=%d, summarized=%d"
                         .formatted(scopeLabel, counters.skipped, counters.unchanged, counters.failed, counters.summarized);
 
+        // target 컬럼은 VARCHAR(50)인데 접두사만 43자라 지역명이 조금만 길어도 저장이 깨진다 — message처럼 자른다.
         dataSyncLogRepository.save(DataSyncLog.builder()
-                .target("KorService2/EngService2:areaBasedSyncList2:" + region.getNameKo())
+                .target(truncate("areaBasedSyncList2:" + region.getNameKo(), 50))
                 .startedAt(startedAt)
                 .finishedAt(LocalDateTime.now())
                 .status(status)
@@ -213,7 +214,7 @@ public class PlaceCollectionService {
                 .message(message)
                 .build());
 
-        // saved=0이어도 unchanged 항목에서 번역이 새로 생겼을 수 있다(ensureSummary 백필 겸용
+        // saved=0이어도 unchanged 항목에서 번역이 새로 생겼을 수 있다(ensureTranslation 백필 겸용
         // 경로) — 그 경우도 catalog 캐시가 stale해지므로 이벤트를 발행한다.
         if (counters.saved > 0 || counters.summarized > 0) {
             eventPublisher.publishEvent(new PlaceDataChangedEvent(this));

@@ -22,7 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
-class EnglishSummaryServiceTest {
+class PlaceTranslationServiceTest {
 
     @Mock
     private TranslateClient translateClient;
@@ -36,20 +36,20 @@ class EnglishSummaryServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    private EnglishSummaryService service;
+    private PlaceTranslationService service;
 
     @BeforeEach
     void setUp() {
-        service = new EnglishSummaryService(translateClient, placeRepository, placeSummaryRepository, eventPublisher);
+        service = new PlaceTranslationService(translateClient, placeRepository, placeSummaryRepository, eventPublisher);
     }
 
     @Test
     void has_en이_true면_번역_API를_부르지_않는다() {
         Place place = place(1L, true, "설명");
 
-        EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
+        PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
-        assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.SKIPPED_HAS_EN);
+        assertThat(result).isEqualTo(PlaceTranslationService.TranslationResult.SKIPPED_HAS_EN);
         verify(translateClient, never()).translate(anyList());
     }
 
@@ -58,9 +58,9 @@ class EnglishSummaryServiceTest {
         Place place = place(1L, false, "설명");
         given(placeSummaryRepository.existsById(1L)).willReturn(true);
 
-        EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
+        PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
-        assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.ALREADY_EXISTS);
+        assertThat(result).isEqualTo(PlaceTranslationService.TranslationResult.ALREADY_EXISTS);
         verify(translateClient, never()).translate(anyList());
     }
 
@@ -69,9 +69,9 @@ class EnglishSummaryServiceTest {
         Place place = place(1L, false, null);
         given(placeSummaryRepository.existsById(1L)).willReturn(false);
 
-        EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
+        PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
-        assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.SKIPPED_NO_OVERVIEW);
+        assertThat(result).isEqualTo(PlaceTranslationService.TranslationResult.SKIPPED_NO_OVERVIEW);
         verify(translateClient, never()).translate(anyList());
     }
 
@@ -82,9 +82,9 @@ class EnglishSummaryServiceTest {
         given(translateClient.translate(anyList()))
                 .willReturn(List.of("Andong Hahoe Village", "Hahoe Village is a traditional hanok village."));
 
-        EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
+        PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
-        assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.GENERATED);
+        assertThat(result).isEqualTo(PlaceTranslationService.TranslationResult.GENERATED);
         verify(placeSummaryRepository, times(1)).save(any(PlaceSummary.class));
     }
 
@@ -94,9 +94,9 @@ class EnglishSummaryServiceTest {
         given(placeSummaryRepository.existsById(1L)).willReturn(false);
         given(translateClient.translate(anyList())).willThrow(new TranslateException("boom", null));
 
-        EnglishSummaryService.SummaryResult result = service.ensureSummary(place);
+        PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
-        assertThat(result).isEqualTo(EnglishSummaryService.SummaryResult.FAILED);
+        assertThat(result).isEqualTo(PlaceTranslationService.TranslationResult.FAILED);
         verify(placeSummaryRepository, never()).save(any());
     }
 
@@ -109,7 +109,7 @@ class EnglishSummaryServiceTest {
         given(placeSummaryRepository.existsById(any())).willReturn(false);
         given(translateClient.translate(anyList())).willReturn(List.of("title", "summary"));
 
-        EnglishSummaryService.BackfillResult result = service.backfill(2);
+        PlaceTranslationService.BackfillResult result = service.backfill(2);
 
         assertThat(result.generated()).isEqualTo(2);
         verify(translateClient, times(2)).translate(anyList());
@@ -127,7 +127,7 @@ class EnglishSummaryServiceTest {
         given(placeSummaryRepository.existsById(any())).willReturn(false);
         given(translateClient.translate(anyList())).willThrow(new TranslateException("boom", null));
 
-        EnglishSummaryService.BackfillResult result = service.backfill(2);
+        PlaceTranslationService.BackfillResult result = service.backfill(2);
 
         assertThat(result.generated()).isZero();
         assertThat(result.failed()).isEqualTo(2);

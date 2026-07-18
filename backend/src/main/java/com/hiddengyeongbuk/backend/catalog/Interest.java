@@ -1,26 +1,30 @@
 package com.hiddengyeongbuk.backend.catalog;
 
+import com.hiddengyeongbuk.backend.domain.place.PlaceTagType;
+
 /**
- * API 명세서 공통 Enum(interest). place_tag.tag(자연/음식/전통/사찰/축제/휴식)와 1:1 대응.
+ * API 명세서 공통 Enum(interest). place_tag.tag와의 1:1 대응은 {@link PlaceTagType}에
+ * 위임한다 — 관심사 매칭이 한글 라벨 문자열 일치로 동작하므로, 어휘를 여기 중복 정의하면
+ * 수집 쪽과 어긋났을 때 조용히 매칭이 깨진다.
  */
 public enum Interest {
-    NATURE("자연", "Nature"),
-    FOOD("음식", "Food"),
-    TRADITION("전통", "Tradition"),
-    TEMPLE("사찰", "Temple"),
-    FESTIVAL("축제", "Festival"),
-    REST("휴식", "Rest");
+    NATURE(PlaceTagType.NATURE, "Nature"),
+    FOOD(PlaceTagType.FOOD, "Food"),
+    TRADITION(PlaceTagType.TRADITION, "Tradition"),
+    TEMPLE(PlaceTagType.TEMPLE, "Temple"),
+    FESTIVAL(PlaceTagType.FESTIVAL, "Festival"),
+    REST(PlaceTagType.REST, "Rest");
 
-    private final String labelKo;
+    private final PlaceTagType tagType;
     private final String labelEn;
 
-    Interest(String labelKo, String labelEn) {
-        this.labelKo = labelKo;
+    Interest(PlaceTagType tagType, String labelEn) {
+        this.tagType = tagType;
         this.labelEn = labelEn;
     }
 
     public String labelKo() {
-        return labelKo;
+        return tagType.labelKo();
     }
 
     public String labelEn() {

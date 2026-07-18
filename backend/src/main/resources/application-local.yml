@@ -1,0 +1,8 @@
+# 로컬 개발 전용 설정. 프로파일 미지정 시 기본 활성(spring.profiles.default=local).
+# SQL 로그는 여기서만 켠다 — 운영에서 전 쿼리 로깅은 성능 낭비 + 데이터 유출 표면이다.
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true

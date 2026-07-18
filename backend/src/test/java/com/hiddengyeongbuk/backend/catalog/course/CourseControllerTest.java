@@ -45,8 +45,7 @@ class CourseControllerTest {
                 new CourseResponse.Breakdown(100, 80, 100, 75, 90),
                 1L,
                 24.0,
-                List.of(new CourseResponse.DayResponse(1, List.of(), null)),
-                "/courses?hubId=1&duration=ONE_NIGHT&interests=TRADITION,NATURE&difficulty=EASY");
+                List.of(new CourseResponse.DayResponse(1, List.of(), null)));
         BDDMockito.given(courseRecommendationService.recommend(
                         eq(1L), eq(Duration.ONE_NIGHT), any(), eq(Difficulty.EASY), anyString()))
                 .willReturn(new CourseListResponse(List.of(course)));

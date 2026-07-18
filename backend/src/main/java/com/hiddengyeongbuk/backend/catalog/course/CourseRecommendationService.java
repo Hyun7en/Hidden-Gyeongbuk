@@ -2,6 +2,7 @@ package com.hiddengyeongbuk.backend.catalog.course;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
+import com.hiddengyeongbuk.backend.catalog.HubNotFoundException;
 import com.hiddengyeongbuk.backend.catalog.Interest;
 import com.hiddengyeongbuk.backend.catalog.LangFallback;
 import com.hiddengyeongbuk.backend.catalog.TranslatedTitleLookup;
@@ -20,7 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -58,18 +58,10 @@ public class CourseRecommendationService {
         this.translatedTitleLookup = translatedTitleLookup;
     }
 
+    // null 검증은 요청 경계에서 끝난다 — POST는 @Valid(CourseRecommendRequest), GET은 필수 @RequestParam.
     @Cacheable("courseRecommend")
     public CourseListResponse recommend(Long hubId, Duration duration, Set<Interest> interests, Difficulty difficulty, String lang) {
-        if (hubId == null) {
-            throw new IllegalArgumentException("hubId is required");
-        }
-        if (duration == null) {
-            throw new IllegalArgumentException("duration is required");
-        }
-        if (difficulty == null) {
-            throw new IllegalArgumentException("difficulty is required");
-        }
-        Hub hub = hubRepository.findById(hubId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 hubId: " + hubId));
+        Hub hub = hubRepository.findById(hubId).orElseThrow(() -> new HubNotFoundException(hubId));
         Set<Interest> effectiveInterests = interests == null ? Set.of() : interests;
 
         List<Long> regionIds =
@@ -106,12 +98,11 @@ public class CourseRecommendationService {
                 .limit(MAX_RESULTS)
                 .toList();
 
-        String shareUrl = buildShareUrl(hubId, duration, effectiveInterests, difficulty);
         Map<Long, String> translatedTitles = translatedTitleLookup.forPlaces(placesOf(ranked), lang);
         List<CourseResponse> courses = new ArrayList<>();
         int rank = 1;
         for (ScoredCandidate scored : ranked) {
-            courses.add(toResponse(rank++, scored, hub, shareUrl, lang, translatedTitles));
+            courses.add(toResponse(rank++, scored, hub, lang, translatedTitles));
         }
         return new CourseListResponse(courses);
     }
@@ -127,7 +118,7 @@ public class CourseRecommendationService {
     private record ScoredCandidate(CourseCandidate candidate, CourseScorer.Breakdown breakdown) {}
 
     private CourseResponse toResponse(
-            int rank, ScoredCandidate scored, Hub hub, String shareUrl, String lang, Map<Long, String> translatedTitles) {
+            int rank, ScoredCandidate scored, Hub hub, String lang, Map<Long, String> translatedTitles) {
         CourseCandidate candidate = scored.candidate();
         CourseScorer.Breakdown b = scored.breakdown();
         List<CourseResponse.DayResponse> days = candidate.days().stream()
@@ -140,8 +131,7 @@ public class CourseRecommendationService {
                         round2(b.interest()), round2(b.access()), round2(b.stay()), round2(b.dispersion()), round2(b.completeness())),
                 hub.getId(),
                 round2(candidate.totalDistanceKm()),
-                days,
-                shareUrl);
+                days);
     }
 
     private CourseResponse.DayResponse toDayResponse(CourseDay day, String lang, Map<Long, String> translatedTitles) {
@@ -162,19 +152,6 @@ public class CourseRecommendationService {
                         day.lodging().getId(),
                         LangFallback.title(day.lodging(), translatedTitles.get(day.lodging().getId()), lang));
         return new CourseResponse.DayResponse(day.day(), places, lodging);
-    }
-
-    private String buildShareUrl(Long hubId, Duration duration, Set<Interest> interests, Difficulty difficulty) {
-        StringBuilder url = new StringBuilder("/courses?hubId=")
-                .append(hubId)
-                .append("&duration=")
-                .append(duration.name())
-                .append("&difficulty=")
-                .append(difficulty.name());
-        if (!interests.isEmpty()) {
-            url.append("&interests=").append(interests.stream().map(Enum::name).collect(Collectors.joining(",")));
-        }
-        return url.toString();
     }
 
     private static double round2(double value) {

@@ -6,6 +6,7 @@ import com.hiddengyeongbuk.backend.catalog.Interest;
 import com.hiddengyeongbuk.backend.catalog.LangFallback;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseRecommendRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Set;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +29,7 @@ public class CourseController {
 
     @PostMapping("/recommend")
     public CourseListResponse recommend(
-            @RequestBody CourseRecommendRequest request, @RequestParam(defaultValue = "en") String lang) {
+            @Valid @RequestBody CourseRecommendRequest request, @RequestParam(defaultValue = "en") String lang) {
         return courseRecommendationService.recommend(
                 request.hubId(), request.duration(), toSet(request.interests()), request.difficulty(), LangFallback.normalize(lang));
     }

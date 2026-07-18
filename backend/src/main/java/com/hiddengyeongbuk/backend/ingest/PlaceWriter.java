@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 그 지역 작업 전체(수집 로그까지)가 사라진다 — 잡았으니 안전하다는 건 착시였다.
  *
  * 그렇다고 같은 클래스 안에서 항목 단위 메서드에 @Transactional을 달아봐야 self-invocation이라
- * Spring AOP 프록시를 안 거쳐 무시된다(EnglishSummaryService.backfill의 같은 함정 참고).
+ * Spring AOP 프록시를 안 거쳐 무시된다(PlaceTranslationService.backfill의 같은 함정 참고).
  * 별도 빈으로 빼서 프록시를 태워야 항목마다 진짜로 독립 커밋된다.
  */
 @Component

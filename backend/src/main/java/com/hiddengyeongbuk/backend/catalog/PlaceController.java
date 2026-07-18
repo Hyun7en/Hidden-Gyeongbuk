@@ -18,6 +18,7 @@ public class PlaceController {
 
     // size가 그대로 조회 규모·캐시 엔트리 크기가 되므로 상한을 둔다(초과 시 400).
     private static final int MAX_PAGE_SIZE = 100;
+    private static final double MAX_NEARBY_RADIUS_KM = 50;
 
     private final PlaceQueryService placeQueryService;
 
@@ -52,8 +53,16 @@ public class PlaceController {
             @RequestParam double lat,
             @RequestParam double lng,
             @RequestParam(defaultValue = "5") double radius,
-            @RequestParam(required = false) String category) {
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "en") String lang) {
+        // 캐시가 없는 엔드포인트라 요청 하나의 계산 비용에 상한을 둔다(서비스의 결과 개수 상한과 한 쌍).
+        if (radius <= 0 || radius > MAX_NEARBY_RADIUS_KM) {
+            throw new IllegalArgumentException("radius는 0보다 크고 " + MAX_NEARBY_RADIUS_KM + "km 이하여야 합니다: " + radius);
+        }
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw new IllegalArgumentException("좌표 범위를 벗어났습니다: lat=" + lat + ", lng=" + lng);
+        }
         PlaceCategory categoryEnum = category == null ? null : PlaceCategory.valueOf(category);
-        return placeQueryService.nearby(lat, lng, radius, categoryEnum);
+        return placeQueryService.nearby(lat, lng, radius, categoryEnum, LangFallback.normalize(lang));
     }
 }

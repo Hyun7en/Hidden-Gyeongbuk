@@ -42,4 +42,7 @@ public class Hub {
 
     @Column(length = 255)
     private String description;
+
+    @Column(name = "description_en", length = 255)
+    private String descriptionEn;
 }

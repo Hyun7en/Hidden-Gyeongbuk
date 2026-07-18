@@ -17,6 +17,7 @@ import com.hiddengyeongbuk.backend.support.GeoUtils;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class PlaceQueryService {
+
+    // nearby는 캐시가 없는 공개 엔드포인트라 응답 크기에도 상한을 둔다.
+    private static final int MAX_NEARBY_RESULTS = 50;
 
     private final PlaceRepository placeRepository;
     private final PlaceSummaryRepository placeSummaryRepository;
@@ -62,7 +67,8 @@ public class PlaceQueryService {
     public PageResponse<PlaceSummaryResponse> search(
             Long regionId, PlaceCategory category, String tagKo, String keyword, String lang, int page, int size) {
         Specification<Place> spec = buildSpecification(regionId, category, tagKo, keyword);
-        Page<Place> result = placeRepository.findAll(spec, PageRequest.of(page, size));
+        // 정렬 없는 페이지네이션은 페이지 간 순서가 비결정적이라(같은 장소 중복/누락) 항상 PK로 고정한다.
+        Page<Place> result = placeRepository.findAll(spec, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")));
         Map<Long, String> translatedTitles = translatedTitleLookup.forPlaces(result.getContent(), lang);
         List<PlaceSummaryResponse> content = result.getContent().stream()
                 .map(p -> toSummary(p, lang, translatedTitles))
@@ -77,22 +83,37 @@ public class PlaceQueryService {
     }
 
     // nearby는 캐싱하지 않는다 — lat/lng가 사실상 연속값이라 키 공간이 무한대에 가까워
-    // 캐시 적중률이 거의 0이고 엔트리만 계속 쌓인다(ConcurrentMapCache는 만료·크기 제한이 없음).
-    public List<PlaceNearbyResponse> nearby(double lat, double lng, double radiusKm, PlaceCategory category) {
-        Specification<Place> spec = category == null ? null : (root, query, cb) -> cb.equal(root.get("category"), category);
-        List<Place> candidates = spec == null ? placeRepository.findAll() : placeRepository.findAll(spec);
+    // 캐시 적중률이 거의 0이고 엔트리만 계속 쌓인다. 대신 캐시가 없는 만큼 호출 비용 자체에
+    // 상한을 건다: 반경 바운딩 박스로 DB에서 선필터하고, 결과 개수도 잘라서 돌려준다.
+    public List<PlaceNearbyResponse> nearby(double lat, double lng, double radiusKm, PlaceCategory category, String lang) {
+        // 위도 1도 ≈ 111km 근사 사각형으로 DB에서 선필터 → Haversine으로 정밀 필터.
+        // 전 장소 풀스캔 + 전건 거리 계산을 반경 주변 장소로 줄인다.
+        double latDelta = radiusKm / 111.0;
+        double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+        Specification<Place> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.between(
+                    root.get("lat"), BigDecimal.valueOf(lat - latDelta), BigDecimal.valueOf(lat + latDelta)));
+            predicates.add(cb.between(
+                    root.get("lng"), BigDecimal.valueOf(lng - lngDelta), BigDecimal.valueOf(lng + lngDelta)));
+            if (category != null) {
+                predicates.add(cb.equal(root.get("category"), category));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
-        List<Candidate> withinRadius = candidates.stream()
+        List<Candidate> withinRadius = placeRepository.findAll(spec).stream()
                 .filter(p -> p.getLat() != null && p.getLng() != null)
                 .map(p -> new Candidate(
                         p, GeoUtils.haversineKm(lat, lng, p.getLat().doubleValue(), p.getLng().doubleValue())))
                 .filter(c -> c.distanceKm() <= radiusKm)
                 .sorted(Comparator.comparingDouble(Candidate::distanceKm))
+                .limit(MAX_NEARBY_RESULTS)
                 .toList();
         Map<Long, String> translatedTitles = translatedTitleLookup.forPlaces(
-                withinRadius.stream().map(Candidate::place).toList(), LangFallback.EN);
+                withinRadius.stream().map(Candidate::place).toList(), lang);
         return withinRadius.stream()
-                .map(c -> new PlaceNearbyResponse(toSummary(c.place(), LangFallback.EN, translatedTitles), c.distanceKm()))
+                .map(c -> new PlaceNearbyResponse(toSummary(c.place(), lang, translatedTitles), c.distanceKm()))
                 .toList();
     }
 

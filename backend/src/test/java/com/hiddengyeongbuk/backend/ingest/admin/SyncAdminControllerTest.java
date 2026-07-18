@@ -16,10 +16,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+// 컨트롤러가 @Profile("local") 빈이라 프로파일을 명시해야 컨텍스트에 뜬다.
 @WebMvcTest(SyncAdminController.class)
+@ActiveProfiles("local")
 class SyncAdminControllerTest {
 
     @Autowired

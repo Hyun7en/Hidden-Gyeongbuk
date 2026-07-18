@@ -5,6 +5,7 @@ import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import com.hiddengyeongbuk.backend.ingest.PlaceCollectionService;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,10 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 15곳 초기 대량 적재·수동 재처리용 내부 전용 엔드포인트.
- * 인증이 없으므로 로컬 개발 중에만 사용한다 — 배포 전 반드시 제거하거나 접근 제한을
- * 추가할 것(P4, "운영 DB 자격증명/네트워크 보안 설정"와 함께 처리).
+ * 인증이 없으므로 local 프로파일에서만 빈이 뜬다 — 운영 배포(SPRING_PROFILES_ACTIVE=prod)에서는
+ * 이 엔드포인트 자체가 존재하지 않는다(404). "배포 전에 제거하자"는 계획 대신 코드로 강제한다.
  */
 @RestController
+@Profile("local")
 @RequestMapping("/internal/sync")
 public class SyncAdminController {
 

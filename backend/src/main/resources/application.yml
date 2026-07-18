@@ -1,6 +1,11 @@
 spring:
   application:
     name: backend
+  profiles:
+    # 프로파일 없이 실행하면 local로 동작한다(개발 편의). 운영 배포는 반드시
+    # SPRING_PROFILES_ACTIVE=prod를 지정할 것 — local 전용 빈(/internal 컨트롤러)과
+    # SQL 로그가 운영에 노출되지 않게 하는 안전장치다.
+    default: local
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hidden_gyeongbuk}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useUnicode=true
     username: ${DB_USERNAME:root}
@@ -10,10 +15,11 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-    show-sql: true
     properties:
       hibernate:
-        format_sql: true
+        # LAZY 컬렉션(place.tags 등)을 장소별 단건 쿼리 대신 IN 절로 묶어 가져온다 —
+        # 목록 20건 조회가 21쿼리(N+1)에서 2쿼리로 줄어든다.
+        default_batch_fetch_size: 100
   flyway:
     enabled: true
     locations: classpath:db/migration

@@ -9,7 +9,9 @@ import type {
   RegionResponse,
 } from './types'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+// 기본값은 same-origin 상대 경로 — 개발은 Vite 프록시(vite.config.ts)가 /api를
+// 백엔드로 전달하고, 배포에서 백엔드 도메인이 다르면 VITE_API_BASE_URL로 지정한다.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {

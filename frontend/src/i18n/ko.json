@@ -1,6 +1,7 @@
 {
   "common": {
     "back": "← 뒤로",
+    "home": "Hidden Gyeongbuk — 홈으로",
     "share": "공유",
     "copied": "복사됨!",
     "copyLink": "링크 복사",
@@ -44,7 +45,10 @@
     "searchPlaceholder": "관광지 검색…",
     "all": "전체",
     "error": "관광지를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
-    "empty": "필터에 맞는 관광지가 없습니다."
+    "empty": "필터에 맞는 관광지가 없습니다.",
+    "prevPage": "← 이전",
+    "nextPage": "다음 →",
+    "pageIndicator": "{{page}} / {{totalPages}} 페이지"
   },
   "placeDetail": {
     "error": "이 장소를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
@@ -86,12 +90,10 @@
       "completeness": "데이터 완성도"
     }
   },
-  "placeholder": {
-    "comingSoon": "준비 중",
-    "body": "화면 준비중입니다.",
-    "home": "← 홈으로",
-    "hubTitle": "{{name}} 허브",
-    "hubTitleFallback": "허브"
+  "hubDetail": {
+    "error": "허브 정보를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
+    "notFound": "허브를 찾을 수 없습니다.",
+    "regionsHeading": "이 허브에 속한 {{count}}개 지역"
   },
   "options": {
     "duration": {

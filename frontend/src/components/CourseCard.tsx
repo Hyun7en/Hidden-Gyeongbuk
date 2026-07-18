@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { CourseResponse } from '../api/types'
+import type { CourseResponse, HubResponse } from '../api/types'
+import KakaoMap from './KakaoMap'
 
-function CourseCard({ course, durationLabel }: { course: CourseResponse; durationLabel: string }) {
+function CourseCard({ course, durationLabel, hub }: { course: CourseResponse; durationLabel: string; hub?: HubResponse }) {
   const { t } = useTranslation()
   const route = course.days
     .flatMap((d) => d.places)
@@ -11,6 +12,10 @@ function CourseCard({ course, durationLabel }: { course: CourseResponse; duratio
     .slice(0, 3)
     .join(' · ')
   const placeCount = course.days.reduce((sum, d) => sum + d.places.length, 0)
+  const routeMarkers = [
+    ...(hub ? [{ lat: hub.lat, lng: hub.lng, label: hub.nameEn, isHub: true }] : []),
+    ...course.days.flatMap((d) => d.places).map((p, i) => ({ lat: p.lat, lng: p.lng, label: p.title, order: i + 1 })),
+  ]
 
   return (
     <Link
@@ -31,9 +36,7 @@ function CourseCard({ course, durationLabel }: { course: CourseResponse; duratio
       <p className="mb-3 text-xs text-text-soft md:text-sm">
         {durationLabel} · {placeCount} places · {course.totalDistanceKm.toFixed(1)}km
       </p>
-      <div className="flex h-[72px] items-center justify-center border border-dashed border-line text-[11px] text-text-soft md:h-[110px]">
-        [ Mini map ]
-      </div>
+      <KakaoMap className="h-[72px] border border-line md:h-[110px]" markers={routeMarkers} drawRoute />
     </Link>
   )
 }

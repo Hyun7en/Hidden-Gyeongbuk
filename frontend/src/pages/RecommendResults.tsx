@@ -65,7 +65,7 @@ function RecommendResults() {
               </p>
               <div className="grid gap-4 md:grid-cols-3 md:gap-6">
                 {courses.map((course) => (
-                  <CourseCard key={course.rank} course={course} durationLabel={durationLabel} />
+                  <CourseCard key={course.rank} course={course} durationLabel={durationLabel} hub={matchedHub} />
                 ))}
               </div>
             </>

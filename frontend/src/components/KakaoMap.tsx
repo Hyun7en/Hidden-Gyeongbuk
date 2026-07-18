@@ -13,6 +13,8 @@ export type MapMarker = {
   lng: number
   label: string
   order?: number
+  isHub?: boolean
+  isRegion?: boolean
 }
 
 function KakaoMap({ markers, drawRoute, className }: { markers: MapMarker[]; drawRoute?: boolean; className?: string }) {
@@ -41,9 +43,13 @@ function KakaoMap({ markers, drawRoute, className }: { markers: MapMarker[]; dra
 
           const content = document.createElement('div')
           content.title = m.label
-          content.className = m.order
-            ? 'flex h-6 w-6 items-center justify-center rounded-full border border-line bg-accent text-[11px] font-bold text-bg-elevated shadow-sm'
-            : 'h-3.5 w-3.5 rounded-full border-2 border-bg-elevated bg-seal shadow-sm'
+          content.className = m.isHub
+            ? 'flex h-7 w-7 items-center justify-center rounded-full border-2 border-bg-elevated bg-seal shadow-sm'
+            : m.order
+              ? 'flex h-6 w-6 items-center justify-center rounded-full border border-line bg-accent text-[11px] font-bold text-bg-elevated shadow-sm'
+              : m.isRegion
+                ? 'h-3 w-3 rounded-full border-2 border-bg-elevated bg-accent shadow-sm'
+                : 'h-3.5 w-3.5 rounded-full border-2 border-bg-elevated bg-seal shadow-sm'
           if (m.order) content.textContent = String(m.order)
 
           new kakao.maps.CustomOverlay({ position, content, yAnchor: 0.5 }).setMap(map)

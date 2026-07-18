@@ -7,6 +7,7 @@ import KakaoMap from '../components/KakaoMap'
 import ShareButton from '../components/ShareButton'
 import type { CourseResponse } from '../api/types'
 import { translateCategory } from '../api/labels'
+import { useHubs } from '../hooks/useHubs'
 import { useLanguage } from '../context/LanguageContext'
 import { googleDirectionsUrl } from '../lib/directions'
 
@@ -30,6 +31,7 @@ function CourseDetail() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { lang } = useLanguage()
+  const { hubs } = useHubs()
   const { rank } = useParams()
   const location = useLocation()
   const state = location.state as { course?: CourseResponse; durationLabel?: string } | null
@@ -51,11 +53,15 @@ function CourseDetail() {
   }
 
   const placeCount = course.days.reduce((sum, d) => sum + d.places.length, 0)
+  const hub = hubs.find((h) => h.hubId === course.hubId)
   // Global sequence across the whole trip, not CoursePlaceResponse.order (which
-  // restarts at 1 each day) — the map should show one continuous route.
-  const routeMarkers = course.days
-    .flatMap((d) => d.places)
-    .map((p, i) => ({ lat: p.lat, lng: p.lng, label: p.title, order: i + 1 }))
+  // restarts at 1 each day) — the map should show one continuous route. Hub goes
+  // first so the route line actually starts where the trip starts (hub-and-spoke
+  // design) instead of jumping straight between places with no origin.
+  const routeMarkers = [
+    ...(hub ? [{ lat: hub.lat, lng: hub.lng, label: hub.nameEn, isHub: true }] : []),
+    ...course.days.flatMap((d) => d.places).map((p, i) => ({ lat: p.lat, lng: p.lng, label: p.title, order: i + 1 })),
+  ]
 
   return (
     <div className="relative min-h-screen bg-bg">

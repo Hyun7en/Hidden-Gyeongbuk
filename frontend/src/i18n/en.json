@@ -1,6 +1,7 @@
 {
   "common": {
     "back": "← Back",
+    "home": "Hidden Gyeongbuk — Home",
     "share": "Share",
     "copied": "Copied!",
     "copyLink": "Copy link",
@@ -44,7 +45,10 @@
     "searchPlaceholder": "Search places…",
     "all": "All",
     "error": "Couldn't load places — is the backend running? ({{error}})",
-    "empty": "No places match your filters."
+    "empty": "No places match your filters.",
+    "prevPage": "← Prev",
+    "nextPage": "Next →",
+    "pageIndicator": "Page {{page}} of {{totalPages}}"
   },
   "placeDetail": {
     "error": "Couldn't load this place — is the backend running? ({{error}})",
@@ -86,12 +90,10 @@
       "completeness": "Data completeness"
     }
   },
-  "placeholder": {
-    "comingSoon": "Coming soon",
-    "body": "This page is under construction.",
-    "home": "← Home",
-    "hubTitle": "{{name}} Hub",
-    "hubTitleFallback": "Hub"
+  "hubDetail": {
+    "error": "Couldn't load this hub — is the backend running? ({{error}})",
+    "notFound": "Hub not found.",
+    "regionsHeading": "{{count}} counties in this hub"
   },
   "options": {
     "duration": {

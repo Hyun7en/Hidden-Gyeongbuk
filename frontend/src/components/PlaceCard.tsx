@@ -5,7 +5,7 @@ export interface PlaceCardData {
   title: string
   addr: string
   tags: string[]
-  hasImage: boolean
+  imageUrl: string | null
 }
 
 function PlaceCard({ place }: { place: PlaceCardData }) {
@@ -14,8 +14,8 @@ function PlaceCard({ place }: { place: PlaceCardData }) {
       <div
         className="h-[140px] md:h-[180px]"
         style={
-          place.hasImage
-            ? { background: 'linear-gradient(135deg, var(--accent), var(--accent-soft))' }
+          place.imageUrl
+            ? { backgroundImage: `url(${place.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
             : {
                 backgroundImage:
                   'repeating-linear-gradient(45deg, var(--line), var(--line) 8px, var(--bg-elevated) 8px, var(--bg-elevated) 16px)',

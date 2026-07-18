@@ -7,6 +7,15 @@ export interface HubResponse {
   description: string
 }
 
+export interface RegionResponse {
+  regionId: number
+  nameKo: string
+  nameEn: string
+  hubId: number
+  lat: number
+  lng: number
+}
+
 export interface MetaOption {
   code: string
   labelKo: string

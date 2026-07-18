@@ -3,10 +3,20 @@ import { useTranslation } from 'react-i18next'
 import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
 import FiberBackground from '../components/FiberBackground'
+import KakaoMap from '../components/KakaoMap'
 import ShareButton from '../components/ShareButton'
 import type { CourseResponse } from '../api/types'
 import { translateCategory } from '../api/labels'
 import { useLanguage } from '../context/LanguageContext'
+import { googleDirectionsUrl } from '../lib/directions'
+
+function DirectionsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+      <path d="M3 11l18-8-8 18-2-8-8-2z" />
+    </svg>
+  )
+}
 
 const BREAKDOWN_LABEL_KEYS: Record<keyof CourseResponse['breakdown'], string> = {
   interest: 'courseDetail.breakdown.interest',
@@ -41,6 +51,11 @@ function CourseDetail() {
   }
 
   const placeCount = course.days.reduce((sum, d) => sum + d.places.length, 0)
+  // Global sequence across the whole trip, not CoursePlaceResponse.order (which
+  // restarts at 1 each day) — the map should show one continuous route.
+  const routeMarkers = course.days
+    .flatMap((d) => d.places)
+    .map((p, i) => ({ lat: p.lat, lng: p.lng, label: p.title, order: i + 1 }))
 
   return (
     <div className="relative min-h-screen bg-bg">
@@ -79,6 +94,16 @@ function CourseDetail() {
                           <span className="ml-auto text-[11px] uppercase text-text-soft md:text-xs">
                             {lang === 'en' ? translateCategory(place.category) : place.category}
                           </span>
+                          <a
+                            href={googleDirectionsUrl(place.lat, place.lng)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={t('courseDetail.directions')}
+                            title={t('courseDetail.directions')}
+                            className="shrink-0 text-accent"
+                          >
+                            <DirectionsIcon />
+                          </a>
                         </li>
                       ))}
                     </ol>
@@ -115,7 +140,7 @@ function CourseDetail() {
                   title={t('common.courseRank', { rank: course.rank })}
                   description={`${state?.durationLabel ?? ''} · ${placeCount} places · ${course.totalDistanceKm.toFixed(1)}km`}
                 />
-                <div className="flex h-full items-center justify-center text-[11px] text-text-soft">[ Route map ]</div>
+                <KakaoMap className="h-full w-full" markers={routeMarkers} drawRoute />
               </div>
             </div>
           </div>

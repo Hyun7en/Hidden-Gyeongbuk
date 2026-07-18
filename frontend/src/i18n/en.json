@@ -11,6 +11,8 @@
     "shareX": "X",
     "shareInstagram": "Instagram",
     "shareInstagramHint": "Link copied — paste it into Instagram.",
+    "mapNoLocation": "No location data for this map yet.",
+    "mapLoadFailed": "Couldn't load the map.",
     "loading": "Loading…",
     "courseRank": "Course {{rank}}"
   },
@@ -47,7 +49,8 @@
   "placeDetail": {
     "error": "Couldn't load this place — is the backend running? ({{error}})",
     "translatedBadge": "Translated from Korean (AI)",
-    "noTranslationYet": "English description not available yet — original Korean text:"
+    "noTranslationYet": "English description not available yet — original Korean text:",
+    "directions": "Directions:"
   },
   "recommendInput": {
     "title": "Course Recommendation",
@@ -71,6 +74,7 @@
   },
   "courseDetail": {
     "notAvailable": "Course details aren't available directly — please go back and pick a course from the results list.",
+    "directions": "Directions to this place",
     "day": "Day {{day}}",
     "lodging": "Lodging: {{title}}",
     "scoreBreakdown": "Score breakdown",

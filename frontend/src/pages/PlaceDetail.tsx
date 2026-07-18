@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchPlaceDetail } from '../api/client'
 import { translateCategory, translateTag } from '../api/labels'
+import { googleDirectionsUrl, kakaoDirectionsUrl } from '../lib/directions'
 import { useLanguage } from '../context/LanguageContext'
 import type { PlaceDetailResponse } from '../api/types'
 import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
 import FiberBackground from '../components/FiberBackground'
+import KakaoMap from '../components/KakaoMap'
 import ShareButton from '../components/ShareButton'
 
 function PlaceDetail() {
@@ -99,6 +101,28 @@ function PlaceDetail() {
               <p className="mt-4 text-sm text-text-soft md:text-base">
                 {translatedAddr ? `${translatedAddr} (${place.addr})` : place.addr}
               </p>
+              {place.lat != null && place.lng != null ? (
+                <p className="mt-1 text-[11px] text-text-soft md:text-xs">
+                  {t('placeDetail.directions')}{' '}
+                  <a
+                    href={kakaoDirectionsUrl(place.title, place.lat, place.lng)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent underline"
+                  >
+                    Kakao Map
+                  </a>{' '}
+                  ·{' '}
+                  <a
+                    href={googleDirectionsUrl(place.lat, place.lng)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent underline"
+                  >
+                    Google Maps
+                  </a>
+                </p>
+              ) : null}
 
               {lang === 'en' && place.summary ? (
                 <>
@@ -128,7 +152,10 @@ function PlaceDetail() {
                 description={(lang === 'en' ? (place.summary?.text ?? place.overview) : place.overview) ?? undefined}
                 imageUrl={place.firstImage ?? undefined}
               />
-              <div className="flex h-full items-center justify-center text-[11px] text-text-soft">[ Map ]</div>
+              <KakaoMap
+                className="h-full w-full"
+                markers={place.lat != null && place.lng != null ? [{ lat: place.lat, lng: place.lng, label: place.title }] : []}
+              />
             </div>
           </div>
         </Container>

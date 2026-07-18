@@ -45,9 +45,12 @@ export async function shareToKakao(params: {
   url: string
 }): Promise<void> {
   // Same JS key already used for the Kakao Maps SDK (VITE_KAKAO_MAP_KEY) — Kakao
-  // ties it to the app, not the product, so it's valid for Kakao Share too. The
-  // "카카오톡 공유" product still needs to be enabled for this app in the Kakao
-  // Developers console, separately from Maps.
+  // ties it to the app, not the product, so it's valid for Kakao Share too.
+  // Unlike Maps, Kakao Share has no separate "사용 설정" toggle to enable — it's
+  // on by default once the app exists. What it does need: the site's domain
+  // registered under 앱 관리 콘솔의 [앱] > [제품 링크 관리] > [웹 도메인] (a
+  // different list from the [플랫폼] Web domain Maps uses), so the webUrl/
+  // mobileWebUrl in the shared message passes Kakao's tamper check.
   const key = import.meta.env.VITE_KAKAO_MAP_KEY
   if (!key) throw new Error('VITE_KAKAO_MAP_KEY is not set')
 

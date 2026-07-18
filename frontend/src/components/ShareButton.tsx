@@ -3,9 +3,8 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { shareToKakao } from '../lib/kakaoShare'
 
-// FR-C-06(코스 URL 공유)은 아직 미구현 — CourseDetail은 router state로만 데이터를 받아서
-// 지금 공유하는 URL은 받는 사람 쪽에서 새로고침/새 탭으로 열면 동작하지 않는다.
-// 채널 목록은 그대로 유지하고, 실제로 여는 링크를 만드는 건 별도 작업으로 남겨둔다.
+// 공유 대상은 window.location.href다. CourseDetail도 URL에 추천 조건 쿼리가 실려 있어
+// (FR-C-06) 받는 사람이 새 탭에서 열면 같은 조건으로 재계산해 동일 코스를 복원한다.
 
 // 브랜드 아이콘 path는 simple-icons(단색 path, 24x24 viewBox)에서 그대로 가져옴.
 // KakaoTalk만 예외 — simple-icons의 kakaotalk.svg는 노란 배지 모양 자체가 path에

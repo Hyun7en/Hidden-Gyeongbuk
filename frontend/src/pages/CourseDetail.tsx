@@ -1,15 +1,18 @@
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
 import FiberBackground from '../components/FiberBackground'
 import KakaoMap from '../components/KakaoMap'
 import ShareButton from '../components/ShareButton'
+import { fetchCourses } from '../api/client'
 import type { CourseResponse } from '../api/types'
 import { translateCategory } from '../api/labels'
 import { useHubs } from '../hooks/useHubs'
 import { useLanguage } from '../context/LanguageContext'
 import { googleDirectionsUrl } from '../lib/directions'
+import { DURATION_OPTIONS, type Difficulty, type Duration, type Interest } from '../types/course'
 
 function DirectionsIcon() {
   return (
@@ -34,8 +37,46 @@ function CourseDetail() {
   const { hubs } = useHubs()
   const { rank } = useParams()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const state = location.state as { course?: CourseResponse; durationLabel?: string } | null
-  const course = state?.course
+
+  // 공유 링크·새로고침으로 직접 진입하면 router state가 없다 — URL의 추천 조건으로
+  // GET /api/courses를 다시 계산해 같은 rank의 코스를 복원한다(FR-C-06).
+  const hubId = Number(searchParams.get('hub'))
+  const duration = searchParams.get('duration') as Duration | null
+  const difficulty = searchParams.get('difficulty') as Difficulty | null
+  const canRecompute = Boolean(!state?.course && hubId && duration && difficulty && rank)
+  const [fetchedCourse, setFetchedCourse] = useState<CourseResponse | null>(null)
+  const [fetchState, setFetchState] = useState<'idle' | 'loading' | 'failed'>(canRecompute ? 'loading' : 'idle')
+
+  useEffect(() => {
+    if (!canRecompute) return
+    let cancelled = false
+    setFetchState('loading')
+    const interests = (searchParams.get('interests')?.split(',').filter(Boolean) ?? []) as Interest[]
+    fetchCourses({ hubId, duration: duration!, difficulty: difficulty!, interests }, lang)
+      .then((res) => {
+        if (cancelled) return
+        const matched = res.courses.find((c) => c.rank === Number(rank))
+        if (matched) {
+          setFetchedCourse(matched)
+          setFetchState('idle')
+        } else {
+          setFetchState('failed')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFetchState('failed')
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canRecompute, hubId, duration, difficulty, searchParams.get('interests'), rank, lang])
+
+  const course = state?.course ?? fetchedCourse
+  const durationLabel =
+    state?.durationLabel ?? (duration ? t(DURATION_OPTIONS.find((o) => o.value === duration)?.labelKey ?? duration) : '')
 
   if (!course) {
     return (
@@ -45,7 +86,9 @@ function CourseDetail() {
           <BackHeader onBack={() => navigate(-1)} />
           <Container className="py-16 text-center">
             <h1 className="mb-6 text-2xl font-bold md:text-3xl">{t('common.courseRank', { rank: rank ?? '' })}</h1>
-            <p className="text-sm text-text-soft">{t('courseDetail.notAvailable')}</p>
+            <p className="text-sm text-text-soft">
+              {fetchState === 'loading' ? t('common.loading') : t('courseDetail.notAvailable')}
+            </p>
           </Container>
         </div>
       </div>
@@ -79,7 +122,7 @@ function CourseDetail() {
                   <small className="text-xs font-semibold">pt</small>
                 </span>
                 <span className="text-sm text-text-soft md:text-base">
-                  {state?.durationLabel ?? ''} · {placeCount} places · {course.totalDistanceKm.toFixed(1)}km
+                  {durationLabel} · {placeCount} places · {course.totalDistanceKm.toFixed(1)}km
                 </span>
               </div>
 
@@ -144,7 +187,7 @@ function CourseDetail() {
               <div className="relative mt-8 h-[160px] border border-line bg-bg-elevated md:h-[220px]">
                 <ShareButton
                   title={t('common.courseRank', { rank: course.rank })}
-                  description={`${state?.durationLabel ?? ''} · ${placeCount} places · ${course.totalDistanceKm.toFixed(1)}km`}
+                  description={`${durationLabel} · ${placeCount} places · ${course.totalDistanceKm.toFixed(1)}km`}
                 />
                 <KakaoMap className="h-full w-full" markers={routeMarkers} drawRoute />
               </div>

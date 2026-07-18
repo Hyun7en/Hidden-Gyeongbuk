@@ -17,7 +17,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!res.ok) {
-    throw new Error(`${path} failed with ${res.status}`)
+    // 백엔드 표준 에러 포맷 { error: { code, message } }를 살려서 던진다 —
+    // 상태코드만 보여주면 서버가 알려준 원인이 사용자에게 전달되지 않는다.
+    let detail = `${res.status}`
+    try {
+      const body = (await res.json()) as { error?: { code?: string; message?: string } }
+      if (body.error?.message) detail = `${body.error.code ?? res.status}: ${body.error.message}`
+    } catch {
+      // 에러 바디가 JSON이 아니면 상태코드만 사용
+    }
+    throw new Error(detail)
   }
   return res.json() as Promise<T>
 }
@@ -39,6 +48,18 @@ export function recommendCourses(body: CourseRecommendRequest, lang = 'en'): Pro
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+/** 공유 링크로 들어온 사용자를 위한 무상태 재계산(GET /api/courses) — POST와 같은 결과를 준다. */
+export function fetchCourses(params: CourseRecommendRequest, lang = 'en'): Promise<CourseListResponse> {
+  const query = new URLSearchParams({
+    hubId: String(params.hubId),
+    duration: params.duration,
+    difficulty: params.difficulty,
+    lang,
+  })
+  if (params.interests.length > 0) query.set('interests', params.interests.join(','))
+  return request(`/api/courses?${query.toString()}`)
 }
 
 export function searchPlaces(

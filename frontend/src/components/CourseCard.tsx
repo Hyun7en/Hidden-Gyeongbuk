@@ -3,7 +3,19 @@ import { useTranslation } from 'react-i18next'
 import type { CourseResponse, HubResponse } from '../api/types'
 import KakaoMap from './KakaoMap'
 
-function CourseCard({ course, durationLabel, hub }: { course: CourseResponse; durationLabel: string; hub?: HubResponse }) {
+function CourseCard({
+  course,
+  durationLabel,
+  hub,
+  search,
+}: {
+  course: CourseResponse
+  durationLabel: string
+  hub?: HubResponse
+  // 추천 조건 쿼리스트링(?hub=..&duration=..). 상세 URL에 그대로 실어야 그 주소만으로
+  // 코스를 재계산할 수 있어 공유·새로고침이 동작한다(FR-C-06).
+  search: string
+}) {
   const { t } = useTranslation()
   const route = course.days
     .flatMap((d) => d.places)
@@ -19,7 +31,7 @@ function CourseCard({ course, durationLabel, hub }: { course: CourseResponse; du
 
   return (
     <Link
-      to={`/recommend/results/${course.rank}`}
+      to={{ pathname: `/recommend/results/${course.rank}`, search }}
       state={{ course, durationLabel }}
       className="block border border-line bg-bg-elevated p-4 md:p-6"
     >

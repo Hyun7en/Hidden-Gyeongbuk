@@ -5,6 +5,7 @@ export interface HubResponse {
   lat: number
   lng: number
   description: string
+  descriptionEn: string | null
 }
 
 export interface RegionResponse {
@@ -95,7 +96,6 @@ export interface CourseResponse {
   hubId: number
   totalDistanceKm: number
   days: CourseDayResponse[]
-  shareUrl: string
 }
 
 export interface CourseListResponse {

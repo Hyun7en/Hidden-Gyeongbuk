@@ -22,7 +22,15 @@ function KakaoMap({ markers, drawRoute, className }: { markers: MapMarker[]; dra
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState(false)
 
+  // 호출부가 markers 배열을 렌더마다 새로 만들기 때문에 배열 참조를 그대로 의존성에 넣으면
+  // 부모가 리렌더링될 때마다(언어 전환, 허브 목록 도착 등) 지도가 통째로 재생성되며 깜빡인다.
+  // 내용 기반 키로 비교해 실제 마커가 달라졌을 때만 다시 그린다.
+  const markersKey = JSON.stringify(markers)
+  const markersRef = useRef(markers)
+  markersRef.current = markers
+
   useEffect(() => {
+    const markers = markersRef.current
     if (!containerRef.current || markers.length === 0) return
     let cancelled = false
     setError(false)
@@ -75,7 +83,8 @@ function KakaoMap({ markers, drawRoute, className }: { markers: MapMarker[]; dra
     return () => {
       cancelled = true
     }
-  }, [markers, drawRoute])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markersKey, drawRoute])
 
   if (markers.length === 0 || error) {
     return (

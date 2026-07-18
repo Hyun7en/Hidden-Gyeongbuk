@@ -14,20 +14,22 @@ function HubDetail() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { hubId } = useParams()
-  const { hubs, loading: hubsLoading } = useHubs()
+  const { hubs, loading: hubsLoading, error: hubsError } = useHubs()
   const { lang } = useLanguage()
   const [regions, setRegions] = useState<RegionResponse[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [regionsError, setRegionsError] = useState<string | null>(null)
+  // 허브 목록 자체를 못 불러온 것과 "허브가 없음"은 다른 상황 — 전자를 notFound로 표시하면 오답이 된다.
+  const error = hubsError ?? regionsError
 
   const hub = hubs.find((h) => String(h.hubId) === hubId)
 
   useEffect(() => {
     if (!hubId) return
     setRegions(null)
-    setError(null)
+    setRegionsError(null)
     fetchRegions(Number(hubId))
       .then(setRegions)
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => setRegionsError(err.message))
   }, [hubId])
 
   if (hubsLoading || (!error && regions === null)) {
@@ -61,6 +63,7 @@ function HubDetail() {
   }
 
   const hubName = lang === 'ko' ? hub.nameKo : hub.nameEn
+  const hubDescription = lang === 'ko' ? hub.description : (hub.descriptionEn ?? hub.description)
   const markers = [
     { lat: hub.lat, lng: hub.lng, label: hubName, isHub: true },
     ...(regions ?? []).map((r) => ({ lat: r.lat, lng: r.lng, label: lang === 'ko' ? r.nameKo : r.nameEn, isRegion: true })),
@@ -73,7 +76,7 @@ function HubDetail() {
         <BackHeader backTo="/" />
         <Container className="py-8 md:py-14">
           <h1 className="mb-3 text-2xl font-bold md:text-3xl">{hubName}</h1>
-          <p className="mb-6 max-w-[60ch] text-sm leading-relaxed text-text-soft md:text-base">{hub.description}</p>
+          <p className="mb-6 max-w-[60ch] text-sm leading-relaxed text-text-soft md:text-base">{hubDescription}</p>
 
           <div className="md:grid md:grid-cols-[1fr_1.2fr] md:gap-16">
             <div>

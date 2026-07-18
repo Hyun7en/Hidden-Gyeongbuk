@@ -15,6 +15,8 @@ import com.hiddengyeongbuk.backend.domain.place.PlaceSummaryRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import com.hiddengyeongbuk.backend.support.GeoUtils;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -109,7 +111,20 @@ public class PlaceQueryService {
             }
             if (keyword != null && !keyword.isBlank()) {
                 String pattern = "%" + keyword + "%";
-                predicates.add(cb.or(cb.like(root.get("titleKo"), pattern), cb.like(root.get("titleEn"), pattern)));
+                // titleEn(Place)은 TourAPI 원본 영문 제목인데 has_en=0인 장소가 대부분이라
+                // 거의 항상 비어있다 — 실제 화면에 뜨는 영문 제목은 place_summary.title_en
+                // (번역 캐시)이므로, 거기도 같이 매치해야 영문 키워드 검색이 실질적으로 동작한다.
+                Subquery<Long> summaryTitleMatch = query.subquery(Long.class);
+                Root<PlaceSummary> summaryRoot = summaryTitleMatch.from(PlaceSummary.class);
+                summaryTitleMatch
+                        .select(summaryRoot.get("placeId"))
+                        .where(
+                                cb.equal(summaryRoot.get("placeId"), root.get("id")),
+                                cb.like(summaryRoot.get("titleEn"), pattern));
+                predicates.add(cb.or(
+                        cb.like(root.get("titleKo"), pattern),
+                        cb.like(root.get("titleEn"), pattern),
+                        cb.exists(summaryTitleMatch)));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

@@ -62,7 +62,7 @@ class PlaceControllerTest {
     @Test
     void 장소_상세를_반환한다() throws Exception {
         PlaceDetailResponse detail = new PlaceDetailResponse(
-                1024L, "126508", "관광지", "Hahoe Folk Village", "Andong-si", "054-000-0000",
+                1024L, "126508", "관광지", "Hahoe Folk Village", "하회마을", "Andong-si", "054-000-0000",
                 null, null, "A traditional village", null, List.of(), List.of("전통"), null, null);
         BDDMockito.given(placeQueryService.getDetail(1024L, "en")).willReturn(detail);
 

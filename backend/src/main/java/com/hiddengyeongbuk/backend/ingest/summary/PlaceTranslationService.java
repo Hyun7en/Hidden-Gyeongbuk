@@ -2,9 +2,9 @@ package com.hiddengyeongbuk.backend.ingest.summary;
 
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
-import com.hiddengyeongbuk.backend.domain.place.PlaceSummary;
-import com.hiddengyeongbuk.backend.domain.place.PlaceSummaryRepository;
-import com.hiddengyeongbuk.backend.domain.place.SummarySource;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
+import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,20 +28,21 @@ public class PlaceTranslationService {
 
     private static final Logger log = LoggerFactory.getLogger(PlaceTranslationService.class);
     private static final int MAX_OVERVIEW_CHARS = 3000;
+    private static final String LANG_EN = "en";
 
     private final TranslateClient translateClient;
     private final PlaceRepository placeRepository;
-    private final PlaceSummaryRepository placeSummaryRepository;
+    private final PlaceTranslationRepository placeTranslationRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public PlaceTranslationService(
             TranslateClient translateClient,
             PlaceRepository placeRepository,
-            PlaceSummaryRepository placeSummaryRepository,
+            PlaceTranslationRepository placeTranslationRepository,
             ApplicationEventPublisher eventPublisher) {
         this.translateClient = translateClient;
         this.placeRepository = placeRepository;
-        this.placeSummaryRepository = placeSummaryRepository;
+        this.placeTranslationRepository = placeTranslationRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -56,7 +57,10 @@ public class PlaceTranslationService {
         if (place.isHasEn()) {
             return TranslationResult.SKIPPED_HAS_EN;
         }
-        if (placeSummaryRepository.existsById(place.getId())) {
+        if (placeTranslationRepository.existsByPlaceIdAndLang(place.getId(), LANG_EN)) {
+            // en 행은 있는데 has_en=false로 어긋난 경우(드리프트) — 플래그만 맞춰준다.
+            place.setHasEn(true);
+            placeRepository.save(place);
             return TranslationResult.ALREADY_EXISTS;
         }
         String overview = place.getOverviewKo();
@@ -72,17 +76,18 @@ public class PlaceTranslationService {
 
         try {
             List<String> translated = translateClient.translate(texts);
-            // placeId는 세팅하지 않는다 — @MapsId가 place로부터 자동으로 채운다. 직접 세팅하면
-            // Spring Data가 새 행인데도 "이미 존재하는 detached 엔티티"로 착각해 merge()가
-            // update를 시도하다 ObjectOptimisticLockingFailureException으로 실패한다.
-            placeSummaryRepository.save(PlaceSummary.builder()
-                    .place(place)
-                    .titleEn(translated.get(0))
-                    .summaryEn(translated.get(1))
-                    .addrEn(hasAddr ? translated.get(2) : null)
-                    .source(SummarySource.TRANSLATE)
+            placeTranslationRepository.save(PlaceTranslation.builder()
+                    .placeId(place.getId())
+                    .lang(LANG_EN)
+                    .title(translated.get(0))
+                    .overview(translated.get(1))
+                    .addr(hasAddr ? translated.get(2) : null)
+                    .source(TranslationSource.TRANSLATE)
                     .generatedAt(LocalDateTime.now())
                     .build());
+            // has_en은 "en 번역 존재" 캐시라 여기서 true로 세팅 — 다음 백필에서 재처리되지 않게.
+            place.setHasEn(true);
+            placeRepository.save(place);
             return TranslationResult.GENERATED;
         } catch (RuntimeException e) {
             log.warn("장소 {} 영문 번역 생성 실패: {}", place.getId(), e.getMessage());

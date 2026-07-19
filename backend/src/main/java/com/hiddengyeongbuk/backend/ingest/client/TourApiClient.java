@@ -43,9 +43,23 @@ public class TourApiClient {
 
     public List<AreaBasedSyncItem> fetchAreaBasedSyncList(
             String lDongRegnCd, String lDongSignguCd, int pageNo, int numOfRows) {
+        return fetchAreaBasedSyncList(properties.korBaseUrl(), lDongRegnCd, lDongSignguCd, pageNo, numOfRows);
+    }
+
+    /**
+     * EngService2의 자체 areaBasedSyncList2. 영문 서비스는 국문과 별개의 contentId 공간을 가지므로,
+     * 국문 목록의 contentId를 재사용하지 않고 이 목록으로 영문 장소를 독자 조회해 매칭한다.
+     */
+    public List<AreaBasedSyncItem> fetchAreaBasedSyncListEng(
+            String lDongRegnCd, String lDongSignguCd, int pageNo, int numOfRows) {
+        return fetchAreaBasedSyncList(properties.engBaseUrl(), lDongRegnCd, lDongSignguCd, pageNo, numOfRows);
+    }
+
+    private List<AreaBasedSyncItem> fetchAreaBasedSyncList(
+            String baseUrl, String lDongRegnCd, String lDongSignguCd, int pageNo, int numOfRows) {
         return Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TourApiClient::isTransient, () -> {
             String body = get(
-                    properties.korBaseUrl(),
+                    baseUrl,
                     "/areaBasedSyncList2",
                     Map.of(
                             "lDongRegnCd", lDongRegnCd,

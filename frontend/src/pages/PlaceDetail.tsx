@@ -58,7 +58,6 @@ function PlaceDetail() {
   }
 
   const titleKo = lang === 'en' && place.titleKo !== place.title ? place.titleKo : null
-  const translatedAddr = lang === 'en' ? place.summary?.addrEn : null
 
   return (
     <div className="relative min-h-screen bg-bg">
@@ -98,9 +97,7 @@ function PlaceDetail() {
                   </span>
                 ))}
               </div>
-              <p className="mt-4 text-sm text-text-soft md:text-base">
-                {translatedAddr ? `${translatedAddr} (${place.addr})` : place.addr}
-              </p>
+              <p className="mt-4 text-sm text-text-soft md:text-base">{place.addr}</p>
               {place.lat != null && place.lng != null ? (
                 <p className="mt-1 text-[11px] text-text-soft md:text-xs">
                   {t('placeDetail.directions')}{' '}
@@ -124,14 +121,16 @@ function PlaceDetail() {
                 </p>
               ) : null}
 
-              {lang === 'en' && place.summary ? (
+              {lang === 'en' && place.translationSource === 'TRANSLATE' && place.overview ? (
                 <>
                   <div className="mt-6 inline-flex items-center gap-1.5 text-[11px] font-semibold text-seal md:text-xs">
                     <span className="flex h-4 w-4 shrink-0 items-center justify-center bg-seal text-[9px] text-bg-elevated">印</span>
                     {t('placeDetail.translatedBadge')}
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-text md:text-base">{place.summary.text}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-text md:text-base">{place.overview}</p>
                 </>
+              ) : lang === 'en' && place.translationSource === 'OFFICIAL' && place.overview ? (
+                <p className="mt-6 text-sm leading-relaxed text-text md:text-base">{place.overview}</p>
               ) : lang === 'en' && place.overview ? (
                 <>
                   <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-soft md:text-xs">
@@ -149,7 +148,7 @@ function PlaceDetail() {
             <div className="relative mt-8 h-[200px] border border-line bg-bg-elevated md:mt-0 md:h-full">
               <ShareButton
                 title={place.title}
-                description={(lang === 'en' ? (place.summary?.text ?? place.overview) : place.overview) ?? undefined}
+                description={place.overview ?? undefined}
                 imageUrl={place.firstImage ?? undefined}
               />
               <KakaoMap

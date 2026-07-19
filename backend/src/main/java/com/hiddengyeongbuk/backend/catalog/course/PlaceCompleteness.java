@@ -14,7 +14,7 @@ final class PlaceCompleteness {
         if (isPresent(place.getFirstImage())) {
             present++;
         }
-        if (isPresent(place.getOverviewKo()) || isPresent(place.getOverviewEn())) {
+        if (isPresent(place.getOverviewKo())) {
             present++;
         }
         if (isPresent(place.getAddr())) {

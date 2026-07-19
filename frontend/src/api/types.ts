@@ -62,7 +62,9 @@ export interface PlaceDetailResponse {
   firstImage: string | null
   images: string[]
   tags: string[]
-  summary: { titleEn: string | null; addrEn: string | null; text: string; source: string } | null
+  // title/addr/overview는 백엔드에서 이미 요청 언어로 해석돼 내려온다(place_translation → 국문 폴백).
+  // translationSource는 그 영문 출처 — 'OFFICIAL'(공식) / 'TRANSLATE'(기계 번역) / null(영문 없음=국문 표시).
+  translationSource: 'OFFICIAL' | 'TRANSLATE' | null
   festival: { startDate: string; endDate: string } | null
 }
 

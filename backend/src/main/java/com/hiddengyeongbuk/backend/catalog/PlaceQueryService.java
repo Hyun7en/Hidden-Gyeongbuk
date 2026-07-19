@@ -10,9 +10,8 @@ import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImage;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImageRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
-import com.hiddengyeongbuk.backend.domain.place.PlaceSummary;
-import com.hiddengyeongbuk.backend.domain.place.PlaceSummaryRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.support.GeoUtils;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -43,22 +42,19 @@ public class PlaceQueryService {
     private static final int MAX_NEARBY_RESULTS = 50;
 
     private final PlaceRepository placeRepository;
-    private final PlaceSummaryRepository placeSummaryRepository;
     private final PlaceImageRepository placeImageRepository;
     private final FestivalDetailRepository festivalDetailRepository;
-    private final TranslatedTitleLookup translatedTitleLookup;
+    private final TranslationLookup translationLookup;
 
     public PlaceQueryService(
             PlaceRepository placeRepository,
-            PlaceSummaryRepository placeSummaryRepository,
             PlaceImageRepository placeImageRepository,
             FestivalDetailRepository festivalDetailRepository,
-            TranslatedTitleLookup translatedTitleLookup) {
+            TranslationLookup translationLookup) {
         this.placeRepository = placeRepository;
-        this.placeSummaryRepository = placeSummaryRepository;
         this.placeImageRepository = placeImageRepository;
         this.festivalDetailRepository = festivalDetailRepository;
-        this.translatedTitleLookup = translatedTitleLookup;
+        this.translationLookup = translationLookup;
     }
 
     // keyword는 자유 입력이라 캐시 키 공간이 무한하다(nearby를 캐싱에서 뺀 것과 같은 이유) —
@@ -69,9 +65,9 @@ public class PlaceQueryService {
         Specification<Place> spec = buildSpecification(regionId, category, tagKo, keyword);
         // 정렬 없는 페이지네이션은 페이지 간 순서가 비결정적이라(같은 장소 중복/누락) 항상 PK로 고정한다.
         Page<Place> result = placeRepository.findAll(spec, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")));
-        Map<Long, String> translatedTitles = translatedTitleLookup.forPlaces(result.getContent(), lang);
+        Map<Long, PlaceTranslation> translations = translationLookup.forPlaces(result.getContent(), lang);
         List<PlaceSummaryResponse> content = result.getContent().stream()
-                .map(p -> toSummary(p, lang, translatedTitles))
+                .map(p -> toSummary(p, lang, translations))
                 .toList();
         return new PageResponse<>(content, result.getNumber(), result.getSize(), result.getTotalElements());
     }
@@ -110,10 +106,10 @@ public class PlaceQueryService {
                 .sorted(Comparator.comparingDouble(Candidate::distanceKm))
                 .limit(MAX_NEARBY_RESULTS)
                 .toList();
-        Map<Long, String> translatedTitles = translatedTitleLookup.forPlaces(
+        Map<Long, PlaceTranslation> translations = translationLookup.forPlaces(
                 withinRadius.stream().map(Candidate::place).toList(), lang);
         return withinRadius.stream()
-                .map(c -> new PlaceNearbyResponse(toSummary(c.place(), lang, translatedTitles), c.distanceKm()))
+                .map(c -> new PlaceNearbyResponse(toSummary(c.place(), lang, translations), c.distanceKm()))
                 .toList();
     }
 
@@ -132,31 +128,30 @@ public class PlaceQueryService {
             }
             if (keyword != null && !keyword.isBlank()) {
                 String pattern = "%" + keyword + "%";
-                // titleEn(Place)은 TourAPI 원본 영문 제목인데 has_en=0인 장소가 대부분이라
-                // 거의 항상 비어있다 — 실제 화면에 뜨는 영문 제목은 place_summary.title_en
-                // (번역 캐시)이므로, 거기도 같이 매치해야 영문 키워드 검색이 실질적으로 동작한다.
-                Subquery<Long> summaryTitleMatch = query.subquery(Long.class);
-                Root<PlaceSummary> summaryRoot = summaryTitleMatch.from(PlaceSummary.class);
-                summaryTitleMatch
-                        .select(summaryRoot.get("placeId"))
+                // 국문 제목 + 번역/공식 영문 제목(place_translation.title) 양쪽을 매치해야 영문
+                // 키워드 검색이 실질적으로 동작한다. 영문 제목은 이제 place_translation에만 있다.
+                Subquery<Long> translationTitleMatch = query.subquery(Long.class);
+                Root<PlaceTranslation> translationRoot = translationTitleMatch.from(PlaceTranslation.class);
+                translationTitleMatch
+                        .select(translationRoot.get("placeId"))
                         .where(
-                                cb.equal(summaryRoot.get("placeId"), root.get("id")),
-                                cb.like(summaryRoot.get("titleEn"), pattern));
+                                cb.equal(translationRoot.get("placeId"), root.get("id")),
+                                cb.like(translationRoot.get("title"), pattern));
                 predicates.add(cb.or(
                         cb.like(root.get("titleKo"), pattern),
-                        cb.like(root.get("titleEn"), pattern),
-                        cb.exists(summaryTitleMatch)));
+                        cb.exists(translationTitleMatch)));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 
-    private PlaceSummaryResponse toSummary(Place place, String lang, Map<Long, String> translatedTitles) {
+    private PlaceSummaryResponse toSummary(Place place, String lang, Map<Long, PlaceTranslation> translations) {
+        PlaceTranslation tr = translations.get(place.getId());
         return new PlaceSummaryResponse(
                 place.getId(),
                 place.getCategory().name(),
-                LangFallback.title(place, translatedTitles.get(place.getId()), lang),
-                place.getAddr(),
+                LangFallback.title(place, tr, lang),
+                LangFallback.addr(place, tr, lang),
                 place.getLat(),
                 place.getLng(),
                 place.getFirstImage(),
@@ -167,14 +162,9 @@ public class PlaceQueryService {
         List<String> images = placeImageRepository.findByPlaceIdOrderBySortOrder(place.getId()).stream()
                 .map(PlaceImage::getImageUrl)
                 .toList();
-        // summary 블록 응답과 제목 3단계 폴백이 같은 행을 쓰므로 한 번만 조회한다.
-        Optional<PlaceSummary> placeSummary = LangFallback.EN.equalsIgnoreCase(lang)
-                ? placeSummaryRepository.findById(place.getId())
-                : Optional.empty();
-        PlaceDetailResponse.SummaryResponse summary = placeSummary
-                .map(s -> new PlaceDetailResponse.SummaryResponse(
-                        s.getTitleEn(), s.getAddrEn(), s.getSummaryEn(), s.getSource().name()))
-                .orElse(null);
+        // 제목·설명·주소가 모두 같은 번역행을 쓰므로 한 번만 조회한다.
+        PlaceTranslation tr = translationLookup.forPlaces(List.of(place), lang).get(place.getId());
+        String translationSource = tr != null ? tr.getSource().name() : null;
         PlaceDetailResponse.FestivalResponse festival = festivalDetailRepository
                 .findById(place.getId())
                 .map(f -> new PlaceDetailResponse.FestivalResponse(f.getStartDate(), f.getEndDate()))
@@ -184,22 +174,18 @@ public class PlaceQueryService {
                 place.getId(),
                 place.getContentId(),
                 place.getCategory().name(),
-                LangFallback.title(place, placeSummary.map(PlaceSummary::getTitleEn).orElse(null), lang),
+                LangFallback.title(place, tr, lang),
                 place.getTitleKo(),
-                place.getAddr(),
+                LangFallback.addr(place, tr, lang),
                 place.getTel(),
                 place.getLat(),
                 place.getLng(),
-                resolveOverview(place, lang),
+                LangFallback.overview(place, tr, lang),
                 place.getFirstImage(),
                 images,
                 tagNames(place),
-                summary,
+                translationSource,
                 festival);
-    }
-
-    private static String resolveOverview(Place place, String lang) {
-        return LangFallback.overview(place, lang);
     }
 
     private static List<String> tagNames(Place place) {

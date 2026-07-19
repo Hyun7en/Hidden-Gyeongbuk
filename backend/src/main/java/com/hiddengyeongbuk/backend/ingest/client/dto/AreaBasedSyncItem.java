@@ -13,4 +13,7 @@ public record AreaBasedSyncItem(
         String tel,
         String firstimage,
         String showflag,
-        String modifiedtime) {}
+        String modifiedtime,
+        String lclsSystm1,
+        String lclsSystm2,
+        String lclsSystm3) {}

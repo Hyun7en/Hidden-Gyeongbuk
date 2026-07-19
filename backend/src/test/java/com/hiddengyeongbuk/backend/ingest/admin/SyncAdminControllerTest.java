@@ -60,7 +60,7 @@ class SyncAdminControllerTest {
                 .build();
         BDDMockito.given(regionRepository.findById(1L)).willReturn(Optional.of(andong));
         BDDMockito.given(placeCollectionService.collectRegionIncremental(andong))
-                .willReturn(new PlaceCollectionService.CollectionResult(3, 1, 0, 0, SyncStatus.SUCCESS));
+                .willReturn(new PlaceCollectionService.CollectionResult(3, 1, 0, 0, 2, 0, 0, SyncStatus.SUCCESS));
 
         mockMvc.perform(post("/internal/sync/regions/1"))
                 .andExpect(status().isOk())

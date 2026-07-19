@@ -84,7 +84,6 @@ class CatalogApiIT {
                 .category(PlaceCategory.관광지)
                 .region(andong)
                 .titleKo(testTitle)
-                .titleEn("Integration Test Place")
                 .addr("테스트 주소")
                 .lat(new BigDecimal("36.5684249"))
                 .lng(new BigDecimal("128.7294000"))

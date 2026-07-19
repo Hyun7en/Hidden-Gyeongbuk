@@ -22,7 +22,26 @@ public class ContentTypeMapper {
             "38", PlaceCategory.쇼핑,
             "39", PlaceCategory.음식점);
 
+    // EngService2 contentTypeId는 국문과 값이 다르다(76=관광지,78=문화시설,85=축제공연행사,
+    // 80=숙박,79=쇼핑,82=음식점). 75=여행코스는 국문 25와 마찬가지로 제외 대상이라 매핑에서 뺀다.
+    private static final Map<String, PlaceCategory> ENG_CONTENT_TYPE_TO_CATEGORY = Map.of(
+            "76", PlaceCategory.관광지,
+            "78", PlaceCategory.관광지,
+            "85", PlaceCategory.축제,
+            "80", PlaceCategory.숙박,
+            "79", PlaceCategory.쇼핑,
+            "82", PlaceCategory.음식점);
+
     public Optional<PlaceCategory> categoryOfKor(String contentTypeId) {
-        return Optional.ofNullable(KOR_CONTENT_TYPE_TO_CATEGORY.get(contentTypeId));
+        return lookup(KOR_CONTENT_TYPE_TO_CATEGORY, contentTypeId);
+    }
+
+    public Optional<PlaceCategory> categoryOfEng(String contentTypeId) {
+        return lookup(ENG_CONTENT_TYPE_TO_CATEGORY, contentTypeId);
+    }
+
+    // Map.of()는 null 키 조회 시 NPE를 던지므로(TourAPI 응답에 contentTypeId가 없을 수 있다) null을 먼저 거른다.
+    private static Optional<PlaceCategory> lookup(Map<String, PlaceCategory> map, String contentTypeId) {
+        return contentTypeId == null ? Optional.empty() : Optional.ofNullable(map.get(contentTypeId));
     }
 }

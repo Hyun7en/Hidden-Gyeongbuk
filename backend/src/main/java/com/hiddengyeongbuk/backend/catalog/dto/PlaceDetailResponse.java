@@ -18,10 +18,8 @@ public record PlaceDetailResponse(
         String firstImage,
         List<String> images,
         List<String> tags,
-        SummaryResponse summary,
+        String translationSource,
         FestivalResponse festival) {
-
-    public record SummaryResponse(String titleEn, String addrEn, String text, String source) {}
 
     public record FestivalResponse(LocalDate startDate, LocalDate endDate) {}
 }

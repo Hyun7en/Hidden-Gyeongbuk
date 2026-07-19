@@ -5,13 +5,14 @@ import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.catalog.HubNotFoundException;
 import com.hiddengyeongbuk.backend.catalog.Interest;
 import com.hiddengyeongbuk.backend.catalog.LangFallback;
-import com.hiddengyeongbuk.backend.catalog.TranslatedTitleLookup;
+import com.hiddengyeongbuk.backend.catalog.TranslationLookup;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseResponse;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.hub.HubRepository;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
@@ -41,7 +42,7 @@ public class CourseRecommendationService {
     private final PlaceRepository placeRepository;
     private final CourseAssembler courseAssembler;
     private final CourseScorer courseScorer;
-    private final TranslatedTitleLookup translatedTitleLookup;
+    private final TranslationLookup translationLookup;
 
     public CourseRecommendationService(
             HubRepository hubRepository,
@@ -49,13 +50,13 @@ public class CourseRecommendationService {
             PlaceRepository placeRepository,
             CourseAssembler courseAssembler,
             CourseScorer courseScorer,
-            TranslatedTitleLookup translatedTitleLookup) {
+            TranslationLookup translationLookup) {
         this.hubRepository = hubRepository;
         this.regionRepository = regionRepository;
         this.placeRepository = placeRepository;
         this.courseAssembler = courseAssembler;
         this.courseScorer = courseScorer;
-        this.translatedTitleLookup = translatedTitleLookup;
+        this.translationLookup = translationLookup;
     }
 
     // null 검증은 요청 경계에서 끝난다 — POST는 @Valid(CourseRecommendRequest), GET은 필수 @RequestParam.
@@ -98,11 +99,11 @@ public class CourseRecommendationService {
                 .limit(MAX_RESULTS)
                 .toList();
 
-        Map<Long, String> translatedTitles = translatedTitleLookup.forPlaces(placesOf(ranked), lang);
+        Map<Long, PlaceTranslation> translations = translationLookup.forPlaces(placesOf(ranked), lang);
         List<CourseResponse> courses = new ArrayList<>();
         int rank = 1;
         for (ScoredCandidate scored : ranked) {
-            courses.add(toResponse(rank++, scored, hub, lang, translatedTitles));
+            courses.add(toResponse(rank++, scored, hub, lang, translations));
         }
         return new CourseListResponse(courses);
     }
@@ -118,11 +119,11 @@ public class CourseRecommendationService {
     private record ScoredCandidate(CourseCandidate candidate, CourseScorer.Breakdown breakdown) {}
 
     private CourseResponse toResponse(
-            int rank, ScoredCandidate scored, Hub hub, String lang, Map<Long, String> translatedTitles) {
+            int rank, ScoredCandidate scored, Hub hub, String lang, Map<Long, PlaceTranslation> translations) {
         CourseCandidate candidate = scored.candidate();
         CourseScorer.Breakdown b = scored.breakdown();
         List<CourseResponse.DayResponse> days = candidate.days().stream()
-                .map(day -> toDayResponse(day, lang, translatedTitles))
+                .map(day -> toDayResponse(day, lang, translations))
                 .toList();
         return new CourseResponse(
                 rank,
@@ -134,7 +135,7 @@ public class CourseRecommendationService {
                 days);
     }
 
-    private CourseResponse.DayResponse toDayResponse(CourseDay day, String lang, Map<Long, String> translatedTitles) {
+    private CourseResponse.DayResponse toDayResponse(CourseDay day, String lang, Map<Long, PlaceTranslation> translations) {
         List<CourseResponse.CoursePlaceResponse> places = new ArrayList<>();
         int order = 1;
         for (Place place : day.places()) {
@@ -142,7 +143,7 @@ public class CourseRecommendationService {
                     order++,
                     place.getId(),
                     place.getCategory().name(),
-                    LangFallback.title(place, translatedTitles.get(place.getId()), lang),
+                    LangFallback.title(place, translations.get(place.getId()), lang),
                     place.getLat(),
                     place.getLng()));
         }
@@ -150,7 +151,7 @@ public class CourseRecommendationService {
                 ? null
                 : new CourseResponse.LodgingResponse(
                         day.lodging().getId(),
-                        LangFallback.title(day.lodging(), translatedTitles.get(day.lodging().getId()), lang));
+                        LangFallback.title(day.lodging(), translations.get(day.lodging().getId()), lang));
         return new CourseResponse.DayResponse(day.day(), places, lodging);
     }
 

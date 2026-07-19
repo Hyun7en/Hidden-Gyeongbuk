@@ -54,6 +54,17 @@ public class Place {
     @Column(name = "content_type_id", nullable = false)
     private Integer contentTypeId;
 
+    // 관광공사 신분류체계 대/중/소분류 코드(목록 응답에 포함). 현재는 저장만 하고, 분류 기반
+    // 태그 개편은 후속 단계에서 이 컬럼들을 활용한다.
+    @Column(name = "lcls_systm1", length = 10)
+    private String lclsSystm1;
+
+    @Column(name = "lcls_systm2", length = 10)
+    private String lclsSystm2;
+
+    @Column(name = "lcls_systm3", length = 20)
+    private String lclsSystm3;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     private PlaceCategory category;
@@ -64,9 +75,6 @@ public class Place {
 
     @Column(name = "title_ko", length = 200, nullable = false)
     private String titleKo;
-
-    @Column(name = "title_en", length = 200)
-    private String titleEn;
 
     @Column(length = 255)
     private String addr;
@@ -84,13 +92,11 @@ public class Place {
     @Column(name = "overview_ko", columnDefinition = "LONGTEXT")
     private String overviewKo;
 
-    @Lob
-    @Column(name = "overview_en", columnDefinition = "LONGTEXT")
-    private String overviewEn;
-
     @Column(name = "first_image", length = 500)
     private String firstImage;
 
+    // "en 번역(공식/기계) 존재 여부" 캐시 플래그 — 실제 영문 텍스트는 place_translation에 있다.
+    // 추천 완성도 점수가 조인 없이 참조하고, 번역 백필의 재처리 방지(findByHasEnFalse)에도 쓴다.
     @Column(name = "has_en", nullable = false)
     private boolean hasEn;
 

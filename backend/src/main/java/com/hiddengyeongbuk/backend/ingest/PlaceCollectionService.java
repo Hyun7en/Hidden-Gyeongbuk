@@ -7,10 +7,10 @@ import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.sync.DataSyncLog;
 import com.hiddengyeongbuk.backend.domain.sync.DataSyncLogRepository;
 import com.hiddengyeongbuk.backend.domain.sync.SyncStatus;
+import com.hiddengyeongbuk.backend.ingest.EngPlaceMatchingService.EngMatchResult;
 import com.hiddengyeongbuk.backend.ingest.client.TourApiClient;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
 import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
-import com.hiddengyeongbuk.backend.ingest.summary.PlaceTranslationService;
 import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,12 +23,18 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
- * 국문(KorService2) 목록을 기준으로 국문/영문 상세를 병행 수집해 place에 upsert한다.
- * 외부 API 연동 설계서 2.5~2.6 흐름 참고.
+ * 국문(KorService2) 목록·상세를 기준으로 place를 upsert하고, 이어서 영문(EngService2) 매칭
+ * 패스로 공식 영문을 채운다. 외부 API 연동 설계서 2.5~2.6 흐름 참고.
  *
- * showflag!=1 이거나 지원하지 않는 contentTypeId는 건너뛴다. 이미 저장된 place는
- * TourAPI가 내려주는 modifiedtime을 place.sourceModifiedAt과 비교해, 변경이 없으면
- * 상세 조회(국문+영문 2회)를 생략한다 — TourAPI 개발계정 일 1,000건 호출 한도를 아끼기 위함.
+ * 국문/영문은 서로 다른 contentId 공간을 쓰므로(실측 확인), 국문 contentId로 영문 상세를 바로
+ * 부를 수 없다. 대신 국문 수집을 끝낸 뒤 {@link EngPlaceMatchingService}가 영문 목록을 독자
+ * 조회해 이름·좌표로 국문 place와 매칭하고 공식 영문 제목·설명을 붙인다. 짝을 못 찾은 장소의
+ * 영문은 별도 번역 백필(PlaceTranslationService, /internal/summaries)이 담당한다 —
+ * 매칭이 has_en=true로 바꾼 장소는 자동 제외되므로 "영문 매칭 먼저, 남은 장소만 번역" 순서가 된다.
+ *
+ * showflag!=1 이거나 지원하지 않는 contentTypeId는 건너뛴다. 이미 저장된 place는 TourAPI
+ * modifiedtime을 place.sourceModifiedAt과 비교해, 변경이 없으면 국문 상세 조회를 생략한다 —
+ * TourAPI 개발계정 일 1,000건 호출 한도를 아끼기 위함.
  *
  * 수집 메서드에는 @Transactional을 걸지 않는다 — 루프가 항목마다 외부 API를 부르는 네트워크
  * I/O 덩어리라, 전체를 트랜잭션으로 감싸면 DB 커넥션을 수 분씩 붙든 채 HTTP를 기다리게 되고
@@ -47,7 +53,7 @@ public class PlaceCollectionService {
     private final PlaceRepository placeRepository;
     private final PlaceWriter placeWriter;
     private final DataSyncLogRepository dataSyncLogRepository;
-    private final PlaceTranslationService placeTranslationService;
+    private final EngPlaceMatchingService engPlaceMatchingService;
     private final ApplicationEventPublisher eventPublisher;
 
     public PlaceCollectionService(
@@ -56,14 +62,14 @@ public class PlaceCollectionService {
             PlaceRepository placeRepository,
             PlaceWriter placeWriter,
             DataSyncLogRepository dataSyncLogRepository,
-            PlaceTranslationService placeTranslationService,
+            EngPlaceMatchingService engPlaceMatchingService,
             ApplicationEventPublisher eventPublisher) {
         this.tourApiClient = tourApiClient;
         this.contentTypeMapper = contentTypeMapper;
         this.placeRepository = placeRepository;
         this.placeWriter = placeWriter;
         this.dataSyncLogRepository = dataSyncLogRepository;
-        this.placeTranslationService = placeTranslationService;
+        this.engPlaceMatchingService = engPlaceMatchingService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -108,6 +114,12 @@ public class PlaceCollectionService {
                 }
                 pageNo++;
             } while (page.size() == PAGE_SIZE);
+
+            // 국문 수집을 마친 뒤 영문 매칭 패스로 공식 영문을 채운다(이름·좌표 매칭).
+            EngMatchResult eng = engPlaceMatchingService.matchRegion(region);
+            counters.matched = eng.matched();
+            counters.engUnchanged = eng.unchanged();
+            counters.engFailed = eng.failed();
         } catch (RuntimeException e) {
             failMessage = e.getMessage();
             log.error("지역 {} 증분 수집 중 오류", region.getNameKo(), e);
@@ -147,12 +159,11 @@ public class PlaceCollectionService {
         LocalDateTime sourceModifiedAt = parseModifiedTime(item.modifiedtime());
         Optional<Place> existing = placeRepository.findByContentId(item.contentid());
         if (isUnchanged(existing, sourceModifiedAt)) {
-            // 상세 재조회(TourAPI 호출)만 건너뛴다. 태그는 로컬 데이터만으로 계산하는
-            // 무료 연산이라, 태그 규칙이 나중에 바뀌어도 다음 실행에서 자동으로 반영되게 한다.
-            // 영문 요약도 마찬가지로 place_summary에 이미 있으면 재호출하지 않으므로 매번
-            // 시도해도 안전하다 — 이 기능이 추가되기 전에 수집된 place도 다음 실행에서 채워진다.
-            placeWriter.reassignTags(existing.get());
-            countSummary(placeTranslationService.ensureTranslation(existing.get()), counters);
+            // 국문 상세 재조회(TourAPI 호출)만 건너뛴다. 태그와 분류체계 코드는 목록 데이터만으로
+            // 처리하는 무료 연산이라, 규칙이 바뀌어도 다음 실행에서 자동 반영되게 매번 갱신한다.
+            // (영문은 뒤이어 도는 매칭 패스가 지역 단위로 처리하므로 여기서 건드리지 않는다.)
+            placeWriter.reassignTagsAndClassification(
+                    existing.get(), item.lclsSystm1(), item.lclsSystm2(), item.lclsSystm3());
             counters.unchanged++;
             return;
         }
@@ -162,21 +173,13 @@ public class PlaceCollectionService {
             counters.skipped++;
             return;
         }
-        Optional<DetailCommonItem> engDetail = tourApiClient.fetchDetailCommonEng(item.contentid());
 
         Place place = existing.orElseGet(() -> Place.builder().build());
-        applyDetail(place, item, korDetail.get(), engDetail, category.get(), region, sourceModifiedAt);
+        applyDetail(place, item, korDetail.get(), category.get(), region, sourceModifiedAt);
         // 이미 있던 place는 detached라 save()가 merge()로 처리하므로, 영속 인스턴스는 인자가
-        // 아니라 반환값이다 — 이후 단계는 반환된 saved를 쓴다.
-        Place saved = placeWriter.savePlaceWithTags(place);
-        countSummary(placeTranslationService.ensureTranslation(saved), counters);
+        // 아니라 반환값이다. 영문은 이후 매칭 패스가 채운다.
+        placeWriter.savePlaceWithTags(place);
         counters.saved++;
-    }
-
-    private static void countSummary(PlaceTranslationService.TranslationResult result, Counters counters) {
-        if (result == PlaceTranslationService.TranslationResult.GENERATED) {
-            counters.summarized++;
-        }
     }
 
     private static boolean isUnchanged(Optional<Place> existing, LocalDateTime sourceModifiedAt) {
@@ -201,8 +204,15 @@ public class PlaceCollectionService {
         // message 컬럼(VARCHAR 500)보다 길면 로그 저장 자체가 truncation 오류로 실패하므로 자른다.
         String message = failMessage != null
                 ? truncate(failMessage, 500)
-                : "%s, skipped=%d, unchanged=%d, failed=%d, summarized=%d"
-                        .formatted(scopeLabel, counters.skipped, counters.unchanged, counters.failed, counters.summarized);
+                : "%s, skipped=%d, unchanged=%d, failed=%d, matched=%d, engUnchanged=%d, engFailed=%d"
+                        .formatted(
+                                scopeLabel,
+                                counters.skipped,
+                                counters.unchanged,
+                                counters.failed,
+                                counters.matched,
+                                counters.engUnchanged,
+                                counters.engFailed);
 
         // target 컬럼은 VARCHAR(50)인데 접두사만 43자라 지역명이 조금만 길어도 저장이 깨진다 — message처럼 자른다.
         dataSyncLogRepository.save(DataSyncLog.builder()
@@ -214,19 +224,29 @@ public class PlaceCollectionService {
                 .message(message)
                 .build());
 
-        // saved=0이어도 unchanged 항목에서 번역이 새로 생겼을 수 있다(ensureTranslation 백필 겸용
-        // 경로) — 그 경우도 catalog 캐시가 stale해지므로 이벤트를 발행한다.
-        if (counters.saved > 0 || counters.summarized > 0) {
+        // saved=0이어도 영문 매칭으로 공식 영문이 새로 붙었을 수 있다 — 그 경우도 catalog 캐시가
+        // stale해지므로 이벤트를 발행한다.
+        if (counters.saved > 0 || counters.matched > 0) {
             eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
         }
-        return new CollectionResult(counters.saved, counters.skipped, counters.unchanged, counters.failed, status);
+        return new CollectionResult(
+                counters.saved,
+                counters.skipped,
+                counters.unchanged,
+                counters.failed,
+                counters.matched,
+                counters.engUnchanged,
+                counters.engFailed,
+                status);
     }
 
+    // 국문 필드만 채운다. 영문(title_en/overview_en/has_en/content_id_en)은 이후 매칭 패스가
+    // 담당하므로 여기서 건드리지 않는다 — 기존 place가 국문 변경으로 재수집돼도 이미 붙은 공식
+    // 영문을 덮어쓰지 않게 하기 위함.
     private void applyDetail(
             Place place,
             AreaBasedSyncItem item,
             DetailCommonItem korDetail,
-            Optional<DetailCommonItem> engDetail,
             PlaceCategory category,
             Region region,
             LocalDateTime sourceModifiedAt) {
@@ -235,16 +255,17 @@ public class PlaceCollectionService {
         place.setCategory(category);
         place.setRegion(region);
         place.setTitleKo(korDetail.title());
-        place.setTitleEn(engDetail.map(DetailCommonItem::title).orElse(null));
         place.setAddr(korDetail.addr1());
         place.setLat(parseCoordinate(korDetail.mapy()));
         place.setLng(parseCoordinate(korDetail.mapx()));
         place.setTel(korDetail.tel());
         place.setOverviewKo(korDetail.overview());
-        place.setOverviewEn(engDetail.map(DetailCommonItem::overview).orElse(null));
         place.setFirstImage(korDetail.firstimage());
-        place.setHasEn(engDetail.isPresent());
         place.setSourceModifiedAt(sourceModifiedAt);
+        // 분류체계 코드(목록 응답 포함)를 함께 적재 — 현재는 저장만, 태그 개편은 후속 단계.
+        place.setLclsSystm1(item.lclsSystm1());
+        place.setLclsSystm2(item.lclsSystm2());
+        place.setLclsSystm3(item.lclsSystm3());
     }
 
     static BigDecimal parseCoordinate(String value) {
@@ -263,7 +284,8 @@ public class PlaceCollectionService {
         return value.length() > maxLength ? value.substring(0, maxLength) : value;
     }
 
-    private static LocalDateTime parseModifiedTime(String value) {
+    // 영문 매칭 패스(EngPlaceMatchingService)도 modifiedtime을 같은 포맷으로 파싱하므로 공유한다.
+    static LocalDateTime parseModifiedTime(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
@@ -275,8 +297,11 @@ public class PlaceCollectionService {
         int skipped;
         int unchanged;
         int failed;
-        int summarized;
+        int matched;
+        int engUnchanged;
+        int engFailed;
     }
 
-    public record CollectionResult(int saved, int skipped, int unchanged, int failed, SyncStatus status) {}
+    public record CollectionResult(
+            int saved, int skipped, int unchanged, int failed, int matched, int engUnchanged, int engFailed, SyncStatus status) {}
 }

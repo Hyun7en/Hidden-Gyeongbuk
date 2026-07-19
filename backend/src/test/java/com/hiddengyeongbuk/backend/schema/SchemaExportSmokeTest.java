@@ -4,8 +4,8 @@ import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.place.FestivalDetail;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImage;
-import com.hiddengyeongbuk.backend.domain.place.PlaceSummary;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.sync.DataSyncLog;
 import org.hibernate.boot.Metadata;
@@ -35,7 +35,7 @@ class SchemaExportSmokeTest {
                     .addAnnotatedClass(PlaceTag.class)
                     .addAnnotatedClass(PlaceImage.class)
                     .addAnnotatedClass(FestivalDetail.class)
-                    .addAnnotatedClass(PlaceSummary.class)
+                    .addAnnotatedClass(PlaceTranslation.class)
                     .addAnnotatedClass(DataSyncLog.class)
                     .buildMetadata();
 

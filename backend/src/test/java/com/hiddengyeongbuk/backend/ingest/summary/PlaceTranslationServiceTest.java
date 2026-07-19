@@ -3,6 +3,7 @@ package com.hiddengyeongbuk.backend.ingest.summary;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -10,15 +11,15 @@ import static org.mockito.Mockito.verify;
 
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
-import com.hiddengyeongbuk.backend.domain.place.PlaceSummary;
-import com.hiddengyeongbuk.backend.domain.place.PlaceSummaryRepository;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
 import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,7 +32,7 @@ class PlaceTranslationServiceTest {
     private PlaceRepository placeRepository;
 
     @Mock
-    private PlaceSummaryRepository placeSummaryRepository;
+    private PlaceTranslationRepository placeTranslationRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -40,7 +41,8 @@ class PlaceTranslationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PlaceTranslationService(translateClient, placeRepository, placeSummaryRepository, eventPublisher);
+        service = new PlaceTranslationService(
+                translateClient, placeRepository, placeTranslationRepository, eventPublisher);
     }
 
     @Test
@@ -54,9 +56,9 @@ class PlaceTranslationServiceTest {
     }
 
     @Test
-    void 이미_요약이_있으면_다시_생성하지_않는다() {
+    void 이미_en_번역행이_있으면_다시_생성하지_않는다() {
         Place place = place(1L, false, "설명");
-        given(placeSummaryRepository.existsById(1L)).willReturn(true);
+        given(placeTranslationRepository.existsByPlaceIdAndLang(1L, "en")).willReturn(true);
 
         PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
@@ -67,7 +69,7 @@ class PlaceTranslationServiceTest {
     @Test
     void 국문_설명이_없으면_건너뛴다() {
         Place place = place(1L, false, null);
-        given(placeSummaryRepository.existsById(1L)).willReturn(false);
+        given(placeTranslationRepository.existsByPlaceIdAndLang(1L, "en")).willReturn(false);
 
         PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
@@ -76,28 +78,30 @@ class PlaceTranslationServiceTest {
     }
 
     @Test
-    void 정상_응답이면_영문_제목과_설명을_저장한다() {
+    void 정상_응답이면_en_번역행을_저장하고_has_en을_true로_만든다() {
         Place place = place(1L, false, "안동 하회마을은 전통 한옥 마을이다");
-        given(placeSummaryRepository.existsById(1L)).willReturn(false);
+        given(placeTranslationRepository.existsByPlaceIdAndLang(1L, "en")).willReturn(false);
         given(translateClient.translate(anyList()))
                 .willReturn(List.of("Andong Hahoe Village", "Hahoe Village is a traditional hanok village."));
 
         PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
         assertThat(result).isEqualTo(PlaceTranslationService.TranslationResult.GENERATED);
-        verify(placeSummaryRepository, times(1)).save(any(PlaceSummary.class));
+        assertThat(place.isHasEn()).isTrue();
+        verify(placeTranslationRepository, times(1)).save(any(PlaceTranslation.class));
+        verify(placeRepository, times(1)).save(place);
     }
 
     @Test
     void 번역_호출이_실패하면_예외를_던지지_않고_실패로_처리한다() {
         Place place = place(1L, false, "설명");
-        given(placeSummaryRepository.existsById(1L)).willReturn(false);
+        given(placeTranslationRepository.existsByPlaceIdAndLang(1L, "en")).willReturn(false);
         given(translateClient.translate(anyList())).willThrow(new TranslateException("boom", null));
 
         PlaceTranslationService.TranslationResult result = service.ensureTranslation(place);
 
         assertThat(result).isEqualTo(PlaceTranslationService.TranslationResult.FAILED);
-        verify(placeSummaryRepository, never()).save(any());
+        verify(placeTranslationRepository, never()).save(any());
     }
 
     @Test
@@ -106,7 +110,7 @@ class PlaceTranslationServiceTest {
         Place p2 = place(2L, false, "설명2");
         Place p3 = place(3L, false, "설명3");
         given(placeRepository.findByHasEnFalse()).willReturn(List.of(p1, p2, p3));
-        given(placeSummaryRepository.existsById(any())).willReturn(false);
+        given(placeTranslationRepository.existsByPlaceIdAndLang(any(), eq("en"))).willReturn(false);
         given(translateClient.translate(anyList())).willReturn(List.of("title", "summary"));
 
         PlaceTranslationService.BackfillResult result = service.backfill(2);
@@ -124,7 +128,7 @@ class PlaceTranslationServiceTest {
         Place p2 = place(2L, false, "설명2");
         Place p3 = place(3L, false, "설명3");
         given(placeRepository.findByHasEnFalse()).willReturn(List.of(p1, p2, p3));
-        given(placeSummaryRepository.existsById(any())).willReturn(false);
+        given(placeTranslationRepository.existsByPlaceIdAndLang(any(), eq("en"))).willReturn(false);
         given(translateClient.translate(anyList())).willThrow(new TranslateException("boom", null));
 
         PlaceTranslationService.BackfillResult result = service.backfill(2);

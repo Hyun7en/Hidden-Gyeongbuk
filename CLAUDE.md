@@ -6,12 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 2026 관광데이터 활용 공모전 출품작(마감 2026-09-21). 외국인 관광객에게 경북 인구감소지역 15곳의 관광지 탐색과 Hub 기반 코스 추천을 제공하는 웹 서비스. Spring Boot 3.5(Java 17) + React(Vite·TS) 모노리포, MySQL.
 
-설계 문서(SRS, ERD, 외부 API 연동, 추천 알고리즘, API 명세)와 WBS는 Notion "Hidden Gyeongbuk" 페이지가 원본이다. 설계 결정을 바꾸면 해당 Notion 문서도 갱신할 것.
+설계 문서(SRS, ADR, ERD, 외부 API 연동, 추천 알고리즘, API 명세)와 WBS는 Notion "Hidden Gyeongbuk" 페이지가 원본이다. 설계 결정을 바꾸면 해당 Notion 문서도 갱신할 것.
 
 ## 설계 결정
 
-주요 아키텍처 결정은 `docs/adr/`에 기록되어 있다.
+주요 아키텍처 결정은 ADR로 기록한다.
 
+- **현재 ADR 원본은 Notion**(ADR-001~015). 전체 설계를 재검토 중이라 아직 레포로 옮기지 않았다. `docs/adr/`는 이전 예정지로 형식 템플릿만 있다 — 여기가 비어 있다고 "ADR이 없다"고 판단하지 말 것.
 - 새 기능 추가, 기술 스택 변경, 외부 API 연동 방식 변경 시
   관련 ADR을 먼저 읽고 기존 결정과 충돌하지 않는지 확인할 것
 - 기존 ADR과 다른 방향으로 가야 한다면 코드를 쓰기 전에 알려줄 것

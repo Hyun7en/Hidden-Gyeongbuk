@@ -41,25 +41,18 @@ public class TourApiClient {
         this.properties = properties;
     }
 
-    public List<AreaBasedSyncItem> fetchAreaBasedSyncList(
-            String lDongRegnCd, String lDongSignguCd, int pageNo, int numOfRows) {
-        return fetchAreaBasedSyncList(properties.korBaseUrl(), lDongRegnCd, lDongSignguCd, pageNo, numOfRows);
-    }
-
     /**
-     * EngService2의 자체 areaBasedSyncList2. 영문 서비스는 국문과 별개의 contentId 공간을 가지므로,
-     * 국문 목록의 contentId를 재사용하지 않고 이 목록으로 영문 장소를 독자 조회해 매칭한다.
+     * 언어 서비스의 areaBasedSyncList2. 서비스명은 언어 레지스트리에서 온다 —
+     * 언어별 메서드를 두면 언어를 늘릴 때마다 클라이언트에 분기가 생긴다(ADR-018).
+     *
+     * <p>각 언어 서비스는 자기만의 contentId 공간을 갖는다(실측). 그래서 다른 언어의
+     * contentId를 재사용하지 않고, 언어마다 이 목록을 독자적으로 받아 staging에 쌓는다.
      */
-    public List<AreaBasedSyncItem> fetchAreaBasedSyncListEng(
-            String lDongRegnCd, String lDongSignguCd, int pageNo, int numOfRows) {
-        return fetchAreaBasedSyncList(properties.engBaseUrl(), lDongRegnCd, lDongSignguCd, pageNo, numOfRows);
-    }
-
-    private List<AreaBasedSyncItem> fetchAreaBasedSyncList(
-            String baseUrl, String lDongRegnCd, String lDongSignguCd, int pageNo, int numOfRows) {
+    public List<AreaBasedSyncItem> fetchAreaBasedSyncList(
+            String serviceName, String lDongRegnCd, String lDongSignguCd, int pageNo, int numOfRows) {
         return Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TourApiClient::isTransient, () -> {
             String body = get(
-                    baseUrl,
+                    serviceName,
                     "/areaBasedSyncList2",
                     Map.of(
                             "lDongRegnCd", lDongRegnCd,
@@ -70,19 +63,12 @@ public class TourApiClient {
         });
     }
 
-    public Optional<DetailCommonItem> fetchDetailCommonKor(String contentId) {
-        return fetchDetailCommon(properties.korBaseUrl(), contentId);
-    }
-
-    public Optional<DetailCommonItem> fetchDetailCommonEng(String contentId) {
-        return fetchDetailCommon(properties.engBaseUrl(), contentId);
-    }
-
-    private Optional<DetailCommonItem> fetchDetailCommon(String baseUrl, String contentId) {
+    /** 상세 조회. contentId는 그 언어 서비스에서 받은 값이어야 한다 — 언어 간 재사용 불가. */
+    public Optional<DetailCommonItem> fetchDetailCommon(String serviceName, String contentId) {
         return Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TourApiClient::isTransient, () -> {
             // detailCommon2(v2)는 v1의 defaultYN/overviewYN/addrinfoYN 등 YN 플래그를 받지 않는다.
             // contentId만 넘기면 overview를 포함한 기본 필드가 항상 반환된다 (외부 API 연동 설계서 2.7).
-            String body = get(baseUrl, "/detailCommon2", Map.of("contentId", contentId));
+            String body = get(serviceName, "/detailCommon2", Map.of("contentId", contentId));
             return requireSuccess(body, DetailCommonItem.class).stream().findFirst();
         });
     }
@@ -119,7 +105,7 @@ public class TourApiClient {
         return body.length() > 500 ? body.substring(0, 500) : body;
     }
 
-    private String get(String baseUrl, String path, Map<String, String> params) {
+    private String get(String serviceName, String path, Map<String, String> params) {
         // UriComponentsBuilder의 기본 인코딩은 RFC 3986 기준 '+'를 허용 문자로 보고 그대로 둔다.
         // TourAPI serviceKey에는 '+'가 포함될 수 있는데, 서버가 이를 공백으로 오인해 인증이 깨진다.
         // URLEncoder로 모든 값을 직접 percent-encode해서 이 문제를 피한다 (curl --data-urlencode와 동일 효과).
@@ -134,7 +120,7 @@ public class TourApiClient {
                 .map(e -> encode(e.getKey()) + "=" + encode(e.getValue()))
                 .collect(Collectors.joining("&"));
 
-        URI uri = URI.create(baseUrl + path + "?" + queryString);
+        URI uri = URI.create(properties.baseUrl() + "/" + serviceName + path + "?" + queryString);
 
         return restClient.get().uri(uri).retrieve().body(String.class);
     }

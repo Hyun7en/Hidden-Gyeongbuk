@@ -3,7 +3,7 @@ package com.hiddengyeongbuk.backend.catalog.course;
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.catalog.Interest;
-import com.hiddengyeongbuk.backend.catalog.LangFallback;
+import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseRecommendRequest;
 import jakarta.validation.Valid;
@@ -22,16 +22,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class CourseController {
 
     private final CourseRecommendationService courseRecommendationService;
+    private final LanguageRegistry languages;
 
-    public CourseController(CourseRecommendationService courseRecommendationService) {
+    public CourseController(CourseRecommendationService courseRecommendationService, LanguageRegistry languages) {
         this.courseRecommendationService = courseRecommendationService;
+        this.languages = languages;
     }
 
     @PostMapping("/recommend")
     public CourseListResponse recommend(
-            @Valid @RequestBody CourseRecommendRequest request, @RequestParam(defaultValue = "en") String lang) {
+            @Valid @RequestBody CourseRecommendRequest request, @RequestParam(required = false) String lang) {
         return courseRecommendationService.recommend(
-                request.hubId(), request.duration(), toSet(request.interests()), request.difficulty(), LangFallback.normalize(lang));
+                request.hubId(), request.duration(), toSet(request.interests()), request.difficulty(), languages.resolve(lang));
     }
 
     @GetMapping
@@ -40,8 +42,8 @@ public class CourseController {
             @RequestParam Duration duration,
             @RequestParam(required = false) List<Interest> interests,
             @RequestParam Difficulty difficulty,
-            @RequestParam(defaultValue = "en") String lang) {
-        return courseRecommendationService.recommend(hubId, duration, toSet(interests), difficulty, LangFallback.normalize(lang));
+            @RequestParam(required = false) String lang) {
+        return courseRecommendationService.recommend(hubId, duration, toSet(interests), difficulty, languages.resolve(lang));
     }
 
     private static Set<Interest> toSet(List<Interest> interests) {

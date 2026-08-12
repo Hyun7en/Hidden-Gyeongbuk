@@ -20,10 +20,10 @@ import lombok.Setter;
 
 /**
  * place의 언어별 번역/공식 콘텐츠. 언어를 컬럼이 아니라 "행"으로 관리한다 — 언어를 추가해도
- * 스키마 변경 없이 (place_id, lang) 행만 늘어난다. place의 언어별 컬럼과 place_summary를 대체.
+ * 스키마 변경 없이 (place_id, lang) 행만 늘어난다. 국문도 예외 없이 여기 들어간다.
  *
  * place와의 연관은 @ManyToOne 대신 place_id 스칼라로 둔다 — 조회 시엔 이미 place를 들고 있어
- * 역방향 탐색이 필요 없고, @MapsId 연관의 detached/낙관적락 함정(PlaceSummary에서 겪음)을 피한다.
+ * 역방향 탐색이 필요 없고, @MapsId 연관의 detached/낙관적락 함정을 피한다.
  */
 @Entity
 @Table(

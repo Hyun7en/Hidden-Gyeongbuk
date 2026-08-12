@@ -1,68 +1,64 @@
 package com.hiddengyeongbuk.backend.ingest.admin;
 
-import com.hiddengyeongbuk.backend.domain.region.Region;
-import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
-import com.hiddengyeongbuk.backend.ingest.PlaceCollectionService;
+import com.hiddengyeongbuk.backend.ingest.Collector;
+import com.hiddengyeongbuk.backend.ingest.Merger;
+import com.hiddengyeongbuk.backend.ingest.Resolver;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 15곳 초기 대량 적재·수동 재처리용 내부 전용 엔드포인트.
- * 인증이 없으므로 local 프로파일에서만 빈이 뜬다 — 운영 배포(SPRING_PROFILES_ACTIVE=prod)에서는
- * 이 엔드포인트 자체가 존재하지 않는다(404). "배포 전에 제거하자"는 계획 대신 코드로 강제한다.
+ * 수집 파이프라인 수동 트리거. 3단이 분리돼 있어 각각 따로 부를 수 있다 —
+ * <b>Resolve·Merge는 외부 API를 쓰지 않으므로 마음껏 재실행해도 된다.</b> 매칭 로직을 고친 뒤
+ * 재수집 없이 재판정만 하는 것이 staging 구조의 핵심 이점이다(오퍼레이션별 일 1,000건 한도).
+ *
+ * <p>인증이 없어 local 프로파일에서만 빈이 뜬다 — 운영(prod)에서는 엔드포인트 자체가 없다.
  */
 @RestController
 @Profile("local")
 @RequestMapping("/internal/sync")
 public class SyncAdminController {
 
-    private final RegionRepository regionRepository;
-    private final PlaceCollectionService placeCollectionService;
+    private final Collector collector;
+    private final Resolver resolver;
+    private final Merger merger;
 
-    public SyncAdminController(RegionRepository regionRepository, PlaceCollectionService placeCollectionService) {
-        this.regionRepository = regionRepository;
-        this.placeCollectionService = placeCollectionService;
+    public SyncAdminController(Collector collector, Resolver resolver, Merger merger) {
+        this.collector = collector;
+        this.resolver = resolver;
+        this.merger = merger;
     }
 
-    @GetMapping("/regions")
-    public List<RegionSummary> listRegions() {
-        return regionRepository.findAll().stream()
-                .map(r -> new RegionSummary(r.getId(), r.getNameKo(), r.getLdongRegnCd(), r.getLdongSignguCd()))
-                .collect(Collectors.toList());
+    /** 1단계. 언어 미지정 시 활성 언어 전체. TourAPI 호출량이 큰 경로다. */
+    @PostMapping("/collect")
+    public List<Collector.Result> collect(@RequestParam(required = false) String lang) {
+        return lang == null ? collector.collectAll() : List.of(collector.collectLanguage(lang));
     }
 
-    /**
-     * 해당 지역 전체를 areaBasedSyncList2 페이지네이션으로 수집한다(collectRegionIncremental).
-     * 지역 규모에 따라 응답까지 수 분 걸릴 수 있다 — TourAPI 개발계정 일 1,000건 한도를
-     * 감안해 하루 1~2개 지역만 호출할 것.
-     */
-    @PostMapping("/regions/{regionId}")
-    public ResponseEntity<PlaceCollectionService.CollectionResult> collectRegion(@PathVariable Long regionId) {
-        Region region = regionRepository
-                .findById(regionId)
-                .orElseThrow(() -> new RegionNotFoundException(regionId));
-        return ResponseEntity.ok(placeCollectionService.collectRegionIncremental(region));
+    /** 1단계 — 지역 하나만. maxItems로 소규모 확인이 가능해 로직 검증에 쓴다. */
+    @PostMapping("/collect/regions/{regionId}")
+    public Collector.Result collectRegion(
+            @org.springframework.web.bind.annotation.PathVariable Long regionId,
+            @RequestParam String lang,
+            @RequestParam(defaultValue = "100") int maxItems) {
+        return collector.collectRegion(lang, regionId, maxItems);
     }
 
-    @ExceptionHandler(RegionNotFoundException.class)
-    public ResponseEntity<String> handleRegionNotFound(RegionNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-    }
-
-    public record RegionSummary(Long id, String nameKo, String ldongRegnCd, String ldongSignguCd) {}
-
-    static class RegionNotFoundException extends RuntimeException {
-        RegionNotFoundException(Long regionId) {
-            super("존재하지 않는 region_id: " + regionId);
+    /** 2단계. 외부 호출 없음 — 재실행 자유. */
+    @PostMapping("/resolve")
+    public Resolver.Result resolve(@RequestParam(defaultValue = "false") boolean resetAll) {
+        if (resetAll) {
+            resolver.resetAllToPending();
         }
+        return resolver.resolve();
+    }
+
+    /** 3단계. 외부 호출 없음 — 재실행 자유. */
+    @PostMapping("/merge")
+    public Merger.Result merge() {
+        return merger.merge();
     }
 }

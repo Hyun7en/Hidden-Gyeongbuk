@@ -1,4 +1,4 @@
-package com.hiddengyeongbuk.backend.ingest.summary;
+package com.hiddengyeongbuk.backend.ingest.translate;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

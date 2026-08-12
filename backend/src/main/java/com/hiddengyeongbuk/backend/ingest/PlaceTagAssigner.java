@@ -1,6 +1,6 @@
 package com.hiddengyeongbuk.backend.ingest;
 
-import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTagType;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -9,20 +9,27 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * place_tag({@link PlaceTagType} 어휘)를 카테고리·제목·설명 텍스트 키워드 규칙으로 채운다.
- * TourAPI의 신분류체계(lclsSystm) 코드는 실제 응답 필드를 별도 실측해야 해서(외부 API 연동
- * 설계서 6장 후속 과제) 이번 범위에서는 제외하고, 추가 API 호출이 필요 없는 키워드 매칭으로
- * MVP 수준의 태그를 부여한다.
+ * place_tag({@link PlaceTagType} 어휘)를 타입·제목·설명 키워드 규칙으로 채운다.
+ *
+ * <p><b>저장 값은 enum 코드다</b>(NATURE 등). 구 구현은 한글 라벨("자연")을 DB에 넣었는데,
+ * 다국어 응답에 특정 언어 문자열이 섞이는 문제가 있어 ERD §3.8이 이를 금지했다. 표시 라벨은
+ * 프론트 i18n 책임이다.
+ *
+ * <p>판정은 국문 텍스트 기준이다 — 키워드 규칙이 한국어라, Merge 단계에서 ko 번역의
+ * 제목·설명을 넘겨받아 부여한다. 국문이 없는 장소(다른 언어에만 존재)는 태그가 비게 되며,
+ * 이는 lclsSystm 기반 개편으로 해소할 후속 과제다(ERD §9).
+ *
+ * <p>무료 로컬 연산이므로 수집 때마다 다시 계산한다 — 규칙을 바꾸면 다음 수집에 자동 반영된다.
  */
 @Component
 public class PlaceTagAssigner {
 
-    private static final String TAG_NATURE = PlaceTagType.NATURE.labelKo();
-    private static final String TAG_FOOD = PlaceTagType.FOOD.labelKo();
-    private static final String TAG_TRADITION = PlaceTagType.TRADITION.labelKo();
-    private static final String TAG_TEMPLE = PlaceTagType.TEMPLE.labelKo();
-    private static final String TAG_FESTIVAL = PlaceTagType.FESTIVAL.labelKo();
-    private static final String TAG_REST = PlaceTagType.REST.labelKo();
+    private static final String TAG_NATURE = PlaceTagType.NATURE.name();
+    private static final String TAG_FOOD = PlaceTagType.FOOD.name();
+    private static final String TAG_TRADITION = PlaceTagType.TRADITION.name();
+    private static final String TAG_TEMPLE = PlaceTagType.TEMPLE.name();
+    private static final String TAG_FESTIVAL = PlaceTagType.FESTIVAL.name();
+    private static final String TAG_REST = PlaceTagType.REST.name();
 
     private static final List<String> TEMPLE_KEYWORDS = List.of("사찰", "암자", "본찰", "대웅전");
     private static final List<String> TEMPLE_TITLE_SUFFIXES = List.of("사", "암");
@@ -34,20 +41,14 @@ public class PlaceTagAssigner {
     // TourAPI는 동명이인 장소를 "개목사(안동)"처럼 지역명 괄호로 구분한다 — 접미사 매칭 전에 제거한다.
     private static final Pattern TRAILING_PAREN = Pattern.compile("\\s*\\([^)]*\\)$");
 
-    public Set<String> assign(PlaceCategory category, String titleKo, String overviewKo) {
-        if (category == PlaceCategory.음식점) {
-            return Set.of(TAG_FOOD);
-        }
-        if (category == PlaceCategory.숙박) {
-            return Set.of(TAG_REST);
-        }
-        if (category == PlaceCategory.축제) {
-            return Set.of(TAG_FESTIVAL);
-        }
-        if (category == PlaceCategory.쇼핑) {
-            return assignForShopping(titleKo, overviewKo);
-        }
-        return assignForAttraction(titleKo, overviewKo);
+    public Set<String> assign(PlaceType placeType, String titleKo, String overviewKo) {
+        return switch (placeType) {
+            case RESTAURANT -> Set.of(TAG_FOOD);
+            case STAY -> Set.of(TAG_REST);
+            case FESTIVAL -> Set.of(TAG_FESTIVAL);
+            case SHOPPING -> assignForShopping(titleKo, overviewKo);
+            case ATTRACTION, CULTURAL, LEISURE -> assignForAttraction(titleKo, overviewKo);
+        };
     }
 
     private Set<String> assignForShopping(String titleKo, String overviewKo) {

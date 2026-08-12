@@ -142,10 +142,28 @@ class CourseAssembler {
             interestScore = 50;
         } else {
             Set<String> tags = place.getTags().stream().map(PlaceTag::getTag).collect(Collectors.toSet());
-            long matched = interests.stream().filter(i -> tags.contains(i.labelKo())).count();
+            long matched = interests.stream().filter(i -> tags.contains(i.name())).count();
             interestScore = 100.0 * matched / interests.size();
         }
-        return 0.7 * interestScore + 0.3 * PlaceCompleteness.score(place);
+        return 0.7 * interestScore + 0.3 * cheapCompleteness(place);
+    }
+
+    /**
+     * 후보 선별용 완성도 <b>근사치</b>. 진짜 완성도({@link PlaceCompleteness})는 요청 언어의
+     * 번역 행 존재까지 보지만(ADR-017), 그러려면 후보가 아니라 <b>풀 전체</b>의 번역을 읽어야
+     * 한다 — 조립 전이라 아직 후보가 정해지지 않았기 때문이다. 수천 건을 매 요청 읽는 비용이
+     * 선별 정확도 이득보다 커서, 여기서는 place만으로 판단할 수 있는 두 필드로 근사한다.
+     * 최종 점수는 조립 후 실제 번역을 읽어 제대로 계산한다.
+     */
+    private static double cheapCompleteness(Place place) {
+        int present = 0;
+        if (place.getFirstImage() != null && !place.getFirstImage().isBlank()) {
+            present++;
+        }
+        if (place.getLat() != null && place.getLng() != null) {
+            present++;
+        }
+        return present * 100.0 / 2;
     }
 
     private static int[] splitEvenly(int total, int buckets) {

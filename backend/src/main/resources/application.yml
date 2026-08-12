@@ -48,13 +48,29 @@ app:
       # 구조는 N개 언어를 전제하되 실데이터는 국·영문 우선(ADR-018). 일문·중문은
       # 서비스 실측 → 항목 추가 → staging 수집 → Resolve 재실행 → 번역 백필 순으로 켠다.
 
+# (내부 타입, lang) → 소스 contentTypeId 매핑(외부 API 연동 설계서 §2.5).
+# 언어마다 코드 체계가 달라서 코드에 분기를 두면 언어 수만큼 분기가 늘어난다.
+# 언어 추가는 각 타입에 항목 하나를 더하는 일로 끝나야 한다.
+#
+# 여행코스(ko=25)는 다중 스팟 루트라 place 모델과 맞지 않아 제외하고(ADR-003/009),
+# 교통(en=77)은 대응하는 국문 타입이 없어 제외한다. 매핑에 없는 코드는 수집에서 걸러진다.
+  content-type:
+    mappings:
+      ATTRACTION: { ko: 12, en: 76 }
+      CULTURAL:   { ko: 14, en: 78 }
+      FESTIVAL:   { ko: 15, en: 85 }
+      LEISURE:    { ko: 28, en: 75 }
+      STAY:       { ko: 32, en: 80 }
+      SHOPPING:   { ko: 38, en: 79 }
+      RESTAURANT: { ko: 39, en: 82 }
+
 tourapi:
   service-key: ${TOURAPI_SERVICE_KEY:}
-  kor-base-url: https://apis.data.go.kr/B551011/KorService2
-  eng-base-url: https://apis.data.go.kr/B551011/EngService2
+  # 언어별 서비스명은 app.language.entries[].service-name이 갖는다 — 여기 언어를 박으면
+  # 언어 추가에 설정 구조가 바뀐다.
+  base-url: https://apis.data.go.kr/B551011
   mobile-os: ETC
   mobile-app: HiddenGyeongbuk
-
 sync:
   # 초기 전체 적재가 끝나기 전까지는 false 유지 (TourAPI 개발계정 일 1,000건 호출 한도)
   enabled: ${SYNC_ENABLED:false}

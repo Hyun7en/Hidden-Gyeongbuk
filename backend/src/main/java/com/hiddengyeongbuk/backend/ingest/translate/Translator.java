@@ -1,0 +1,196 @@
+package com.hiddengyeongbuk.backend.ingest.translate;
+
+import com.hiddengyeongbuk.backend.domain.place.Place;
+import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
+import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
+import com.hiddengyeongbuk.backend.domain.sync.SyncPhase;
+import com.hiddengyeongbuk.backend.ingest.SyncLogger;
+import com.hiddengyeongbuk.backend.support.LanguageRegistry;
+import com.hiddengyeongbuk.backend.support.PlaceDataChangedEvent;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+
+/**
+ * 수집 4단계 — {@code place_translation} 행이 <b>없는</b> (장소, 언어) 조합을 기계 번역으로
+ * 채운다(ADR-013, 외부 API 연동 설계서 §4).
+ *
+ * <p>구 구현은 {@code has_en=false}인 장소를 대상으로 삼았는데, 그 플래그는 영어만 특별 취급해
+ * 다국어와 맞지 않아 폐기됐다(ADR-017). 이제 대상 판정은 <b>행 존재 여부</b>이며 어느 언어든
+ * 같은 코드가 처리한다.
+ *
+ * <p>번역 기준 언어는 {@code ko}이고, 국문이 없는 장소(다른 언어에만 존재)는 존재하는 아무
+ * 언어를 기준으로 쓴다(아키텍처 §5.1). <b>중간 언어를 경유하지 않는다</b> — 국문 → 영어 →
+ * 일본어처럼 이어 번역하면 오역이 누적된다.
+ *
+ * <p>공식 번역(OFFICIAL)이 있는 조합은 건드리지 않는다. 공식이 뒤늦게 확보되면 Merge가 같은
+ * 행을 OFFICIAL로 덮어쓰므로, 여기서 만든 TRANSLATE 행은 자연히 대체된다.
+ */
+@Service
+public class Translator {
+
+    private static final Logger log = LoggerFactory.getLogger(Translator.class);
+    private static final int MAX_OVERVIEW_CHARS = 3000;
+
+    private final TranslateClient translateClient;
+    private final PlaceRepository placeRepository;
+    private final PlaceTranslationRepository placeTranslationRepository;
+    private final LanguageRegistry languages;
+    private final SyncLogger syncLogger;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public Translator(
+            TranslateClient translateClient,
+            PlaceRepository placeRepository,
+            PlaceTranslationRepository placeTranslationRepository,
+            LanguageRegistry languages,
+            SyncLogger syncLogger,
+            ApplicationEventPublisher eventPublisher) {
+        this.translateClient = translateClient;
+        this.placeRepository = placeRepository;
+        this.placeTranslationRepository = placeTranslationRepository;
+        this.languages = languages;
+        this.syncLogger = syncLogger;
+        this.eventPublisher = eventPublisher;
+    }
+
+    public record BackfillResult(
+            String lang, int requested, int translated, int skipped, int failed, int charactersUsed) {}
+
+    /**
+     * 대상 언어의 빠진 조합을 최대 {@code limit}건 채운다.
+     *
+     * <p>{@code limit}은 "성공 개수"가 아니라 <b>"시도 횟수"</b>에 건다 — 설정 오류로 전부
+     * 실패하는 상황에서 limit이 안 걸려 후보 전체를 연달아 두드리는 걸 막기 위함이다.
+     *
+     * <p>{@code @Transactional}을 걸지 않는다. 걸면 루프 전체가 트랜잭션 하나가 되어 중간
+     * 한 건의 실패가 그전 성공분까지 롤백시키고, 번역 HTTP 호출이 DB 커넥션을 붙든 채 돈다.
+     */
+    public BackfillResult backfill(String lang, int limit) {
+        String targetLang = languages.resolve(lang);
+        if (!languages.isSupported(lang)) {
+            log.warn("레지스트리에 없는 언어 요청: {} → {}로 처리", lang, targetLang);
+        }
+
+        // 언어별 행 존재 여부를 한 번에 읽어 장소별 조회를 피한다.
+        Set<Long> alreadyHave = placeTranslationRepository.findByLang(targetLang).stream()
+                .map(PlaceTranslation::getPlaceId)
+                .collect(Collectors.toSet());
+
+        List<Place> candidates = placeRepository.findAll().stream()
+                .filter(p -> !alreadyHave.contains(p.getId()))
+                .toList();
+
+        int translated = 0;
+        int skipped = 0;
+        int failed = 0;
+        int characters = 0;
+        int attempts = 0;
+
+        for (Place place : candidates) {
+            if (attempts >= limit) {
+                break;
+            }
+            PlaceTranslation source = pickSource(place.getId(), targetLang);
+            if (source == null) {
+                // 번역할 원문 자체가 없다 — 아직 Merge되지 않았거나 제목이 없는 장소.
+                skipped++;
+                continue;
+            }
+            attempts++;
+            try {
+                characters += translateInto(place, source, targetLang);
+                translated++;
+            } catch (RuntimeException e) {
+                failed++;
+                log.warn("장소 {} {} 번역 실패: {}", place.getId(), targetLang, e.getMessage());
+            } finally {
+                pace();
+            }
+        }
+
+        if (translated > 0) {
+            eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
+        }
+        BackfillResult result =
+                new BackfillResult(targetLang, limit, translated, skipped, failed, characters);
+        syncLogger.record(
+                SyncPhase.TRANSLATE, targetLang, "백필", translated, failed > 0 ? failed + "건 실패" : null);
+        return result;
+    }
+
+    /**
+     * 번역 원문을 고른다. 기준 언어(ko)를 우선하고, 없으면 존재하는 아무 행을 쓴다 —
+     * 어느 한 언어에만 존재하는 장소도 나머지 언어를 채울 수 있어야 한다(ADR-016).
+     */
+    private PlaceTranslation pickSource(Long placeId, String targetLang) {
+        Map<String, PlaceTranslation> byLang = placeTranslationRepository.findByPlaceId(placeId).stream()
+                .collect(Collectors.toMap(PlaceTranslation::getLang, t -> t, (a, b) -> a));
+        PlaceTranslation base = byLang.get(LanguageRegistry.BASE);
+        if (base != null && !LanguageRegistry.BASE.equals(targetLang)) {
+            return base;
+        }
+        return byLang.values().stream()
+                .filter(t -> !t.getLang().equalsIgnoreCase(targetLang))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** 제목·설명·주소를 한 번의 호출로 함께 번역한다 — 호출 수를 줄이는 것이 무료 한도 관리의 핵심. */
+    private int translateInto(Place place, PlaceTranslation source, String targetLang) {
+        List<String> texts = new ArrayList<>();
+        texts.add(source.getTitle());
+        boolean hasOverview = isPresent(source.getOverview());
+        boolean hasAddr = isPresent(source.getAddr());
+        if (hasOverview) {
+            texts.add(truncate(source.getOverview()));
+        }
+        if (hasAddr) {
+            texts.add(source.getAddr());
+        }
+
+        List<String> out = translateClient.translate(texts);
+        int cursor = 1;
+        String overview = hasOverview ? out.get(cursor++) : null;
+        String addr = hasAddr ? out.get(cursor) : null;
+
+        placeTranslationRepository.save(PlaceTranslation.builder()
+                .placeId(place.getId())
+                .lang(targetLang)
+                .title(out.get(0))
+                .overview(overview)
+                .addr(addr)
+                .source(TranslationSource.TRANSLATE)
+                .generatedAt(LocalDateTime.now())
+                .build());
+
+        return texts.stream().mapToInt(String::length).sum();
+    }
+
+    private static boolean isPresent(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private static String truncate(String overview) {
+        return overview.length() > MAX_OVERVIEW_CHARS ? overview.substring(0, MAX_OVERVIEW_CHARS) : overview;
+    }
+
+    // 연속 호출 시 403 userRateLimitExceeded가 난다(429가 아님 — 레거시 v2 특성). 하루 글자수
+    // 한도와는 별개인 "초당 요청 수" 제한이라 호출 직후 무조건 쉰다(2026-07-17 실측, 0.3초로는 부족).
+    private static void pace() {
+        try {
+            Thread.sleep(1_000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+}

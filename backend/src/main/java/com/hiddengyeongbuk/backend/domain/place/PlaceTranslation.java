@@ -30,7 +30,7 @@ import lombok.Setter;
         name = "place_translation",
         indexes = {
             @Index(name = "uk_place_translation_place_lang", columnList = "place_id, lang", unique = true),
-            @Index(name = "idx_place_translation_lang", columnList = "lang")
+            @Index(name = "idx_place_translation_lang_source", columnList = "lang, source")
         })
 @Getter
 @Setter
@@ -47,10 +47,12 @@ public class PlaceTranslation {
     @Column(name = "place_id", nullable = false)
     private Long placeId;
 
-    @Column(name = "lang", length = 5, nullable = false)
+    /** BCP 47. zh-CN·zh-TW 같은 지역 하위태그를 수용하려면 5자로는 부족하다(ADR-018). */
+    @Column(name = "lang", length = 10, nullable = false)
     private String lang;
 
-    @Column(name = "title", length = 200)
+    /** 번역 행이 있는데 제목이 없는 상태를 막는다 — 조회 폴백이 제목을 항상 찾을 수 있어야 한다. */
+    @Column(name = "title", length = 200, nullable = false)
     private String title;
 
     @Lob

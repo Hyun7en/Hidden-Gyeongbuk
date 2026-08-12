@@ -1,39 +1,26 @@
 package com.hiddengyeongbuk.backend.catalog;
 
 import com.hiddengyeongbuk.backend.catalog.dto.MetaOptionsResponse;
-import com.hiddengyeongbuk.backend.catalog.dto.MetaOptionsResponse.Option;
-import com.hiddengyeongbuk.backend.domain.hub.HubRepository;
-import java.util.Arrays;
-import java.util.List;
-import org.springframework.cache.annotation.Cacheable;
+import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/meta")
 public class MetaController {
 
-    private final HubRepository hubRepository;
+    private final MetaQueryService metaQueryService;
+    private final LanguageRegistry languages;
 
-    public MetaController(HubRepository hubRepository) {
-        this.hubRepository = hubRepository;
+    public MetaController(MetaQueryService metaQueryService, LanguageRegistry languages) {
+        this.metaQueryService = metaQueryService;
+        this.languages = languages;
     }
 
     @GetMapping("/options")
-    @Cacheable("metaOptions")
-    public MetaOptionsResponse options() {
-        List<Option> durations =
-                Arrays.stream(Duration.values()).map(d -> new Option(d.name(), d.labelKo(), d.labelEn())).toList();
-        List<Option> difficulties = Arrays.stream(Difficulty.values())
-                .map(d -> new Option(d.name(), d.labelKo(), d.labelEn()))
-                .toList();
-        List<Option> interests =
-                Arrays.stream(Interest.values()).map(i -> new Option(i.name(), i.labelKo(), i.labelEn())).toList();
-        List<Option> hubs = hubRepository.findAll().stream()
-                .map(h -> new Option(h.getId().toString(), h.getNameKo(), h.getNameEn()))
-                .toList();
-
-        return new MetaOptionsResponse(durations, difficulties, interests, hubs);
+    public MetaOptionsResponse options(@RequestParam(required = false) String lang) {
+        return metaQueryService.options(languages.resolve(lang));
     }
 }

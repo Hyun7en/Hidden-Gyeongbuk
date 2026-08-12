@@ -30,6 +30,24 @@ server:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
+# 언어 레지스트리 — 언어는 데이터이지 코드가 아니다(ADR-018).
+# 언어를 늘리는 것은 여기 항목을 추가하는 일이어야 하며, 스키마 변경이나 코드 수정이
+# 발생하면 설계 원칙이 깨진 신호로 보고 원인을 점검한다.
+# 조회의 폴백 체인·캐시 키와 수집(Collector)의 순회 대상이 모두 이 목록을 따른다.
+app:
+  language:
+    entries:
+      - code: ko
+        display-name: 한국어
+        service-name: KorService2
+        active: true
+      - code: en
+        display-name: English
+        service-name: EngService2
+        active: true
+      # 구조는 N개 언어를 전제하되 실데이터는 국·영문 우선(ADR-018). 일문·중문은
+      # 서비스 실측 → 항목 추가 → staging 수집 → Resolve 재실행 → 번역 백필 순으로 켠다.
+
 tourapi:
   service-key: ${TOURAPI_SERVICE_KEY:}
   kor-base-url: https://apis.data.go.kr/B551011/KorService2

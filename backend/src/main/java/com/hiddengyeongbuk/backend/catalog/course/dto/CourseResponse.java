@@ -17,7 +17,8 @@ public record CourseResponse(
 
     public record DayResponse(int day, List<CoursePlaceResponse> places, LodgingResponse lodging) {}
 
-    public record CoursePlaceResponse(int order, Long placeId, String category, String title, BigDecimal lat, BigDecimal lng) {}
+    public record CoursePlaceResponse(
+            int order, Long placeId, String placeType, String title, BigDecimal lat, BigDecimal lng) {}
 
     public record LodgingResponse(Long placeId, String title) {}
 }

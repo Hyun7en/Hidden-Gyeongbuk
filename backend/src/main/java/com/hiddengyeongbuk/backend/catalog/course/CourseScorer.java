@@ -3,9 +3,11 @@ package com.hiddengyeongbuk.backend.catalog.course;
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.catalog.Interest;
+import com.hiddengyeongbuk.backend.catalog.PlaceTexts;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
@@ -16,13 +18,18 @@ class CourseScorer {
 
     record Breakdown(double interest, double access, double stay, double dispersion, double completeness, double total) {}
 
-    Breakdown score(CourseCandidate candidate, Set<Interest> interests, Duration duration, Difficulty difficulty) {
+    Breakdown score(
+            CourseCandidate candidate,
+            Set<Interest> interests,
+            Duration duration,
+            Difficulty difficulty,
+            Map<Long, PlaceTexts> texts) {
         List<Place> allPlaces = candidate.allPlaces();
         double interest = interestScore(allPlaces, interests);
         double access = accessScore(candidate.totalDistanceKm(), duration, difficulty);
         double stay = stayScore(candidate, duration);
         double dispersion = dispersionScore(allPlaces, duration);
-        double completeness = completenessScore(allPlaces);
+        double completeness = completenessScore(allPlaces, texts);
         double total = 0.30 * interest + 0.25 * access + 0.20 * stay + 0.15 * dispersion + 0.10 * completeness;
         return new Breakdown(interest, access, stay, dispersion, completeness, total);
     }
@@ -35,7 +42,8 @@ class CourseScorer {
         Set<String> covered = places.stream()
                 .flatMap(p -> p.getTags().stream().map(PlaceTag::getTag))
                 .collect(Collectors.toSet());
-        long matched = interests.stream().filter(i -> covered.contains(i.labelKo())).count();
+        // place_tag가 enum 코드를 저장하므로 코드끼리 비교한다(구: 한글 라벨 문자열 일치).
+        long matched = interests.stream().filter(i -> covered.contains(i.name())).count();
         return 100.0 * matched / interests.size();
     }
 
@@ -69,11 +77,14 @@ class CourseScorer {
     }
 
     /** 4.5 데이터 완성도: 장소별 필수 필드 충실도의 코스 평균. */
-    private double completenessScore(List<Place> places) {
+    private double completenessScore(List<Place> places, Map<Long, PlaceTexts> texts) {
         if (places.isEmpty()) {
             return 0;
         }
-        return places.stream().mapToDouble(PlaceCompleteness::score).average().orElse(0);
+        return places.stream()
+                .mapToDouble(p -> PlaceCompleteness.score(p, texts.getOrDefault(p.getId(), PlaceTexts.empty())))
+                .average()
+                .orElse(0);
     }
 
     private static double clamp(double value) {

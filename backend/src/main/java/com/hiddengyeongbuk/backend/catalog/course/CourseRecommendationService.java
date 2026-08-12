@@ -4,19 +4,19 @@ import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.catalog.HubNotFoundException;
 import com.hiddengyeongbuk.backend.catalog.Interest;
-import com.hiddengyeongbuk.backend.catalog.LangFallback;
+import com.hiddengyeongbuk.backend.catalog.PlaceTexts;
 import com.hiddengyeongbuk.backend.catalog.TranslationLookup;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseResponse;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.hub.HubRepository;
 import com.hiddengyeongbuk.backend.domain.place.Place;
-import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,10 +73,10 @@ public class CourseRecommendationService {
 
         List<Place> places = placeRepository.findByRegionIdInWithTags(regionIds);
         List<Place> attractionPool = places.stream()
-                .filter(p -> p.getCategory() != PlaceCategory.음식점 && p.getCategory() != PlaceCategory.숙박)
+                .filter(p -> p.getPlaceType() != PlaceType.RESTAURANT && p.getPlaceType() != PlaceType.STAY)
                 .toList();
-        List<Place> foodPool = places.stream().filter(p -> p.getCategory() == PlaceCategory.음식점).toList();
-        List<Place> lodgingPool = places.stream().filter(p -> p.getCategory() == PlaceCategory.숙박).toList();
+        List<Place> foodPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.RESTAURANT).toList();
+        List<Place> lodgingPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.STAY).toList();
 
         if (attractionPool.isEmpty()) {
             return new CourseListResponse(List.of());
@@ -89,9 +89,14 @@ public class CourseRecommendationService {
                     .ifPresent(candidate -> uniqueCandidates.putIfAbsent(candidate.placeIdSet(), candidate));
         }
 
+        // 완성도 점수가 요청 언어의 번역 행 존재를 보므로(ADR-017), 채점 전에 후보 전체의
+        // 텍스트를 한 번에 읽는다. 구 구현은 상위 코스가 정해진 뒤에 읽었는데, has_en 플래그가
+        // place에 있어서 채점에 조회가 필요 없었기 때문이다.
+        Map<Long, PlaceTexts> texts = translationLookup.forPlaces(allCandidatePlaces(uniqueCandidates.values()), lang);
+
         List<ScoredCandidate> ranked = uniqueCandidates.values().stream()
                 .map(candidate -> new ScoredCandidate(
-                        candidate, courseScorer.score(candidate, effectiveInterests, duration, difficulty)))
+                        candidate, courseScorer.score(candidate, effectiveInterests, duration, difficulty, texts)))
                 .sorted(Comparator.comparingDouble((ScoredCandidate s) -> s.breakdown().total())
                         .thenComparingDouble(s -> s.breakdown().completeness())
                         .thenComparingDouble(s -> s.breakdown().access())
@@ -99,19 +104,18 @@ public class CourseRecommendationService {
                 .limit(MAX_RESULTS)
                 .toList();
 
-        Map<Long, PlaceTranslation> translations = translationLookup.forPlaces(placesOf(ranked), lang);
         List<CourseResponse> courses = new ArrayList<>();
         int rank = 1;
         for (ScoredCandidate scored : ranked) {
-            courses.add(toResponse(rank++, scored, hub, lang, translations));
+            courses.add(toResponse(rank++, scored, hub, lang, texts));
         }
         return new CourseListResponse(courses);
     }
 
-    /** 상위 코스들에 등장하는 모든 장소(방문지+숙박)를 모아 번역 제목 일괄 조회에 쓴다. */
-    private static List<Place> placesOf(List<ScoredCandidate> ranked) {
-        return ranked.stream()
-                .flatMap(s -> s.candidate().days().stream())
+    /** 후보 코스 전체에 등장하는 장소(방문지+숙박)를 모아 번역을 일괄 조회한다. */
+    private static List<Place> allCandidatePlaces(Collection<CourseCandidate> candidates) {
+        return candidates.stream()
+                .flatMap(c -> c.days().stream())
                 .flatMap(day -> Stream.concat(day.places().stream(), Stream.ofNullable(day.lodging())))
                 .toList();
     }
@@ -119,11 +123,11 @@ public class CourseRecommendationService {
     private record ScoredCandidate(CourseCandidate candidate, CourseScorer.Breakdown breakdown) {}
 
     private CourseResponse toResponse(
-            int rank, ScoredCandidate scored, Hub hub, String lang, Map<Long, PlaceTranslation> translations) {
+            int rank, ScoredCandidate scored, Hub hub, String lang, Map<Long, PlaceTexts> texts) {
         CourseCandidate candidate = scored.candidate();
         CourseScorer.Breakdown b = scored.breakdown();
         List<CourseResponse.DayResponse> days = candidate.days().stream()
-                .map(day -> toDayResponse(day, lang, translations))
+                .map(day -> toDayResponse(day, lang, texts))
                 .toList();
         return new CourseResponse(
                 rank,
@@ -135,15 +139,15 @@ public class CourseRecommendationService {
                 days);
     }
 
-    private CourseResponse.DayResponse toDayResponse(CourseDay day, String lang, Map<Long, PlaceTranslation> translations) {
+    private CourseResponse.DayResponse toDayResponse(CourseDay day, String lang, Map<Long, PlaceTexts> texts) {
         List<CourseResponse.CoursePlaceResponse> places = new ArrayList<>();
         int order = 1;
         for (Place place : day.places()) {
             places.add(new CourseResponse.CoursePlaceResponse(
                     order++,
                     place.getId(),
-                    place.getCategory().name(),
-                    LangFallback.title(place, translations.get(place.getId()), lang),
+                    place.getPlaceType().name(),
+                    textOf(texts, place.getId()).title(),
                     place.getLat(),
                     place.getLng()));
         }
@@ -151,8 +155,12 @@ public class CourseRecommendationService {
                 ? null
                 : new CourseResponse.LodgingResponse(
                         day.lodging().getId(),
-                        LangFallback.title(day.lodging(), translations.get(day.lodging().getId()), lang));
+                        textOf(texts, day.lodging().getId()).title());
         return new CourseResponse.DayResponse(day.day(), places, lodging);
+    }
+
+    private static PlaceTexts textOf(Map<Long, PlaceTexts> texts, Long placeId) {
+        return texts.getOrDefault(placeId, PlaceTexts.empty());
     }
 
     private static double round2(double value) {

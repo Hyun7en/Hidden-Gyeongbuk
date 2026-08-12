@@ -1,17 +1,13 @@
 package com.hiddengyeongbuk.backend.ingest.admin;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.hiddengyeongbuk.backend.domain.region.Region;
-import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
-import com.hiddengyeongbuk.backend.domain.sync.SyncStatus;
-import com.hiddengyeongbuk.backend.ingest.PlaceCollectionService;
+import com.hiddengyeongbuk.backend.ingest.Collector;
+import com.hiddengyeongbuk.backend.ingest.Merger;
+import com.hiddengyeongbuk.backend.ingest.Resolver;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,50 +25,68 @@ class SyncAdminControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private RegionRepository regionRepository;
+    private Collector collector;
 
     @MockitoBean
-    private PlaceCollectionService placeCollectionService;
+    private Resolver resolver;
+
+    @MockitoBean
+    private Merger merger;
 
     @Test
-    void 지역_목록을_반환한다() throws Exception {
-        Region andong = Region.builder()
-                .id(1L)
-                .nameKo("안동")
-                .ldongRegnCd("47")
-                .ldongSignguCd("170")
-                .build();
-        BDDMockito.given(regionRepository.findAll()).willReturn(List.of(andong));
+    void 언어_미지정_수집은_활성_언어_전체를_돈다() throws Exception {
+        BDDMockito.given(collector.collectAll())
+                .willReturn(List.of(new Collector.Result("ko", 10, 2, 1, 0), new Collector.Result("en", 7, 0, 3, 1)));
 
-        mockMvc.perform(get("/internal/sync/regions"))
+        mockMvc.perform(post("/internal/sync/collect"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nameKo").value("안동"));
+                .andExpect(jsonPath("$[0].lang").value("ko"))
+                .andExpect(jsonPath("$[1].lang").value("en"));
+
+        BDDMockito.then(collector).should().collectAll();
     }
 
     @Test
-    void 존재하는_지역이면_수집_결과를_반환한다() throws Exception {
-        Region andong = Region.builder()
-                .id(1L)
-                .nameKo("안동")
-                .ldongRegnCd("47")
-                .ldongSignguCd("170")
-                .build();
-        BDDMockito.given(regionRepository.findById(1L)).willReturn(Optional.of(andong));
-        BDDMockito.given(placeCollectionService.collectRegionIncremental(andong))
-                .willReturn(new PlaceCollectionService.CollectionResult(3, 1, 0, 0, 2, 0, 0, SyncStatus.SUCCESS));
+    void 언어를_지정하면_그_언어만_수집한다() throws Exception {
+        BDDMockito.given(collector.collectLanguage("en")).willReturn(new Collector.Result("en", 5, 0, 0, 0));
 
-        mockMvc.perform(post("/internal/sync/regions/1"))
+        mockMvc.perform(post("/internal/sync/collect").param("lang", "en"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.saved").value(3))
-                .andExpect(jsonPath("$.status").value("SUCCESS"));
+                .andExpect(jsonPath("$[0].upserted").value(5));
+
+        BDDMockito.then(collector).should(BDDMockito.never()).collectAll();
     }
 
     @Test
-    void 존재하지_않는_지역이면_404를_반환한다() throws Exception {
-        BDDMockito.given(regionRepository.findById(999L)).willReturn(Optional.empty());
+    void 판정은_외부_호출_없이_재실행할_수_있다() throws Exception {
+        BDDMockito.given(resolver.resolve()).willReturn(new Resolver.Result(12, 3, 9));
 
-        mockMvc.perform(post("/internal/sync/regions/999"))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/internal/sync/resolve"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matched").value(12))
+                .andExpect(jsonPath("$.quarantined").value(3));
+
+        // resetAll을 안 줬으면 기존 판정을 유지한다.
+        BDDMockito.then(resolver).should(BDDMockito.never()).resetAllToPending();
+    }
+
+    @Test
+    void resetAll이면_전면_재판정한다() throws Exception {
+        BDDMockito.given(resolver.resolve()).willReturn(new Resolver.Result(20, 0, 20));
+
+        mockMvc.perform(post("/internal/sync/resolve").param("resetAll", "true"))
+                .andExpect(status().isOk());
+
+        BDDMockito.then(resolver).should().resetAllToPending();
+    }
+
+    @Test
+    void 병합_결과를_반환한다() throws Exception {
+        BDDMockito.given(merger.merge()).willReturn(new Merger.Result(9, 15, 0));
+
+        mockMvc.perform(post("/internal/sync/merge"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places").value(9))
+                .andExpect(jsonPath("$.translations").value(15));
     }
 }

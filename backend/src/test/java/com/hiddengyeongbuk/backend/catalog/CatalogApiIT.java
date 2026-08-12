@@ -12,13 +12,18 @@ import com.hiddengyeongbuk.backend.catalog.dto.PlaceDetailResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.PlaceSummaryResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.RegionResponse;
 import com.hiddengyeongbuk.backend.domain.place.Place;
-import com.hiddengyeongbuk.backend.domain.place.PlaceCategory;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTagRepository;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTagType;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
+import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -34,18 +39,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 /**
- * 실제 MySQL(docker compose up -d mysql)이 필요한 조회·추천 API 통합 테스트. 슬라이스
- * 테스트(HubControllerTest 등)는 레포지토리를 mock으로 대체하지만, 여기서는 실제 HTTP 요청 →
- * 컨트롤러 → 서비스 → JPA → DB 전체 경로가 맞물려 동작하는지 확인한다(캐싱 AOP·예외 핸들러
- * 전역 등록 등 슬라이스 테스트로는 못 잡는 배선 문제가 목표).
+ * 실제 MySQL(docker compose up -d mysql)이 필요한 조회·추천 API 통합 테스트. 슬라이스 테스트가
+ * 레포지토리를 mock으로 대체하는 것과 달리, 여기서는 HTTP → 컨트롤러 → 서비스 → JPA → DB
+ * 전체 경로가 맞물려 도는지 본다(캐싱 AOP·전역 예외 핸들러 등록처럼 슬라이스로는 못 잡는 배선).
  *
- * hub/region 시드 데이터(V2 마이그레이션)는 그대로 참조하고, place는 이 테스트 전용으로
- * content_id에 "IT-TEST-" 접두사를 붙여 만들었다가 각 테스트 후 정리한다 — 실제 TourAPI로
- * 수집된 place와 절대 충돌하지 않고, 진행 중인 M1 수집량과 무관하게 항상 같은 결과를 보장한다.
+ * <p>hub/region 시드(V2)는 그대로 참조하고, place는 이 테스트 전용으로 만들었다가 정리한다.
+ * <b>구 스키마와 달리 place에 자연키가 없어</b> content_id 접두사로 격리하던 방식을 못 쓴다 —
+ * 대신 제목에 UUID를 넣어 실제 수집 데이터와 겹치지 않게 하고, 저장한 엔티티를 들고 있다가 지운다.
  *
- * 실행 방법:
- *   cd backend
- *   ./gradlew integrationTest --tests "*CatalogApiIT"
+ * <p>실행: {@code ./gradlew integrationTest --tests "*CatalogApiIT"}
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class CatalogApiIT {
@@ -65,45 +67,53 @@ class CatalogApiIT {
     @Autowired
     private PlaceTagRepository placeTagRepository;
 
-    private String testTitle;
+    @Autowired
+    private PlaceTranslationRepository placeTranslationRepository;
+
+    private String testTitleKo;
     private Place testPlace;
     private PlaceTag testPlaceTag;
+    private PlaceTranslation testKoTranslation;
 
     @BeforeEach
     void seedTestPlace() {
         Region andong = regionRepository
                 .findByLdongRegnCdAndLdongSignguCd("47", "170")
-                .orElseThrow(() -> new IllegalStateException("안동 region 시드 데이터가 없습니다. V2 마이그레이션 확인 필요."));
+                .orElseThrow(() -> new IllegalStateException("안동 region 시드가 없다. V2 마이그레이션 확인 필요."));
 
-        testTitle = "통합테스트 전용 장소 " + UUID.randomUUID();
-        // content_id는 VARCHAR(20)이라 UUID 전체를 못 넣는다 — 앞 18자리 hex만 붙여 20자에 맞춘다.
-        String shortId = UUID.randomUUID().toString().replace("-", "").substring(0, 18);
+        testTitleKo = "통합테스트 전용 장소 " + UUID.randomUUID();
         testPlace = placeRepository.save(Place.builder()
-                .contentId("IT" + shortId)
-                .contentTypeId(12)
-                .category(PlaceCategory.관광지)
                 .region(andong)
-                .titleKo(testTitle)
-                .addr("테스트 주소")
+                .placeType(PlaceType.ATTRACTION)
                 .lat(new BigDecimal("36.5684249"))
                 .lng(new BigDecimal("128.7294000"))
-                .overviewKo("통합테스트용 설명")
-                .hasEn(true)
                 .build());
-        testPlaceTag = placeTagRepository.save(PlaceTag.builder().place(testPlace).tag("자연").build());
+
+        // 제목·주소·설명은 이제 place가 아니라 번역 행에 있다. 국문 행만 만들어 en 요청이
+        // ko로 폴백하는 것까지 확인한다.
+        testKoTranslation = placeTranslationRepository.save(PlaceTranslation.builder()
+                .placeId(testPlace.getId())
+                .lang("ko")
+                .title(testTitleKo)
+                .overview("통합테스트용 설명")
+                .addr("경상북도 안동시 테스트로 1")
+                .source(TranslationSource.OFFICIAL)
+                .generatedAt(LocalDateTime.now())
+                .build());
+
+        testPlaceTag = placeTagRepository.save(
+                PlaceTag.builder().place(testPlace).tag(PlaceTagType.NATURE.name()).build());
     }
 
     @AfterEach
     void cleanupTestPlace() {
         if (testPlace == null) {
-            return; // seedTestPlace가 실패했으면 지울 것도 없다
+            return;
         }
-        // deleteByPlaceId(파생 삭제 쿼리)는 자체 트랜잭션을 안 열고 호출부 트랜잭션에 얹혀간다 —
-        // 프로덕션에서는 @Transactional 서비스 메서드 안에서 불러서 문제없지만, 여기 @AfterEach에는
-        // 그런 트랜잭션이 없어 "No EntityManager with actual transaction available"로 터진다.
-        // save()가 돌려준 엔티티를 그대로 delete(entity)로 지우면(SimpleJpaRepository의 기본
-        // CRUD 메서드라 자체 트랜잭션을 가짐) 앰비언트 트랜잭션 없이도 안전하다.
+        // 파생 삭제 쿼리(deleteByPlaceId)는 자체 트랜잭션을 안 열고 호출부 트랜잭션에 얹혀간다 —
+        // @AfterEach에는 앰비언트 트랜잭션이 없어 터진다. 저장 시 받은 엔티티를 기본 CRUD로 지운다.
         placeTagRepository.delete(testPlaceTag);
+        placeTranslationRepository.delete(testKoTranslation);
         placeRepository.delete(testPlace);
     }
 
@@ -112,51 +122,81 @@ class CatalogApiIT {
     }
 
     @Test
-    void 허브_목록에_시드된_안동_허브가_있다() {
-        ResponseEntity<HubResponse[]> response = restTemplate.getForEntity(url("/api/hubs"), HubResponse[].class);
+    void 허브_목록은_요청_언어로_해석된_이름을_준다() {
+        ResponseEntity<HubResponse[]> response =
+                restTemplate.getForEntity(url("/api/hubs?lang=ko"), HubResponse[].class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).extracting(HubResponse::nameKo).contains("안동");
+        assertThat(response.getBody()).extracting(HubResponse::name).contains("안동");
+        assertThat(response.getBody()).extracting(HubResponse::code).contains("ANDONG");
     }
 
     @Test
-    void 지역_목록을_허브로_필터링한다() {
+    void 허브_목록은_영문_요청에_영문_이름을_준다() {
+        ResponseEntity<HubResponse[]> response =
+                restTemplate.getForEntity(url("/api/hubs?lang=en"), HubResponse[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).extracting(HubResponse::name).contains("Andong");
+        assertThat(response.getBody()).extracting(HubResponse::resolvedLang).contains("en");
+    }
+
+    @Test
+    void 지역_목록은_거점_소속을_먼저_보여준다() {
         ResponseEntity<RegionResponse[]> response =
-                restTemplate.getForEntity(url("/api/regions?hubId=1"), RegionResponse[].class);
+                restTemplate.getForEntity(url("/api/regions?hubId=1&lang=ko"), RegionResponse[].class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).extracting(RegionResponse::nameKo).contains("안동");
+        assertThat(response.getBody()).extracting(RegionResponse::name).contains("안동");
+        // 정렬이 제외가 아니라 우선순위라, 다른 거점 지역도 뒤에 남아 있어야 한다(ADR-019).
+        assertThat(response.getBody()).hasSizeGreaterThan(1);
     }
 
     @Test
-    void 메타_옵션에_6개_관심사가_있다() {
+    void 메타_옵션에_6개_관심사가_있고_durations는_없다() {
         ResponseEntity<MetaOptionsResponse> response =
-                restTemplate.getForEntity(url("/api/meta/options"), MetaOptionsResponse.class);
+                restTemplate.getForEntity(url("/api/meta/options?lang=en"), MetaOptionsResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().interests()).hasSize(6);
+        assertThat(response.getBody().resolvedLang()).isEqualTo("en");
     }
 
     @Test
     void 키워드로_시드된_테스트_장소를_검색한다() {
         ResponseEntity<PageResponse<PlaceSummaryResponse>> response = restTemplate.exchange(
-                url("/api/places?keyword=" + testTitle + "&lang=ko"),
+                url("/api/places?keyword=" + testTitleKo + "&lang=ko"),
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<PageResponse<PlaceSummaryResponse>>() {});
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().content()).extracting(PlaceSummaryResponse::title).contains(testTitle);
+        assertThat(response.getBody().content()).extracting(PlaceSummaryResponse::title).contains(testTitleKo);
+        assertThat(response.getBody().resolvedLang()).isEqualTo("ko");
     }
 
     @Test
-    void 장소_상세를_조회하면_태그가_포함된다() {
-        ResponseEntity<PlaceDetailResponse> response =
-                restTemplate.getForEntity(url("/api/places/" + testPlace.getId() + "?lang=ko"), PlaceDetailResponse.class);
+    void 장소_상세는_태그를_enum_코드로_준다() {
+        ResponseEntity<PlaceDetailResponse> response = restTemplate.getForEntity(
+                url("/api/places/" + testPlace.getId() + "?lang=ko"), PlaceDetailResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().title()).isEqualTo(testTitle);
-        assertThat(response.getBody().tags()).contains("자연");
+        assertThat(response.getBody().title()).isEqualTo(testTitleKo);
+        assertThat(response.getBody().placeType()).isEqualTo("ATTRACTION");
+        // 한글 라벨("자연")이 아니라 코드가 내려와야 한다(ERD §3.8).
+        assertThat(response.getBody().tags()).contains("NATURE");
+    }
+
+    @Test
+    void 영문_행이_없으면_국문으로_폴백하고_resolvedLang으로_알린다() {
+        ResponseEntity<PlaceDetailResponse> response = restTemplate.getForEntity(
+                url("/api/places/" + testPlace.getId() + "?lang=en"), PlaceDetailResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().title()).isEqualTo(testTitleKo);
+        assertThat(response.getBody().resolvedLang()).isEqualTo("ko");
+        // addrLocal은 요청 언어와 무관하게 항상 국문이다.
+        assertThat(response.getBody().addrLocal()).isEqualTo("경상북도 안동시 테스트로 1");
     }
 
     @Test

@@ -26,6 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CourseController.class)
+@org.springframework.context.annotation.Import(com.hiddengyeongbuk.backend.support.LanguageRegistryTestConfig.class)
 class CourseControllerTest {
 
     @Autowired

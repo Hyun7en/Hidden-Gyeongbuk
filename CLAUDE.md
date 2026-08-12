@@ -83,9 +83,9 @@ npm run build      # tsc -b + vite build
 ### 백엔드 패키지 규칙 (`com.hiddengyeongbuk.backend`)
 
 - `domain.{hub,region,place,sync}` — JPA 엔티티+레포지토리
-- `ingest` — TourAPI 수집 파이프라인. `ingest.client`(TourAPI 통신), `ingest.summary`(번역), `ingest.admin`(수동 트리거)
+- `ingest` — TourAPI 수집 파이프라인 4단(Collector·Resolver·Merger). `ingest.client`(TourAPI 통신), `ingest.translate`(Translator·TranslateClient), `ingest.admin`(수동 트리거)
 - `catalog` — 프론트향 조회·추천 API. `catalog.course`(추천 엔진), `catalog.dto`
-- `support` — 도메인 무관 공용(Retry, GeoUtils, WebConfig, PlaceDataChangedEvent)
+- `support` — 도메인 무관 공용(Retry, GeoUtils, WebConfig, PlaceDataChangedEvent, LanguageRegistry). `support.llm`(Gemini — 미사용 예비, ADR-006)
 
 새 기능도 이 분류를 따른다: 외부 API 통신은 `client`(또는 기능 전용 서브패키지), 운영자용 HTTP는 `admin`, 프론트향 조회는 `catalog`. ingest→catalog 직접 의존은 금지 — `PlaceDataChangedEvent`(Spring 이벤트)로만 통신한다.
 

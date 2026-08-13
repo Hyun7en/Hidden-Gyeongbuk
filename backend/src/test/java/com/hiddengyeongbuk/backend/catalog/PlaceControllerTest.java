@@ -36,17 +36,16 @@ class PlaceControllerTest {
 
     @Test
     void 검색_결과를_반환한다() throws Exception {
-        PlaceSummaryResponse summary = new PlaceSummaryResponse(
-                1024L, "ATTRACTION", "Hahoe Folk Village", "Andong-si", null, null, null, List.of("TRADITION"));
+        PlaceSummaryResponse summary =
+                new PlaceSummaryResponse(1024L, "HS", "Hahoe Folk Village", "Andong-si", null, null, null);
         BDDMockito.given(placeQueryService.search(
-                        isNull(), eq(PlaceType.ATTRACTION), isNull(), isNull(), anyString(), anyInt(), anyInt()))
+                        isNull(), eq(PlaceType.HS), isNull(), anyString(), anyInt(), anyInt()))
                 .willReturn(new PageResponse<>(List.of(summary), 0, 20, 1, "en"));
 
-        mockMvc.perform(get("/api/places").param("placeType", "ATTRACTION").param("lang", "en"))
+        mockMvc.perform(get("/api/places").param("placeType", "HS").param("lang", "en"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].title").value("Hahoe Folk Village"))
-                .andExpect(jsonPath("$.content[0].placeType").value("ATTRACTION"))
-                .andExpect(jsonPath("$.content[0].tags[0]").value("TRADITION"))
+                .andExpect(jsonPath("$.content[0].placeType").value("HS"))
                 .andExpect(jsonPath("$.resolvedLang").value("en"))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
@@ -74,7 +73,7 @@ class PlaceControllerTest {
         // 번역된 주소만으로는 실제 이동이 불가능하기 때문이다(User Persona §4-1).
         PlaceDetailResponse detail = new PlaceDetailResponse(
                 1024L,
-                "ATTRACTION",
+                "HS",
                 11L,
                 "Hahoe Folk Village",
                 "40 Hahoejongga-gil, Andong-si",
@@ -85,7 +84,6 @@ class PlaceControllerTest {
                 "A traditional village",
                 null,
                 List.of(),
-                List.of("TRADITION"),
                 "en",
                 "OFFICIAL",
                 null);
@@ -103,7 +101,7 @@ class PlaceControllerTest {
     void 지원하지_않는_언어는_에러가_아니라_기준_언어로_폴백한다() throws Exception {
         // API 명세서 §1.1 — 지원하지 않는 언어도 에러가 아니다. resolvedLang으로 실제 언어를 알린다.
         BDDMockito.given(placeQueryService.search(
-                        isNull(), isNull(), isNull(), isNull(), eq(LanguageRegistry.BASE), anyInt(), anyInt()))
+                        isNull(), isNull(), isNull(), eq(LanguageRegistry.BASE), anyInt(), anyInt()))
                 .willReturn(new PageResponse<>(List.of(), 0, 20, 0, LanguageRegistry.BASE));
 
         mockMvc.perform(get("/api/places").param("lang", "xx"))

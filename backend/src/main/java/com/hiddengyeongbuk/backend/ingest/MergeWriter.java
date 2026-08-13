@@ -2,21 +2,18 @@ package com.hiddengyeongbuk.backend.ingest;
 
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTagRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
+import com.hiddengyeongbuk.backend.domain.place.ResolutionStatus;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlace;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlaceRepository;
 import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
-import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,30 +26,24 @@ public class MergeWriter {
 
     private final PlaceRepository placeRepository;
     private final PlaceTranslationRepository placeTranslationRepository;
-    private final PlaceTagRepository placeTagRepository;
     private final StagingPlaceRepository stagingPlaceRepository;
     private final RegionRepository regionRepository;
     private final ContentTypeMapping contentTypes;
-    private final PlaceTagAssigner placeTagAssigner;
 
     public MergeWriter(
             PlaceRepository placeRepository,
             PlaceTranslationRepository placeTranslationRepository,
-            PlaceTagRepository placeTagRepository,
             StagingPlaceRepository stagingPlaceRepository,
             RegionRepository regionRepository,
-            ContentTypeMapping contentTypes,
-            PlaceTagAssigner placeTagAssigner) {
+            ContentTypeMapping contentTypes) {
         this.placeRepository = placeRepository;
         this.placeTranslationRepository = placeTranslationRepository;
-        this.placeTagRepository = placeTagRepository;
         this.stagingPlaceRepository = stagingPlaceRepository;
         this.regionRepository = regionRepository;
         this.contentTypes = contentTypes;
-        this.placeTagAssigner = placeTagAssigner;
     }
 
-    public record Written(boolean placeCreated, int translations) {}
+    public record Written(boolean placeCreated, int translations, boolean quarantined) {}
 
     /**
      * 같은 장소로 판정된 staging 그룹을 place 1건 + 언어별 place_translation 행으로 병합한다.
@@ -62,6 +53,15 @@ public class MergeWriter {
     @Transactional
     public Written write(List<StagingPlace> group) {
         StagingPlace anchor = group.get(0);
+
+        // 분류를 정할 수 없으면 place를 만들지 않는다. 오매칭보다 미매칭을 택하는 원칙과 같은
+        // 결이며(ADR-016), 예외로 던져 매 Merge마다 재시도하게 두면 실패 카운트만 쌓이고
+        // 원인이 보이지 않는다 — QUARANTINED로 남겨 건수를 관측한다(ADR-024 결과 ⑦).
+        Optional<PlaceType> resolvedType = resolvePlaceType(group);
+        if (resolvedType.isEmpty()) {
+            quarantine(group);
+            return new Written(false, 0, true);
+        }
 
         // 이미 병합된 그룹이면 그 place를 재사용한다 — 재실행이 중복 place를 만들지 않는
         // 근거다(ERD §3.2). 그룹 내 아무 행이든 연결돼 있으면 그걸 따른다.
@@ -80,7 +80,7 @@ public class MergeWriter {
             place = Place.builder().build();
         }
 
-        applyNeutralFields(place, anchor, group);
+        applyNeutralFields(place, anchor, group, resolvedType.get());
         Place saved = placeRepository.save(place);
 
         int translations = 0;
@@ -91,24 +91,32 @@ public class MergeWriter {
         }
         stagingPlaceRepository.saveAll(group);
 
-        applyTags(saved, group);
-        return new Written(created, translations);
+        return new Written(created, translations, false);
+    }
+
+    /** 분류 불명 그룹을 보류로 되돌린다. place는 만들지 않고 사유를 남겨 수동 검토 근거로 둔다. */
+    private void quarantine(List<StagingPlace> group) {
+        group.forEach(s -> {
+            s.setResolutionStatus(ResolutionStatus.QUARANTINED);
+            s.setQuarantineReason("분류 없음 (lclsSystm1 결측, contentTypeId 폴백 불가)");
+        });
+        stagingPlaceRepository.saveAll(group);
     }
 
     /**
      * 언어 중립 필드는 그룹 전체에서 모은다. 좌표·이미지 같은 값은 어느 언어 서비스가 주든
      * 같은 장소의 속성이므로, 앵커에 없으면 다른 언어 행에서 가져온다(결측 보완).
      */
-    private void applyNeutralFields(Place place, StagingPlace anchor, List<StagingPlace> group) {
+    private void applyNeutralFields(
+            Place place, StagingPlace anchor, List<StagingPlace> group, PlaceType placeType) {
         place.setRegion(resolveRegion(anchor, group));
-        place.setPlaceType(resolvePlaceType(anchor, group));
+        place.setPlaceType(placeType);
         place.setLat(first(group, StagingPlace::getLat));
         place.setLng(first(group, StagingPlace::getLng));
         place.setTel(first(group, StagingPlace::getTel));
         place.setFirstImage(first(group, StagingPlace::getFirstImage));
-        place.setLclsSystm1(first(group, StagingPlace::getLclsSystm1));
-        place.setLclsSystm2(first(group, StagingPlace::getLclsSystm2));
-        place.setLclsSystm3(first(group, StagingPlace::getLclsSystm3));
+        // lcls_systm2/3은 place에 두지 않는다 — 원본이 staging에 남아 있고, 세분 필터가
+        // 필요해지면 컬럼을 추가하고 Merge를 재실행하면 된다(ADR-024).
     }
 
     private Region resolveRegion(StagingPlace anchor, List<StagingPlace> group) {
@@ -123,16 +131,25 @@ public class MergeWriter {
     }
 
     /**
-     * 소스 contentTypeId는 언어마다 값이 다르므로 각 행의 언어로 해석한다. 언어별로 타입이
-     * 어긋나면 앵커(기준 언어) 쪽을 채택한다 — 국문 분류가 더 촘촘한 편이다.
+     * 분류는 소스가 준 {@code lclsSystm1}을 그대로 쓴다(ADR-024). 언어 무관한 값이라 어느 언어
+     * 행에서 가져오든 같아야 하며, 앞선 행부터 채택한다.
+     *
+     * <p>비어 있으면 contentTypeId로 폴백한다. 폴백은 1:1 대응이 명확한 타입에만 있고,
+     * 관광지(12/76)는 대분류가 넷으로 갈라져 폴백이 없다 — 이 경우 빈 값을 돌려주고 호출부가
+     * quarantine으로 보낸다.
      */
-    private PlaceType resolvePlaceType(StagingPlace anchor, List<StagingPlace> group) {
-        return group.stream()
-                .map(s -> contentTypes.placeTypeOf(s.getLang(), s.getSourceTypeId()))
+    private Optional<PlaceType> resolvePlaceType(List<StagingPlace> group) {
+        Optional<PlaceType> fromSource = group.stream()
+                .map(s -> PlaceType.ofSourceCode(s.getLclsSystm1()))
                 .flatMap(Optional::stream)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "contentTypeId 매핑에 없는 타입이다: staging id=" + anchor.getId()));
+                .findFirst();
+        if (fromSource.isPresent()) {
+            return fromSource;
+        }
+        return group.stream()
+                .map(s -> contentTypes.fallbackPlaceType(s.getLang(), s.getSourceTypeId()))
+                .flatMap(Optional::stream)
+                .findFirst();
     }
 
     /**
@@ -162,28 +179,6 @@ public class MergeWriter {
         translation.setSrcModifiedAt(staging.getSourceModifiedAt());
         translation.setGeneratedAt(LocalDateTime.now());
         placeTranslationRepository.save(translation);
-    }
-
-    /**
-     * 태그는 무료 로컬 연산이라 매번 재부여한다 — 규칙을 바꾸면 다음 수집에 자동 반영된다.
-     * 판정 기준이 한국어 키워드라 기준 언어 행의 텍스트를 쓴다.
-     */
-    private void applyTags(Place place, List<StagingPlace> group) {
-        StagingPlace korean = group.stream()
-                .filter(s -> LanguageRegistry.BASE.equalsIgnoreCase(s.getLang()))
-                .findFirst()
-                .orElse(null);
-        if (korean == null) {
-            return;
-        }
-
-        Set<String> tags = placeTagAssigner.assign(place.getPlaceType(), korean.getTitle(), korean.getOverview());
-        placeTagRepository.deleteByPlaceId(place.getId());
-        // flush 없이 바로 insert하면 Hibernate가 같은 트랜잭션 내 insert를 delete보다 먼저
-        // 내보내 유니크 제약을 위반한다.
-        placeTagRepository.flush();
-        tags.forEach(tag -> placeTagRepository.save(
-                PlaceTag.builder().place(place).tag(tag).build()));
     }
 
     private static <T> T first(List<StagingPlace> group, java.util.function.Function<StagingPlace, T> getter) {

@@ -65,13 +65,13 @@ export function fetchCourses(params: CourseRecommendRequest, lang = 'en'): Promi
 }
 
 export function searchPlaces(
-  params: { regionId?: number; category?: string; tag?: string; keyword?: string; page?: number; size?: number },
+  // tag·category는 폐기됐다 — 분류축이 placeType 하나로 합쳐졌다(ADR-024).
+  params: { regionId?: number; placeType?: string; keyword?: string; page?: number; size?: number },
   lang = 'en',
 ): Promise<PageResponse<PlaceSummaryResponse>> {
   const query = new URLSearchParams({ lang })
   if (params.regionId !== undefined) query.set('regionId', String(params.regionId))
-  if (params.category) query.set('category', params.category)
-  if (params.tag) query.set('tag', params.tag)
+  if (params.placeType) query.set('placeType', params.placeType)
   if (params.keyword) query.set('keyword', params.keyword)
   if (params.page !== undefined) query.set('page', String(params.page))
   if (params.size !== undefined) query.set('size', String(params.size))

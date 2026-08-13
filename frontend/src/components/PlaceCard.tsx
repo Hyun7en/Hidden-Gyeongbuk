@@ -4,7 +4,8 @@ export interface PlaceCardData {
   placeId: number
   title: string
   addr: string
-  tags: string[]
+  /** 요청 언어로 해석된 분류 라벨. 장소당 정확히 하나다(ADR-024). */
+  placeTypeLabel: string
   imageUrl: string | null
 }
 
@@ -25,13 +26,11 @@ function PlaceCard({ place }: { place: PlaceCardData }) {
       <div className="p-3.5 md:p-4">
         <p className="text-[15px] font-bold md:text-base">{place.title}</p>
         <p className="mt-1 text-xs text-text-soft md:text-sm">{place.addr}</p>
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {place.tags.map((tag) => (
-            <span key={tag} className="border border-line px-2 py-[3px] text-[11px] md:text-xs">
-              {tag}
-            </span>
-          ))}
-        </div>
+        {place.placeTypeLabel && (
+          <div className="mt-2.5">
+            <span className="border border-line px-2 py-[3px] text-[11px] md:text-xs">{place.placeTypeLabel}</span>
+          </div>
+        )}
       </div>
     </Link>
   )

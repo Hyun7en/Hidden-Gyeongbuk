@@ -4,10 +4,12 @@ import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.place.FestivalDetail;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImage;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.sync.DataSyncLog;
+import com.hiddengyeongbuk.backend.domain.hub.HubTranslation;
+import com.hiddengyeongbuk.backend.domain.place.StagingPlace;
+import com.hiddengyeongbuk.backend.domain.region.RegionTranslation;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
@@ -30,9 +32,11 @@ class SchemaExportSmokeTest {
         try {
             Metadata metadata = new MetadataSources(registry)
                     .addAnnotatedClass(Hub.class)
+                    .addAnnotatedClass(HubTranslation.class)
                     .addAnnotatedClass(Region.class)
+                    .addAnnotatedClass(RegionTranslation.class)
                     .addAnnotatedClass(Place.class)
-                    .addAnnotatedClass(PlaceTag.class)
+                    .addAnnotatedClass(StagingPlace.class)
                     .addAnnotatedClass(PlaceImage.class)
                     .addAnnotatedClass(FestivalDetail.class)
                     .addAnnotatedClass(PlaceTranslation.class)

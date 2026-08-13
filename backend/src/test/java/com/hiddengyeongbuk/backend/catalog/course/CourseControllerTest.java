@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
-import com.hiddengyeongbuk.backend.catalog.Interest;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseRecommendRequest;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseResponse;
@@ -52,7 +52,7 @@ class CourseControllerTest {
                 .willReturn(new CourseListResponse(List.of(course)));
 
         CourseRecommendRequest request =
-                new CourseRecommendRequest(1L, Duration.ONE_NIGHT, List.of(Interest.TRADITION, Interest.NATURE), Difficulty.EASY);
+                new CourseRecommendRequest(1L, Duration.ONE_NIGHT, List.of(PlaceType.HS, PlaceType.NA), Difficulty.EASY);
 
         mockMvc.perform(post("/api/courses/recommend")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -66,13 +66,13 @@ class CourseControllerTest {
     @Test
     void 공유_URL_재현_요청은_동일_조건으로_무상태_재계산한다() throws Exception {
         BDDMockito.given(courseRecommendationService.recommend(
-                        eq(1L), eq(Duration.ONE_NIGHT), eq(Set.of(Interest.TRADITION, Interest.NATURE)), eq(Difficulty.EASY), anyString()))
+                        eq(1L), eq(Duration.ONE_NIGHT), eq(Set.of(PlaceType.HS, PlaceType.NA)), eq(Difficulty.EASY), anyString()))
                 .willReturn(new CourseListResponse(List.of()));
 
         mockMvc.perform(get("/api/courses")
                         .param("hubId", "1")
                         .param("duration", "ONE_NIGHT")
-                        .param("interests", "TRADITION,NATURE")
+                        .param("interests", "HS,NA")
                         .param("difficulty", "EASY"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.courses").isEmpty());

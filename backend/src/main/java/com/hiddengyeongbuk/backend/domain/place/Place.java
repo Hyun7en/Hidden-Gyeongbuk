@@ -12,12 +12,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,12 +60,15 @@ public class Place {
     private Region region;
 
     /**
-     * 언어 중립 내부 타입. 소스의 contentTypeId는 언어마다 코드가 달라(ko=12, en=76 …) 여기
-     * 저장하지 않는다 — 원본은 staging에 남고, (placeType, lang) → sourceTypeId 매핑은
-     * DB가 아니라 설정 파일에 둔다(아키텍처 §4.3). 언어 추가가 마이그레이션을 유발하지 않게 하기 위함.
+     * 관광공사 신분류체계 대분류 코드(ADR-024). 소스의 {@code lclsSystm1}이 그대로 들어온다 —
+     * 언어 무관한 값이라 언어 중립 계층에 두어도 문제가 없다.
+     *
+     * <p>소스의 contentTypeId는 언어마다 코드가 달라(ko=12, en=76 …) 여기 저장하지 않는다.
+     * 원본은 staging에 남고, 그 매핑은 이제 <b>어떤 타입을 수집할지</b>와 <b>lclsSystm1 결측 시
+     * 폴백</b>만 담당한다(설정 파일, 아키텍처 §4.3).
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "place_type", length = 20, nullable = false)
+    @Column(name = "place_type", length = 10, nullable = false)
     private PlaceType placeType;
 
     @Column(precision = 10, scale = 7)
@@ -83,16 +83,9 @@ public class Place {
     @Column(name = "first_image", length = 500)
     private String firstImage;
 
-    // 관광공사 신분류체계 대/중/소분류. 현재는 저장만 하며, 이 코드로 place_tag를 파생하는
-    // 규칙은 미정이다 — 추천 가중치 35%가 걸린 항목이라 매핑 품질이 추천 품질을 좌우한다(ERD §9).
-    @Column(name = "lcls_systm1", length = 10)
-    private String lclsSystm1;
-
-    @Column(name = "lcls_systm2", length = 10)
-    private String lclsSystm2;
-
-    @Column(name = "lcls_systm3", length = 20)
-    private String lclsSystm3;
+    // lcls_systm1/2/3 컬럼은 없다. 대분류는 placeType으로 흡수됐고, 중·소분류는 원본이
+    // staging_place에 남아 있다 — Merge는 외부 호출이 없어 자유롭게 재실행 가능하므로,
+    // 세분 필터가 필요해지면 그때 컬럼을 추가하고 재Merge하면 된다(측정 전 비정규화 금지).
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -101,8 +94,4 @@ public class Place {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "place", fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<PlaceTag> tags = new ArrayList<>();
 }

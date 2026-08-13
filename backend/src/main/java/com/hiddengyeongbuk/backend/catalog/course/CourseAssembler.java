@@ -2,10 +2,9 @@ package com.hiddengyeongbuk.backend.catalog.course;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
-import com.hiddengyeongbuk.backend.catalog.Interest;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.place.Place;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import com.hiddengyeongbuk.backend.support.GeoUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,7 +38,7 @@ class CourseAssembler {
             List<Place> lodgingPool,
             Duration duration,
             Difficulty difficulty,
-            Set<Interest> interests,
+            Set<PlaceType> interests,
             SelectionStrategy strategy) {
         int totalDays = CoursePlanningRules.days(duration);
         int[] perDayTargets = splitEvenly(CoursePlanningRules.targetPlaceCount(duration), totalDays);
@@ -106,7 +105,7 @@ class CourseAssembler {
             Set<Long> used,
             double lat,
             double lng,
-            Set<Interest> interests,
+            Set<PlaceType> interests,
             SelectionStrategy strategy,
             double remainingBudget) {
         Place best = null;
@@ -136,14 +135,14 @@ class CourseAssembler {
     }
 
     /** 5장 1단계: 관심사 매치(70%) + 데이터 완성도(30%)로 산정하는 place 레벨 사전점수. */
-    private double preScore(Place place, Set<Interest> interests) {
+    private double preScore(Place place, Set<PlaceType> interests) {
         double interestScore;
         if (interests.isEmpty()) {
             interestScore = 50;
         } else {
-            Set<String> tags = place.getTags().stream().map(PlaceTag::getTag).collect(Collectors.toSet());
-            long matched = interests.stream().filter(i -> tags.contains(i.name())).count();
-            interestScore = 100.0 * matched / interests.size();
+            // 장소 하나의 분류는 정확히 하나라, 사전점수는 "고른 관심사 안에 드는가"의
+            // 0/1 판정이 된다(구 태그 방식은 여러 개가 걸릴 수 있었다).
+            interestScore = interests.contains(place.getPlaceType()) ? 100.0 : 0.0;
         }
         return 0.7 * interestScore + 0.3 * cheapCompleteness(place);
     }

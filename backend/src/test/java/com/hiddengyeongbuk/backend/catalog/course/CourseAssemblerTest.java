@@ -4,12 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
-import com.hiddengyeongbuk.backend.catalog.Interest;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.place.Place;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTagType;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import java.math.BigDecimal;
 import java.util.List;
@@ -40,7 +37,7 @@ class CourseAssemblerTest {
                 List.of(),
                 Duration.ONE_DAY,
                 Difficulty.NORMAL,
-                Set.of(Interest.NATURE),
+                Set.of(PlaceType.NA),
                 CourseAssembler.SelectionStrategy.PRESCORE_FIRST);
 
         assertThat(result).isPresent();
@@ -55,8 +52,8 @@ class CourseAssemblerTest {
         List<Place> attractions = List.of(
                 nearbyPlace(1L, 0.01), nearbyPlace(2L, 0.02), nearbyPlace(3L, 0.03),
                 nearbyPlace(4L, 0.04), nearbyPlace(5L, 0.05), nearbyPlace(6L, 0.06));
-        List<Place> food = List.of(nearbyPlace(20L, PlaceType.RESTAURANT, 0.07), nearbyPlace(21L, PlaceType.RESTAURANT, 0.08));
-        List<Place> lodging = List.of(nearbyPlace(30L, PlaceType.STAY, 0.09));
+        List<Place> food = List.of(nearbyPlace(20L, PlaceType.FD, 0.07), nearbyPlace(21L, PlaceType.FD, 0.08));
+        List<Place> lodging = List.of(nearbyPlace(30L, PlaceType.AC, 0.09));
 
         Optional<CourseCandidate> result = assembler.assemble(
                 hub,
@@ -79,7 +76,7 @@ class CourseAssemblerTest {
     @Test
     void 이동_예산을_초과하는_후보는_선택되지_않는다() {
         // hub에서 아주 멀리 떨어진(약 300km) 후보뿐이고 EASY/ONE_DAY의 Dmax는 60km라 아무것도 담지 못한다.
-        List<Place> farAttractions = List.of(place(1L, PlaceType.ATTRACTION, 40.0, 128.7));
+        List<Place> farAttractions = List.of(place(1L, PlaceType.NA, 40.0, 128.7));
 
         Optional<CourseCandidate> result = assembler.assemble(
                 hub,
@@ -114,7 +111,7 @@ class CourseAssemblerTest {
     }
 
     private Place nearbyPlace(long id, double offsetDeg) {
-        return nearbyPlace(id, PlaceType.ATTRACTION, offsetDeg);
+        return nearbyPlace(id, PlaceType.NA, offsetDeg);
     }
 
     private Place nearbyPlace(long id, PlaceType placeType, double offsetDeg) {
@@ -128,7 +125,6 @@ class CourseAssemblerTest {
                 .region(Region.builder().id(1L).build())
                 .lat(BigDecimal.valueOf(lat))
                 .lng(BigDecimal.valueOf(lng))
-                .tags(List.of(PlaceTag.builder().tag(PlaceTagType.NATURE.name()).build()))
                 .build();
     }
 }

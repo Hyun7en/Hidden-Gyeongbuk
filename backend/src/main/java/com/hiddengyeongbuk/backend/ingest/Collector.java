@@ -140,7 +140,7 @@ public class Collector {
         }
         // 매핑에 없는 타입은 수집 대상이 아니다(여행코스·교통 등). 원본 적재 단계지만,
         // 어차피 place로 만들지 않을 것을 staging에 쌓아 재매칭 비용만 늘릴 이유가 없다.
-        if (contentTypes.placeTypeOf(lang, item.contenttypeid()).isEmpty()) {
+        if (!contentTypes.isCollectable(lang, item.contenttypeid())) {
             counters.skipped++;
             return;
         }

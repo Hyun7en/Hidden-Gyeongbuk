@@ -1,90 +1,240 @@
 @import 'tailwindcss';
 
-:root {
-  --bg: #fafaf7;
-  --bg-elevated: #ffffff;
-  --text: #1f1b16;
-  --text-soft: #6b6153;
-  --accent: #2a3d63;
-  --accent-soft: #4c5f87;
-  --seal: #b23a2e;
-  --seal-tint: rgba(178, 58, 46, 0.08);
-  --line: #d9d0bc;
-  --fiber: #b0aea6;
+/*
+ * 디자인 토큰 — Claude Design 프로토타입(Hidden Gyeongbuk Prototype)의 styles.css가 원본이다.
+ * 구 한지/쪽빛/단청 팔레트는 전면 재설계로 폐기됐다.
+ *
+ * 다크 대응은 세 갈래를 모두 정의한다: 기본(light) → prefers-color-scheme → data-theme.
+ * 토글로 명시 선택한 값(data-theme)이 OS 설정을 이기도록 마지막에 둔다.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Serif+KR:wght@400;600;700&display=swap');
+
+/* OS에서 해석되는 시스템 폰트 — 웹폰트 파일을 싣지 않는다. */
+@font-face {
+  font-family: 'Apple SD Gothic Neo';
+  src: local('Apple SD Gothic Neo');
+  font-display: swap;
 }
 
+:root {
+  --bg: #fafaf7;
+  --bg-elevated: #fefdf9;
+  --text: #1f1b16;
+  --text-soft: #6b6153;
+  --line: #d9d0bc;
+  --fiber: #b0aea6;
+
+  --accent: #c08a3e;
+  --accent-hover: #a06f2e;
+  --accent-pressed: #7d5623;
+  --accent-text: #a06f2e;
+  --on-accent: #ffffff;
+  --focus-ring: var(--accent);
+
+  --success: #4a7c59;
+  --warning: #8a6428;
+  --error: #a8321f;
+
+  --radius: 0;
+  --radius-card: 14px;
+  --radius-pill: 9999px;
+  --border-width: 1px;
+  --shadow: none;
+  --opacity-disabled: 0.5;
+
+  --h-control-sm: 30px;
+  --h-control-md: 36px;
+  --h-control-lg: 48px;
+  --h-control-xl: 56px;
+  --h-media-sm: 140px;
+  --h-media-lg: 180px;
+
+  --z-fiber: 0;
+  --z-content: 1;
+  --z-sticky: 10;
+  --z-header: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+  --z-toast: 50;
+
+  --fs-3xs: 9.5px;
+  --fs-2xs: 11px;
+  --fs-sm-alt: 15px;
+  --fs-hero-mobile: 34px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* 컨테이너 폭 — 화면 설계서 §1.0에서 데스크톱 960px로 확정(2026-08-10). */
+  --container-mobile: 480px;
+  --container-md: 768px;
+  --container-lg: 960px;
+
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: 14px;
+  --shadow-soft: 0 8px 28px rgba(31, 27, 22, 0.1);
+
+  --font-sans: -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+  --font-serif-display: 'Song Myung', serif;
+  --font-serif-heading: 'Noto Serif KR', serif;
+
+  --motion-fast: 200ms;
+  --motion-slow: 800ms;
+  --motion-stagger: 70ms;
+  --texture-hanji-opacity: 0.035;
+}
+
+/* OS 다크. data-theme='light'로 명시 선택한 경우는 제외한다. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #171b26;
     --bg-elevated: #1f2534;
     --text: #e8e2d0;
     --text-soft: #a6a08d;
-    --accent: #7c93c4;
-    --accent-soft: #55668c;
-    --seal: #e0685a;
-    --seal-tint: rgba(224, 104, 90, 0.12);
     --line: #323a4e;
     --fiber: #6f7686;
+
+    --accent: #e0b568;
+    --accent-hover: #d1a355;
+    --accent-pressed: #c2924a;
+    --accent-text: #e0b568;
+    --on-accent: #1f2534;
+
+    --success: #6fa87e;
+    --warning: #d1a15e;
+    --error: #d1594a;
+
+    --glass-bg: rgba(31, 37, 52, 0.55);
+    --glass-bg-strong: rgba(31, 37, 52, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.45);
+    --texture-hanji-opacity: 0;
   }
 }
 
+/* 토글로 명시 선택한 다크가 OS 설정을 이긴다. */
 :root[data-theme='dark'] {
   --bg: #171b26;
   --bg-elevated: #1f2534;
   --text: #e8e2d0;
   --text-soft: #a6a08d;
-  --accent: #7c93c4;
-  --accent-soft: #55668c;
-  --seal: #e0685a;
-  --seal-tint: rgba(224, 104, 90, 0.12);
   --line: #323a4e;
   --fiber: #6f7686;
-}
 
-:root[data-theme='light'] {
-  --bg: #fafaf7;
-  --bg-elevated: #ffffff;
-  --text: #1f1b16;
-  --text-soft: #6b6153;
-  --accent: #2a3d63;
-  --accent-soft: #4c5f87;
-  --seal: #b23a2e;
-  --seal-tint: rgba(178, 58, 46, 0.08);
-  --line: #d9d0bc;
-  --fiber: #b0aea6;
+  --accent: #e0b568;
+  --accent-hover: #d1a355;
+  --accent-pressed: #c2924a;
+  --accent-text: #e0b568;
+  --on-accent: #1f2534;
+
+  --success: #6fa87e;
+  --warning: #d1a15e;
+  --error: #d1594a;
+
+  --glass-bg: rgba(31, 37, 52, 0.55);
+  --glass-bg-strong: rgba(31, 37, 52, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --texture-hanji-opacity: 0;
 }
 
 @theme {
   --font-sans: -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+  --font-display: 'Song Myung', serif;
+  --font-heading: 'Noto Serif KR', serif;
 
   --color-bg: var(--bg);
   --color-bg-elevated: var(--bg-elevated);
   --color-text: var(--text);
   --color-text-soft: var(--text-soft);
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-seal: var(--seal);
-  --color-seal-tint: var(--seal-tint);
   --color-line: var(--line);
   --color-fiber: var(--fiber);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-pressed: var(--accent-pressed);
+  --color-accent-text: var(--accent-text);
+  --color-on-accent: var(--on-accent);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
 }
 
 body {
+  margin: 0;
   font-family: var(--font-sans);
   background-color: var(--bg);
   color: var(--text);
 }
 
-.fiber-bg {
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* 한지 결. 다크에서는 opacity가 0이라 렌더링되지 않는다. */
+.hanji-texture {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  background-color: var(--fiber);
-  -webkit-mask-image: url('/textures/fiber-texture.png');
-  mask-image: url('/textures/fiber-texture.png');
-  -webkit-mask-repeat: repeat;
-  mask-repeat: repeat;
-  -webkit-mask-size: 320px 320px;
-  mask-size: 320px 320px;
+  z-index: var(--z-fiber);
+  background-image: url('/textures/texture-hanji.jpg');
+  background-size: cover;
+  opacity: var(--texture-hanji-opacity);
+}
+
+/* 접근성 — 모션 축소를 요청한 사용자에게는 전환 애니메이션을 끈다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.screen-in {
+  animation: screen-in var(--motion-fast) ease-out;
+}
+
+.skeleton {
+  background: var(--line);
+  animation: pulse-soft 1.4s ease-in-out infinite;
 }

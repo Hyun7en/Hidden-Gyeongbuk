@@ -13,9 +13,6 @@ import com.hiddengyeongbuk.backend.catalog.dto.PlaceSummaryResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.RegionResponse;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTagRepository;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTagType;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
@@ -65,14 +62,10 @@ class CatalogApiIT {
     private PlaceRepository placeRepository;
 
     @Autowired
-    private PlaceTagRepository placeTagRepository;
-
-    @Autowired
     private PlaceTranslationRepository placeTranslationRepository;
 
     private String testTitleKo;
     private Place testPlace;
-    private PlaceTag testPlaceTag;
     private PlaceTranslation testKoTranslation;
 
     @BeforeEach
@@ -84,7 +77,7 @@ class CatalogApiIT {
         testTitleKo = "통합테스트 전용 장소 " + UUID.randomUUID();
         testPlace = placeRepository.save(Place.builder()
                 .region(andong)
-                .placeType(PlaceType.ATTRACTION)
+                .placeType(PlaceType.NA)
                 .lat(new BigDecimal("36.5684249"))
                 .lng(new BigDecimal("128.7294000"))
                 .build());
@@ -101,8 +94,6 @@ class CatalogApiIT {
                 .generatedAt(LocalDateTime.now())
                 .build());
 
-        testPlaceTag = placeTagRepository.save(
-                PlaceTag.builder().place(testPlace).tag(PlaceTagType.NATURE.name()).build());
     }
 
     @AfterEach
@@ -112,7 +103,6 @@ class CatalogApiIT {
         }
         // 파생 삭제 쿼리(deleteByPlaceId)는 자체 트랜잭션을 안 열고 호출부 트랜잭션에 얹혀간다 —
         // @AfterEach에는 앰비언트 트랜잭션이 없어 터진다. 저장 시 받은 엔티티를 기본 CRUD로 지운다.
-        placeTagRepository.delete(testPlaceTag);
         placeTranslationRepository.delete(testKoTranslation);
         placeRepository.delete(testPlace);
     }
@@ -182,9 +172,8 @@ class CatalogApiIT {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().title()).isEqualTo(testTitleKo);
-        assertThat(response.getBody().placeType()).isEqualTo("ATTRACTION");
+        assertThat(response.getBody().placeType()).isEqualTo("NA");
         // 한글 라벨("자연")이 아니라 코드가 내려와야 한다(ERD §3.8).
-        assertThat(response.getBody().tags()).contains("NATURE");
     }
 
     @Test
@@ -211,7 +200,7 @@ class CatalogApiIT {
     @Test
     void 코스_추천_요청이_정상_구조로_응답한다() {
         CourseRecommendRequest request =
-                new CourseRecommendRequest(1L, Duration.ONE_DAY, List.of(Interest.NATURE), Difficulty.EASY);
+                new CourseRecommendRequest(1L, Duration.ONE_DAY, List.of(PlaceType.NA), Difficulty.EASY);
 
         ResponseEntity<CourseListResponse> response =
                 restTemplate.postForEntity(url("/api/courses/recommend"), request, CourseListResponse.class);

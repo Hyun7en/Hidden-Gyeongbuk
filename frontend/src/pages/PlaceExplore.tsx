@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { searchPlaces } from '../api/client'
-import { translateTag } from '../api/labels'
 import { useLanguage } from '../context/LanguageContext'
 import type { PlaceSummaryResponse } from '../api/types'
 import BackHeader from '../components/BackHeader'
@@ -10,6 +9,9 @@ import FiberBackground from '../components/FiberBackground'
 import PlaceCard from '../components/PlaceCard'
 import Tag from '../components/Tag'
 import { INTEREST_OPTIONS, type Interest } from '../types/course'
+
+/** 분류 코드 → 표시 라벨. meta/options로 옮기는 중이라 현재는 i18n 사전을 쓴다. */
+const labelKey = (code: string) => `options.interest.${code}`
 
 const PAGE_SIZE = 20
 
@@ -44,7 +46,7 @@ function PlaceExplore() {
     // 최신 필터의 결과를 stale 응답으로 덮어쓸 수 있다.
     let cancelled = false
     const handle = setTimeout(() => {
-      searchPlaces({ tag: activeTag ?? undefined, keyword: keyword || undefined, page, size: PAGE_SIZE }, lang)
+      searchPlaces({ placeType: activeTag ?? undefined, keyword: keyword || undefined, page, size: PAGE_SIZE }, lang)
         .then((res) => {
           if (!cancelled) {
             setPlaces(res.content)
@@ -101,9 +103,9 @@ function PlaceExplore() {
                     key={place.placeId}
                     place={{
                       placeId: place.placeId,
-                      title: place.title,
-                      addr: place.addr,
-                      tags: lang === 'en' ? place.tags.map(translateTag) : place.tags,
+                      title: place.title ?? '',
+                      addr: place.addr ?? '',
+                      placeTypeLabel: t(labelKey(place.placeType)),
                       imageUrl: place.firstImage,
                     }}
                   />

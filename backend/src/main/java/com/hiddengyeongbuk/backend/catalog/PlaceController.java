@@ -33,7 +33,6 @@ public class PlaceController {
     public PageResponse<PlaceSummaryResponse> search(
             @RequestParam(required = false) Long regionId,
             @RequestParam(required = false) String placeType,
-            @RequestParam(required = false) String tag,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -41,11 +40,10 @@ public class PlaceController {
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("size는 1~" + MAX_PAGE_SIZE + " 사이여야 합니다: " + size);
         }
-        // 태그는 이제 DB에도 enum 코드로 저장되므로 라벨 변환 없이 그대로 넘긴다.
-        // valueOf로 한 번 튕겨 알 수 없는 값이 쿼리까지 내려가는 것은 막는다.
-        String tagCode = tag == null ? null : Interest.valueOf(tag).name();
+        // tag 파라미터는 폐기됐다 — 관심사와 장소 타입이 같은 어휘로 합쳐져 placeType 하나가
+        // 그 역할을 겸한다(ADR-024).
         return placeQueryService.search(
-                regionId, parsePlaceType(placeType), tagCode, keyword, languages.resolve(lang), page, size);
+                regionId, parsePlaceType(placeType), keyword, languages.resolve(lang), page, size);
     }
 
     @GetMapping("/{placeId}")

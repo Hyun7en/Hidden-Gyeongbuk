@@ -25,7 +25,6 @@ public record PlaceDetailResponse(
         String overview,
         String firstImage,
         List<String> images,
-        List<String> tags,
         /** 실제 표시에 사용된 언어. 요청 언어와 다르면 폴백이 일어난 것이다. */
         String resolvedLang,
         /** OFFICIAL(해당 언어 서비스 공식) / TRANSLATE(기계 번역) / null(해당 행 없음). */

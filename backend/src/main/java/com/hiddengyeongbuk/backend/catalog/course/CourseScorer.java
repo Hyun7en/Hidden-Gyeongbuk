@@ -2,10 +2,9 @@ package com.hiddengyeongbuk.backend.catalog.course;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
-import com.hiddengyeongbuk.backend.catalog.Interest;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.catalog.PlaceTexts;
 import com.hiddengyeongbuk.backend.domain.place.Place;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,7 +19,7 @@ class CourseScorer {
 
     Breakdown score(
             CourseCandidate candidate,
-            Set<Interest> interests,
+            Set<PlaceType> interests,
             Duration duration,
             Difficulty difficulty,
             Map<Long, PlaceTexts> texts) {
@@ -34,16 +33,23 @@ class CourseScorer {
         return new Breakdown(interest, access, stay, dispersion, completeness, total);
     }
 
-    /** 4.1 관심사 적합도: 코스가 커버한 사용자 관심사 종류 비율. */
-    private double interestScore(List<Place> places, Set<Interest> interests) {
+    /**
+     * 4.1 관심사 적합도: 코스가 커버한 사용자 관심사 종류 비율.
+     *
+     * <p>근거 데이터가 {@code place_tag} → {@code place.place_type}으로 바뀌었다(ADR-024).
+     * 관심사와 장소 분류가 같은 어휘라 매핑 없이 그대로 대조한다.
+     *
+     * <p><b>장소당 분류가 정확히 하나</b>라, 코스가 커버하는 관심사 수는 장소 수를 넘지 못한다.
+     * 관심사를 장소 수보다 많이 고르면 만점이 구조적으로 불가능하다 — 모든 후보 코스가 같은
+     * 상한을 공유하므로 코스 간 상대 비교에는 영향이 없다. 정규화를 {@code min(|I|, |C|)}
+     * 기준으로 바꿀지는 실데이터 확보 후 판단한다(추천 알고리즘 §7).
+     */
+    private double interestScore(List<Place> places, Set<PlaceType> interests) {
         if (interests.isEmpty()) {
             return 100.0;
         }
-        Set<String> covered = places.stream()
-                .flatMap(p -> p.getTags().stream().map(PlaceTag::getTag))
-                .collect(Collectors.toSet());
-        // place_tag가 enum 코드를 저장하므로 코드끼리 비교한다(구: 한글 라벨 문자열 일치).
-        long matched = interests.stream().filter(i -> covered.contains(i.name())).count();
+        Set<PlaceType> covered = places.stream().map(Place::getPlaceType).collect(Collectors.toSet());
+        long matched = interests.stream().filter(covered::contains).count();
         return 100.0 * matched / interests.size();
     }
 

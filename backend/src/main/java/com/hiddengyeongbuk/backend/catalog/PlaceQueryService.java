@@ -9,7 +9,6 @@ import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImage;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImageRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.support.GeoUtils;
@@ -62,8 +61,8 @@ public class PlaceQueryService {
     // 검색어 없는 목록 조회(지역/타입/태그 필터, 키 공간 유한·재사용 빈도 높음)만 캐싱한다.
     @Cacheable(value = "placeSearch", condition = "#keyword == null || #keyword.isBlank()")
     public PageResponse<PlaceSummaryResponse> search(
-            Long regionId, PlaceType placeType, String tag, String keyword, String lang, int page, int size) {
-        Specification<Place> spec = buildSpecification(regionId, placeType, tag, keyword, lang);
+            Long regionId, PlaceType placeType, String keyword, String lang, int page, int size) {
+        Specification<Place> spec = buildSpecification(regionId, placeType, keyword, lang);
         // 정렬 없는 페이지네이션은 페이지 간 순서가 비결정적이라(같은 장소 중복/누락) 항상 PK로 고정한다.
         Page<Place> result =
                 placeRepository.findAll(spec, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")));
@@ -116,7 +115,7 @@ public class PlaceQueryService {
     }
 
     private Specification<Place> buildSpecification(
-            Long regionId, PlaceType placeType, String tag, String keyword, String lang) {
+            Long regionId, PlaceType placeType, String keyword, String lang) {
         return (root, query, cb) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
@@ -125,9 +124,6 @@ public class PlaceQueryService {
             }
             if (placeType != null) {
                 predicates.add(cb.equal(root.get("placeType"), placeType));
-            }
-            if (tag != null && !tag.isBlank()) {
-                predicates.add(cb.equal(root.join("tags").get("tag"), tag));
             }
             if (keyword != null && !keyword.isBlank()) {
                 // 명칭 검색은 요청 언어의 title을 대상으로 한다(API 명세서 §3.1). 국문 제목이
@@ -157,8 +153,7 @@ public class PlaceQueryService {
                 t.addr(),
                 place.getLat(),
                 place.getLng(),
-                place.getFirstImage(),
-                tagCodes(place));
+                place.getFirstImage());
     }
 
     private PlaceDetailResponse toDetail(Place place, String lang) {
@@ -185,15 +180,9 @@ public class PlaceQueryService {
                 t.overview(),
                 place.getFirstImage(),
                 images,
-                tagCodes(place),
                 t.resolvedLang(),
                 t.translationSource(),
                 festival);
-    }
-
-    /** 태그는 언어 중립 enum 코드 그대로 내려간다 — 표시 라벨은 프론트 i18n 책임(API 명세서 §1.3). */
-    private static List<String> tagCodes(Place place) {
-        return place.getTags().stream().map(PlaceTag::getTag).toList();
     }
 
     private record Candidate(Place place, double distanceKm) {}

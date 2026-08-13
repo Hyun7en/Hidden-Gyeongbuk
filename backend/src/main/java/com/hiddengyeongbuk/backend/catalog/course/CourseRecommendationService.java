@@ -3,7 +3,7 @@ package com.hiddengyeongbuk.backend.catalog.course;
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.catalog.HubNotFoundException;
-import com.hiddengyeongbuk.backend.catalog.Interest;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.catalog.PlaceTexts;
 import com.hiddengyeongbuk.backend.catalog.TranslationLookup;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
@@ -61,9 +61,9 @@ public class CourseRecommendationService {
 
     // null 검증은 요청 경계에서 끝난다 — POST는 @Valid(CourseRecommendRequest), GET은 필수 @RequestParam.
     @Cacheable("courseRecommend")
-    public CourseListResponse recommend(Long hubId, Duration duration, Set<Interest> interests, Difficulty difficulty, String lang) {
+    public CourseListResponse recommend(Long hubId, Duration duration, Set<PlaceType> interests, Difficulty difficulty, String lang) {
         Hub hub = hubRepository.findById(hubId).orElseThrow(() -> new HubNotFoundException(hubId));
-        Set<Interest> effectiveInterests = interests == null ? Set.of() : interests;
+        Set<PlaceType> effectiveInterests = interests == null ? Set.of() : interests;
 
         List<Long> regionIds =
                 regionRepository.findByHubId(hubId).stream().map(Region::getId).toList();
@@ -71,12 +71,13 @@ public class CourseRecommendationService {
             return new CourseListResponse(List.of());
         }
 
-        List<Place> places = placeRepository.findByRegionIdInWithTags(regionIds);
+        // 음식(FD)·숙박(AC)은 일자별로 따로 배치하므로 관광 후보에서 뺀다(추천 알고리즘 §5).
+        List<Place> places = placeRepository.findByRegionIdIn(regionIds);
         List<Place> attractionPool = places.stream()
-                .filter(p -> p.getPlaceType() != PlaceType.RESTAURANT && p.getPlaceType() != PlaceType.STAY)
+                .filter(p -> p.getPlaceType() != PlaceType.FD && p.getPlaceType() != PlaceType.AC)
                 .toList();
-        List<Place> foodPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.RESTAURANT).toList();
-        List<Place> lodgingPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.STAY).toList();
+        List<Place> foodPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.FD).toList();
+        List<Place> lodgingPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.AC).toList();
 
         if (attractionPool.isEmpty()) {
             return new CourseListResponse(List.of());

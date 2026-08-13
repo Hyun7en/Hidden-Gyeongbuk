@@ -2,7 +2,7 @@ package com.hiddengyeongbuk.backend.catalog.course;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
-import com.hiddengyeongbuk.backend.catalog.Interest;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseRecommendRequest;
@@ -40,13 +40,13 @@ public class CourseController {
     public CourseListResponse recompute(
             @RequestParam Long hubId,
             @RequestParam Duration duration,
-            @RequestParam(required = false) List<Interest> interests,
+            @RequestParam(required = false) List<PlaceType> interests,
             @RequestParam Difficulty difficulty,
             @RequestParam(required = false) String lang) {
         return courseRecommendationService.recommend(hubId, duration, toSet(interests), difficulty, languages.resolve(lang));
     }
 
-    private static Set<Interest> toSet(List<Interest> interests) {
+    private static Set<PlaceType> toSet(List<PlaceType> interests) {
         return interests == null ? Set.of() : Set.copyOf(interests);
     }
 }

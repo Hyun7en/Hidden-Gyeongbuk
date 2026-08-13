@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchPlaceDetail } from '../api/client'
-import { translateCategory, translateTag } from '../api/labels'
 import { googleDirectionsUrl, kakaoDirectionsUrl } from '../lib/directions'
 import { useLanguage } from '../context/LanguageContext'
 import type { PlaceDetailResponse } from '../api/types'
@@ -87,15 +86,12 @@ function PlaceDetail() {
                       }
                 }
               />
-              <div className="mt-5 flex flex-wrap gap-1.5">
-                <span className="border border-line px-2.5 py-1 text-[11px] uppercase text-text-soft md:text-xs">
-                  {lang === 'en' ? translateCategory(place.category) : place.category}
+              {/* 분류 배지는 하나다 — 장소당 place_type이 정확히 하나이고, 별도 태그 축은
+                  폐기됐다(ADR-024). */}
+              <div className="mt-5">
+                <span className="border border-line px-2.5 py-1 text-[11px] text-text-soft md:text-xs">
+                  {t(`options.interest.${place.placeType}`)}
                 </span>
-                {place.tags.map((tag) => (
-                  <span key={tag} className="border border-line px-2.5 py-1 text-[11px] md:text-xs">
-                    {lang === 'en' ? translateTag(tag) : tag}
-                  </span>
-                ))}
               </div>
               <p className="mt-4 text-sm text-text-soft md:text-base">{place.addr}</p>
               {place.lat != null && place.lng != null ? (

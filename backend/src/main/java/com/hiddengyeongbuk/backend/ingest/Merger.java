@@ -44,12 +44,12 @@ public class Merger {
         this.eventPublisher = eventPublisher;
     }
 
-    public record Result(int places, int translations, int failed) {}
+    public record Result(int places, int translations, int failed, int quarantined) {}
 
     public Result merge() {
         List<StagingPlace> matched = stagingPlaceRepository.findByResolutionStatus(ResolutionStatus.MATCHED);
         if (matched.isEmpty()) {
-            return new Result(0, 0, 0);
+            return new Result(0, 0, 0, 0);
         }
 
         // Resolver와 같은 결정적 판정을 다시 돌려 그룹을 복원한다 — 판정 결과를 담을 컬럼이
@@ -59,6 +59,7 @@ public class Merger {
         int places = 0;
         int translations = 0;
         int failed = 0;
+        int quarantined = 0;
         for (List<StagingPlace> group : grouping.groups()) {
             // 그룹 하나의 실패가 나머지를 막지 않도록 격리한다. 실패한 그룹은 resolved_place_id가
             // 안 채워지므로 다음 Merge에서 자동 재시도된다.
@@ -66,16 +67,21 @@ public class Merger {
                 MergeWriter.Written written = mergeWriter.write(group);
                 places += written.placeCreated() ? 1 : 0;
                 translations += written.translations();
+                quarantined += written.quarantined() ? 1 : 0;
             } catch (RuntimeException e) {
                 failed++;
                 log.warn("그룹 병합 실패 (앵커 staging id={})", group.get(0).getId(), e);
             }
         }
 
-        Result result = new Result(places, translations, failed);
-        log.info("Merge 완료: places={}, translations={}, failed={}", places, translations, failed);
+        Result result = new Result(places, translations, failed, quarantined);
+        log.info(
+                "Merge 완료: places={}, translations={}, failed={}, quarantined={}",
+                places, translations, failed, quarantined);
+        // quarantined는 실패가 아니라 정상 판정 결과다. 다만 lclsSystm1 결측률을 실측해야 하므로
+        // (ADR-024 결과 ⑦) 실패와 나눠 메시지에 남긴다.
         syncLogger.record(
-                SyncPhase.MERGE, null, "MATCHED 전체", grouping.groups().size(), failed > 0 ? failed + "건 실패" : null);
+                SyncPhase.MERGE, null, "MATCHED 전체", grouping.groups().size(), mergeNote(failed, quarantined));
 
         // 조회 캐시가 stale로 남지 않도록 알린다. ingest는 catalog를 직접 참조하지 않으므로
         // 이벤트로만 통신한다.
@@ -83,5 +89,12 @@ public class Merger {
             eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
         }
         return result;
+    }
+
+    private static String mergeNote(int failed, int quarantined) {
+        if (failed == 0 && quarantined == 0) {
+            return null;
+        }
+        return "실패 " + failed + "건, 분류불명 보류 " + quarantined + "건";
     }
 }

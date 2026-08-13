@@ -5,17 +5,13 @@ import static org.assertj.core.api.Assertions.within;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
 import com.hiddengyeongbuk.backend.catalog.Duration;
-import com.hiddengyeongbuk.backend.catalog.Interest;
 import com.hiddengyeongbuk.backend.domain.place.Place;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTagType;
 import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.catalog.PlaceTexts;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
-import com.hiddengyeongbuk.backend.domain.place.PlaceTag;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,22 +23,25 @@ class CourseScorerTest {
 
     @Test
     void 관심사가_없으면_관심사_적합도는_항상_만점이다() {
-        CourseCandidate candidate = candidateOf(place(1L, PlaceType.ATTRACTION, 1L, PlaceTagType.NATURE.name()));
+        CourseCandidate candidate = candidateOf(place(1L, PlaceType.NA, 1L));
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_DAY, Difficulty.NORMAL, Map.of());
         assertThat(b.interest()).isEqualTo(100.0);
     }
 
     @Test
     void 코스가_관심사_일부만_커버하면_비율만큼_점수를_받는다() {
-        CourseCandidate candidate = candidateOf(place(1L, PlaceType.ATTRACTION, 1L, PlaceTagType.NATURE.name()));
+        // 장소 하나의 분류는 하나뿐이라(ADR-024), 자연 장소 1개짜리 코스는 관심사 2개 중
+        // 1개만 덮는다 — 구 태그 방식과 달리 장소 수가 커버 상한이다.
+        CourseCandidate candidate = candidateOf(place(1L, PlaceType.NA, 1L));
         CourseScorer.Breakdown b =
-                scorer.score(candidate, Set.of(Interest.NATURE, Interest.TRADITION), Duration.ONE_DAY, Difficulty.NORMAL, Map.of());
+                scorer.score(
+                        candidate, Set.of(PlaceType.NA, PlaceType.HS), Duration.ONE_DAY, Difficulty.NORMAL, Map.of());
         assertThat(b.interest()).isEqualTo(50.0);
     }
 
     @Test
     void 이동거리가_0이면_접근성은_만점이다() {
-        CourseDay day = new CourseDay(1, List.of(place(1L, PlaceType.ATTRACTION, 1L, PlaceTagType.NATURE.name())), null);
+        CourseDay day = new CourseDay(1, List.of(place(1L, PlaceType.NA, 1L)), null);
         CourseCandidate candidate = new CourseCandidate(List.of(day), 0.0);
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_NIGHT, Difficulty.EASY, Map.of());
         assertThat(b.access()).isEqualTo(100.0);
@@ -51,7 +50,7 @@ class CourseScorerTest {
     @Test
     void 이동거리가_예산의_절반이면_접근성은_50점이다() {
         // EASY/ONE_NIGHT의 Dmax=120km
-        CourseDay day = new CourseDay(1, List.of(place(1L, PlaceType.ATTRACTION, 1L, PlaceTagType.NATURE.name())), null);
+        CourseDay day = new CourseDay(1, List.of(place(1L, PlaceType.NA, 1L)), null);
         CourseCandidate candidate = new CourseCandidate(List.of(day), 60.0);
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_NIGHT, Difficulty.EASY, Map.of());
         assertThat(b.access()).isEqualTo(50.0);
@@ -59,7 +58,7 @@ class CourseScorerTest {
 
     @Test
     void 이동거리가_예산을_초과하면_접근성은_0으로_클램프된다() {
-        CourseDay day = new CourseDay(1, List.of(place(1L, PlaceType.ATTRACTION, 1L, PlaceTagType.NATURE.name())), null);
+        CourseDay day = new CourseDay(1, List.of(place(1L, PlaceType.NA, 1L)), null);
         CourseCandidate candidate = new CourseCandidate(List.of(day), 150.0);
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_NIGHT, Difficulty.EASY, Map.of());
         assertThat(b.access()).isEqualTo(0.0);
@@ -68,8 +67,8 @@ class CourseScorerTest {
     @Test
     void 목표_장소수_범위내에_필요숙박도_충족하면_체류적합도는_만점이다() {
         // ONE_NIGHT: 목표 장소 수 5~7, 필요 숙박 1
-        CourseDay day1 = new CourseDay(1, places(1, 3, PlaceType.ATTRACTION), place(100L, PlaceType.STAY, 1L, PlaceTagType.REST.name()));
-        CourseDay day2 = new CourseDay(2, places(4, 3, PlaceType.ATTRACTION), null);
+        CourseDay day1 = new CourseDay(1, places(1, 3, PlaceType.NA), place(100L, PlaceType.AC, 1L));
+        CourseDay day2 = new CourseDay(2, places(4, 3, PlaceType.NA), null);
         CourseCandidate candidate = new CourseCandidate(List.of(day1, day2), 10.0);
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_NIGHT, Difficulty.NORMAL, Map.of());
         assertThat(b.stay()).isEqualTo(100.0);
@@ -78,7 +77,7 @@ class CourseScorerTest {
     @Test
     void 목표_장소수보다_적으면_이탈분만큼_감점된다() {
         // ONE_NIGHT 목표 최소 5, 실제 3개 -> 이탈 2개 -> 100 - 15*2 = 70 (숙박은 충족)
-        CourseDay day = new CourseDay(1, places(1, 3, PlaceType.ATTRACTION), place(100L, PlaceType.STAY, 1L, PlaceTagType.REST.name()));
+        CourseDay day = new CourseDay(1, places(1, 3, PlaceType.NA), place(100L, PlaceType.AC, 1L));
         CourseCandidate candidate = new CourseCandidate(List.of(day), 10.0);
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_NIGHT, Difficulty.NORMAL, Map.of());
         assertThat(b.stay()).isEqualTo(70.0);
@@ -86,8 +85,8 @@ class CourseScorerTest {
 
     @Test
     void 필요_숙박이_누락되면_40점_감점된다() {
-        CourseDay day1 = new CourseDay(1, places(1, 3, PlaceType.ATTRACTION), null);
-        CourseDay day2 = new CourseDay(2, places(4, 3, PlaceType.ATTRACTION), null);
+        CourseDay day1 = new CourseDay(1, places(1, 3, PlaceType.NA), null);
+        CourseDay day2 = new CourseDay(2, places(4, 3, PlaceType.NA), null);
         CourseCandidate candidate = new CourseCandidate(List.of(day1, day2), 10.0);
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_NIGHT, Difficulty.NORMAL, Map.of());
         assertThat(b.stay()).isEqualTo(60.0);
@@ -95,7 +94,7 @@ class CourseScorerTest {
 
     @Test
     void 당일코스는_지역목표가_1이라_지역분산이_항상_만점이다() {
-        CourseCandidate candidate = candidateOf(place(1L, PlaceType.ATTRACTION, 1L, PlaceTagType.NATURE.name()));
+        CourseCandidate candidate = candidateOf(place(1L, PlaceType.NA, 1L));
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.ONE_DAY, Difficulty.NORMAL, Map.of());
         assertThat(b.dispersion()).isEqualTo(100.0);
     }
@@ -103,8 +102,8 @@ class CourseScorerTest {
     @Test
     void 목표_지역수에_못미치면_지역분산이_비례해서_깎인다() {
         // TWO_NIGHT 목표 지역수 3, 실제 방문 2곳 -> 100*(0.5+0.5*(2-1)/(3-1)) = 75
-        Place p1 = place(1L, PlaceType.ATTRACTION, 1L, PlaceTagType.NATURE.name());
-        Place p2 = place(2L, PlaceType.ATTRACTION, 2L, PlaceTagType.NATURE.name());
+        Place p1 = place(1L, PlaceType.NA, 1L);
+        Place p2 = place(2L, PlaceType.NA, 2L);
         CourseDay day = new CourseDay(1, List.of(p1, p2), null);
         CourseCandidate candidate = new CourseCandidate(List.of(day), 10.0);
         CourseScorer.Breakdown b = scorer.score(candidate, Set.of(), Duration.TWO_NIGHT, Difficulty.NORMAL, Map.of());
@@ -120,7 +119,6 @@ class CourseScorerTest {
                 .lat(BigDecimal.valueOf(36.5))
                 .lng(BigDecimal.valueOf(128.7))
                 .firstImage("https://img/1")
-                .tags(List.of())
                 .build();
         CourseCandidate candidate = candidateOf(complete);
         CourseScorer.Breakdown b = scorer.score(
@@ -136,7 +134,6 @@ class CourseScorerTest {
                 .region(Region.builder().id(1L).build())
                 .lat(BigDecimal.valueOf(36.5))
                 .lng(BigDecimal.valueOf(128.7))
-                .tags(List.of())
                 .build();
         CourseCandidate candidate = candidateOf(incomplete);
         CourseScorer.Breakdown b =
@@ -154,7 +151,6 @@ class CourseScorerTest {
                 .lat(BigDecimal.valueOf(36.5))
                 .lng(BigDecimal.valueOf(128.7))
                 .firstImage("https://img/1")
-                .tags(List.of())
                 .build();
         PlaceTranslation ko = translation("ko", "설명", "안동시 어딘가");
         Map<Long, PlaceTexts> fallbackOnly = Map.of(1L, new PlaceTexts(null, ko, ko, "ko"));
@@ -190,8 +186,7 @@ class CourseScorerTest {
                     .lat(BigDecimal.valueOf(36.5))
                     .lng(BigDecimal.valueOf(128.7))
                     .firstImage("https://img/" + i)
-                    .tags(List.of())
-                    .build());
+                        .build());
         }
         CourseCandidate candidate = new CourseCandidate(List.of(new CourseDay(1, complete, null)), 0.0);
         // 완성도 만점에는 요청 언어의 번역 행이 필요하다(ADR-017) — 4개 장소 모두 채운다.
@@ -211,19 +206,18 @@ class CourseScorerTest {
     private static List<Place> places(long startId, int count, PlaceType placeType) {
         List<Place> result = new java.util.ArrayList<>();
         for (int i = 0; i < count; i++) {
-            result.add(place(startId + i, placeType, 1L, PlaceTagType.NATURE.name()));
+            result.add(place(startId + i, placeType, 1L));
         }
         return result;
     }
 
-    private static Place place(long id, PlaceType placeType, long regionId, String... tagsKo) {
+    private static Place place(long id, PlaceType placeType, long regionId) {
         return Place.builder()
                 .id(id)
                 .placeType(placeType)
                 .region(Region.builder().id(regionId).build())
                 .lat(BigDecimal.valueOf(36.5))
                 .lng(BigDecimal.valueOf(128.7))
-                .tags(Arrays.stream(tagsKo).map(t -> PlaceTag.builder().tag(t).build()).toList())
                 .build();
     }
 }

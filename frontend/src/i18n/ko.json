@@ -38,7 +38,13 @@
     "startSubtitle": "도착하는 환승 거점을 선택하세요.",
     "hubsError": "허브 목록을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
     "loadingHubs": "허브 목록 불러오는 중…",
-    "footer": "Hidden Gyeongbuk · 공공 관광 데이터 기반"
+    "footer": "Hidden Gyeongbuk · 공공 관광 데이터 기반",
+    "heroCopy": "Unhurried. Unspoiled. Gyeongbuk.",
+    "heroCta": "코스 추천받기",
+    "allRegions": "지역 전체",
+    "regionSub": "대표 관광지 보기",
+    "regionsError": "지역을 불러오지 못했어요",
+    "retry": "다시 시도"
   },
   "placeExplore": {
     "title": "관광지 둘러보기",
@@ -48,13 +54,24 @@
     "empty": "필터에 맞는 관광지가 없습니다.",
     "prevPage": "← 이전",
     "nextPage": "다음 →",
-    "pageIndicator": "{{page}} / {{totalPages}} 페이지"
+    "pageIndicator": "{{page}} / {{totalPages}} 페이지",
+    "endReached": "모든 장소를 봤어요",
+    "reset": "필터 초기화",
+    "inRegion": "{{region}}의 장소",
+    "clearRegion": "전체 지역 보기"
   },
   "placeDetail": {
     "error": "이 장소를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
     "translatedBadge": "한국어에서 번역됨 (AI)",
     "noTranslationYet": "아직 영문 설명이 없습니다 — 원문(국문):",
-    "directions": "길찾기:"
+    "directions": "길찾기:",
+    "localAddress": "현지 주소 (기사용)",
+    "copy": "복사",
+    "copied": "주소가 복사됐어요",
+    "noPhoto": "사진 준비 중",
+    "nearby": "주변 장소",
+    "festival": "축제 기간",
+    "machineTranslation": "기계 번역"
   },
   "recommendInput": {
     "title": "코스 추천",
@@ -90,11 +107,6 @@
       "completeness": "데이터 완성도"
     }
   },
-  "hubDetail": {
-    "error": "허브 정보를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
-    "notFound": "허브를 찾을 수 없습니다.",
-    "regionsHeading": "이 허브에 속한 {{count}}개 지역"
-  },
   "options": {
     "duration": {
       "ONE_DAY": "당일치기",
@@ -117,5 +129,63 @@
       "EV": "축제·공연·행사",
       "AC": "숙박"
     }
+  },
+  "nav": {
+    "about": "소개",
+    "contact": "문의",
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침"
+  },
+  "about": {
+    "title": "소개",
+    "whyTitle": "왜 숨은 경북을 만들었을까요",
+    "why1": "경상북도에는 유명 관광지 너머로 아는 사람만 찾아가는 장소들이 훨씬 많습니다. 정보가 흩어져 있고 접근이 쉽지 않아, 그 가치가 충분히 알려지지 않았습니다.",
+    "why2": "숨은 경북은 이런 장소들을 체계적으로 모으고, 여행자의 일정과 관심사에 맞춰 실제로 갈 수 있는 코스로 연결하는 것을 목표로 만들어졌습니다.",
+    "why3": "화려한 마케팅보다 정확한 정보와 담백한 추천으로, 경북을 천천히 걷는 여행을 돕고자 합니다.",
+    "values": "핵심 가치",
+    "value1": "현지 실사용 우선",
+    "value1Desc": "택시 기사에게 보여줄 한국어 주소까지. 실제로 갈 수 있는지가 기준입니다.",
+    "value2": "정직한 번역",
+    "value2Desc": "기계 번역은 기계 번역이라고 밝힙니다. 출처를 감추지 않습니다.",
+    "value3": "느리게 걷기",
+    "value3Desc": "많이 담기보다 하루에 한두 곳을 제대로 보는 여행을 돕습니다.",
+    "coverage": "지금까지",
+    "regions": "지역",
+    "places": "장소",
+    "languages": "지원 언어",
+    "cta": "지역 둘러보기"
+  },
+  "contact": {
+    "title": "문의하기",
+    "sub": "궁금한 점이나 개선 의견을 이메일로 보내주세요. 영업일 기준 2~3일 내 답변드립니다.",
+    "type": "문의 유형",
+    "bug": "버그 제보",
+    "translation": "번역 오류 제보",
+    "partnership": "제휴·협업 문의",
+    "etc": "기타 피드백",
+    "send": "메일 보내기",
+    "copy": "주소 복사",
+    "copied": "복사됐어요",
+    "faq": "자주 묻는 질문"
+  },
+  "legal": {
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침",
+    "effective": "시행일",
+    "prevVersion": "이전 버전 보기",
+    "print": "인쇄",
+    "summary": "한눈에 보기",
+    "summaryNote": "아래 요약은 이해를 돕기 위한 것이며 법적 효력은 조항 전문에 있습니다.",
+    "toc": "목차",
+    "inPreparation": "준비 중입니다.",
+    "privacyLink": "개인정보처리방침 보기"
+  },
+  "region": {
+    "cta": "이 지역 코스 추천받기",
+    "highlights": "대표 관광지",
+    "more": "관광지 더보기",
+    "error": "지역 정보를 불러오지 못했어요",
+    "notFound": "지역을 찾을 수 없어요",
+    "hubBadge": "{{hub}}권"
   }
 }

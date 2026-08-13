@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { CourseResponse, HubResponse } from '../api/types'
-import KakaoMap from './KakaoMap'
+import KakaoMap, { type MapMarker } from './KakaoMap'
 
 function CourseCard({
   course,
@@ -19,14 +19,19 @@ function CourseCard({
   const { t } = useTranslation()
   const route = course.days
     .flatMap((d) => d.places)
-    .map((p) => p.title.split(' ')[0])
-    .filter((v, i, arr) => arr.indexOf(v) === i)
+    .map((p) => (p.title ?? '').split(' ')[0])
+    .filter((v, i, arr) => v !== '' && arr.indexOf(v) === i)
     .slice(0, 3)
     .join(' · ')
   const placeCount = course.days.reduce((sum, d) => sum + d.places.length, 0)
-  const routeMarkers = [
-    ...(hub ? [{ lat: hub.lat, lng: hub.lng, label: hub.nameEn, isHub: true }] : []),
-    ...course.days.flatMap((d) => d.places).map((p, i) => ({ lat: p.lat, lng: p.lng, label: p.title, order: i + 1 })),
+  // 좌표 없는 장소는 지도에 찍을 수 없어 제외한다(수집 데이터에 결측이 있다).
+  const routeMarkers: MapMarker[] = [
+    ...(hub ? [{ lat: hub.lat, lng: hub.lng, label: hub.name, isHub: true }] : []),
+    ...course.days
+      .flatMap((d) => d.places)
+      .flatMap((p, i) =>
+        p.lat != null && p.lng != null ? [{ lat: p.lat, lng: p.lng, label: p.title ?? '', order: i + 1 }] : [],
+      ),
   ]
 
   return (

@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
-import FiberBackground from '../components/FiberBackground'
 import Tag from '../components/Tag'
 import { useHubs } from '../hooks/useHubs'
 import { useLanguage } from '../context/LanguageContext'
@@ -16,16 +14,17 @@ import {
   type Interest,
 } from '../types/course'
 
+// 키는 hub.code다 — 표시명은 요청 언어로 바뀌므로 식별자로 쓸 수 없다.
 const HUB_ACCESS: Record<string, { en: string; ko: string }> = {
-  Andong: {
+  ANDONG: {
     en: 'Train from Cheongnyangni (Seoul) to Andong Station, about 3h — or express bus from Seoul, about 3.5h.',
     ko: '서울 청량리에서 안동역까지 기차로 약 3시간 — 또는 서울에서 고속버스로 약 3시간 30분.',
   },
-  Dongdaegu: {
+  DONGDAEGU: {
     en: 'KTX/SRT from Seoul to Dongdaegu Station, about 1h50m — the fastest way into the region.',
     ko: '서울에서 동대구역까지 KTX/SRT로 약 1시간 50분 — 이 지역으로 가는 가장 빠른 방법입니다.',
   },
-  Pohang: {
+  POHANG: {
     en: 'Direct KTX from Seoul to Pohang Station, about 2h15m.',
     ko: '서울에서 포항역까지 KTX 직통으로 약 2시간 15분.',
   },
@@ -63,13 +62,11 @@ function RecommendInput() {
     navigate(`/recommend/results?${params.toString()}`)
   }
 
-  const selectedHubAccess = HUB_ACCESS[hubs.find((h) => h.hubId === hubId)?.nameEn ?? '']
+  const selectedHubAccess = HUB_ACCESS[hubs.find((h) => h.hubId === hubId)?.code ?? '']
 
   return (
     <div className="relative min-h-screen bg-bg">
-      <FiberBackground />
       <div className="relative z-10">
-        <BackHeader backTo="/" />
 
         <Container className="py-8 md:py-14">
           <div className="mx-auto max-w-2xl">
@@ -95,7 +92,7 @@ function RecommendInput() {
                     <div className="flex flex-wrap gap-2">
                       {hubs.map((hub) => (
                         <Tag key={hub.hubId} active={hubId === hub.hubId} onClick={() => setHubId(hub.hubId)}>
-                          {lang === 'ko' ? hub.nameKo : hub.nameEn}
+                          {hub.name}
                         </Tag>
                       ))}
                     </div>

@@ -1,6 +1,9 @@
 package com.hiddengyeongbuk.backend.catalog;
 
+import com.hiddengyeongbuk.backend.catalog.dto.RegionDetailResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.RegionResponse;
+import com.hiddengyeongbuk.backend.domain.place.Place;
+import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import com.hiddengyeongbuk.backend.domain.region.RegionTranslation;
@@ -22,13 +25,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class RegionQueryService {
 
+    /** 지역 대표 이미지로 빌려올 장소 이미지 개수. */
+    private static final int REGION_IMAGE_LIMIT = 3;
+
     private final RegionRepository regionRepository;
     private final RegionTranslationRepository regionTranslationRepository;
+    private final PlaceRepository placeRepository;
 
     public RegionQueryService(
-            RegionRepository regionRepository, RegionTranslationRepository regionTranslationRepository) {
+            RegionRepository regionRepository,
+            RegionTranslationRepository regionTranslationRepository,
+            PlaceRepository placeRepository) {
         this.regionRepository = regionRepository;
         this.regionTranslationRepository = regionTranslationRepository;
+        this.placeRepository = placeRepository;
     }
 
     /**
@@ -48,6 +58,46 @@ public class RegionQueryService {
                 .sorted(hubPriority(hubId))
                 .map(region -> toResponse(region, requested.get(region.getId()), base.get(region.getId())))
                 .toList();
+    }
+
+    /**
+     * 지역 상세(API 명세서 §2.5). 소개 글은 요청 언어 → 기준 언어 순으로 폴백한다.
+     *
+     * <p>{@code images}는 아직 지역 전용 에셋이 없어 <b>그 지역 장소의 대표 이미지를 빌려온다</b>
+     * — 명세가 "정적 에셋 또는 대표 장소 이미지"를 모두 허용한다. 전용 에셋이 생기면 이 부분만
+     * 바뀐다.
+     */
+    @Cacheable("regionDetail")
+    public RegionDetailResponse getDetail(Long regionId, String lang) {
+        Region region = regionRepository
+                .findById(regionId)
+                .filter(Region::isActive)
+                .orElseThrow(() -> new RegionNotFoundException(regionId));
+
+        RegionTranslation requested =
+                regionTranslationRepository.findByRegionIdAndLang(regionId, lang).orElse(null);
+        RegionTranslation base = requested != null
+                ? requested
+                : regionTranslationRepository
+                        .findByRegionIdAndLang(regionId, LanguageRegistry.BASE)
+                        .orElse(null);
+        RegionTranslation chosen = requested != null ? requested : base;
+
+        List<String> images = placeRepository.findByRegionIdIn(List.of(regionId)).stream()
+                .map(Place::getFirstImage)
+                .filter(url -> url != null && !url.isBlank())
+                .limit(REGION_IMAGE_LIMIT)
+                .toList();
+
+        return new RegionDetailResponse(
+                region.getId(),
+                chosen != null ? chosen.getName() : null,
+                region.getHub().getId(),
+                region.getLat(),
+                region.getLng(),
+                chosen != null ? chosen.getDescription() : null,
+                images,
+                chosen != null ? chosen.getLang() : null);
     }
 
     /** 거점 소속을 앞으로, 그 안에서는 PK 순으로 — 정렬이 결정적이어야 캐시 결과가 안정적이다. */

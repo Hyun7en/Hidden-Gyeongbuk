@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './styles/ds.css';
 
 /*
  * 디자인 토큰 — Claude Design 프로토타입(Hidden Gyeongbuk Prototype)의 styles.css가 원본이다.
@@ -237,4 +238,13 @@ a:hover {
 .skeleton {
   background: var(--line);
   animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+/* 가로 스크롤 목록 — 스와이프는 되지만 스크롤바는 보이지 않아야 한다(Wireframe S1). */
+.hg-hscroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hg-hscroll::-webkit-scrollbar {
+  display: none;
 }

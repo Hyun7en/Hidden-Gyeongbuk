@@ -1,0 +1,183 @@
+/*
+ * Claude Design 디자인 시스템 컴포넌트 스타일.
+ * 원본: _ds/hidden-gyeongbuk-.../_ds_bundle.js (Button·Header·Tag·PlaceCard·SearchInput·MapMarker·Sheet)
+ *
+ * 원본은 컴포넌트마다 토큰을 인라인 style로 주입한다 — Claude Design은 컴포넌트가 서로 격리된
+ * 캔버스라 그래야 하기 때문이다. 우리 앱은 index.css가 :root와 [data-theme]에 토큰을 이미
+ * 깔아두므로 그 주입을 걷어냈다. 그 외 선언은 원본 그대로 유지한다 — 디자인 값을 손으로
+ * 재현하지 않는 것이 디자인 시스템을 쓰는 이유다.
+ */
+
+/* ── Button ─────────────────────────────────────────────── */
+.hg-cta {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  color: var(--accent-text);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  white-space: nowrap;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+.hg-cta:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--accent-hover), var(--shadow-soft); }
+.hg-cta:active:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--accent-pressed);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+.hg-cta:disabled { opacity: var(--opacity-disabled); cursor: not-allowed; box-shadow: none; }
+.hg-cta:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.hg-cta.hg-btn-mobile { height: var(--h-control-lg); font-size: 14px; padding: 0 28px; }
+.hg-cta.hg-btn-desktop { height: var(--h-control-xl); font-size: 15px; padding: 0 32px; }
+
+/* ── Header ─────────────────────────────────────────────── */
+.hg-header {
+  background: var(--bg-elevated);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, var(--bg-elevated));
+  position: relative;
+  z-index: var(--z-header);
+  font-family: var(--font-sans);
+}
+.hg-header .hg-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 16px;
+}
+.hg-header .hg-brand { display: flex; align-items: center; gap: 8px; }
+.hg-lang {
+  font-size: 12px; color: var(--text-soft);
+  border: var(--border-width) solid var(--line);
+  background: var(--bg-elevated);
+  padding: 3px 22px 3px 8px;
+  cursor: pointer; font-family: inherit;
+  appearance: none; -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-soft) 50%),
+    linear-gradient(135deg, var(--text-soft) 50%, transparent 50%);
+  background-position: right 10px top 55%, right 6px top 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.hg-lang:hover { border-color: var(--accent-hover); color: var(--accent-text); }
+.hg-lang:disabled { opacity: var(--opacity-disabled); cursor: not-allowed; }
+.hg-lang:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.hg-header .hg-actions { display: flex; align-items: center; gap: 10px; }
+.hg-theme-toggle {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+  border: var(--border-width) solid var(--line);
+  background: var(--bg-elevated); color: var(--text-soft);
+  font-size: 13px; line-height: 1; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color var(--motion-fast) ease, color var(--motion-fast) ease;
+}
+.hg-theme-toggle:hover { border-color: var(--accent-hover); color: var(--accent-text); }
+.hg-theme-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ── Tag ────────────────────────────────────────────────── */
+.hg-tag {
+  border: var(--border-width) solid var(--line);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  color: var(--text);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  white-space: nowrap; flex-shrink: 0;
+}
+.hg-tag:disabled { opacity: var(--opacity-disabled); cursor: not-allowed; box-shadow: none; }
+.hg-tag:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.hg-tag.hg-tag-unselected:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--accent-hover); }
+.hg-tag.hg-tag-unselected:active:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--accent-pressed);
+  background: var(--glass-bg-strong);
+}
+.hg-tag.hg-tag-selected {
+  border-color: var(--accent);
+  background: var(--glass-bg-strong);
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.hg-tag.hg-tag-selected:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--accent-hover); border-color: var(--accent-hover); }
+.hg-tag.hg-tag-selected:active:not(:disabled) { box-shadow: inset 0 0 0 1px var(--accent-pressed); border-color: var(--accent-pressed); }
+.hg-tag.hg-tag-mobile { height: var(--h-control-sm); padding: 0 12px; font-size: 13px; }
+.hg-tag.hg-tag-desktop { height: var(--h-control-md); padding: 0 16px; font-size: 14px; }
+
+/* ── PlaceCard ──────────────────────────────────────────── */
+.hg-card {
+  position: relative; border: none;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 0; width: 220px; max-width: 100%;
+  cursor: pointer; text-align: left; display: block;
+  font: inherit; color: inherit;
+  background: var(--bg-elevated);
+  font-family: var(--font-sans);
+  transition: box-shadow 0.15s ease;
+}
+.hg-card:hover:not(:disabled) { box-shadow: var(--shadow-soft), var(--shadow-soft); }
+.hg-card:active:not(:disabled) { box-shadow: none; }
+.hg-card:disabled { opacity: var(--opacity-disabled); cursor: not-allowed; box-shadow: none; }
+.hg-card:focus-visible { outline-color: var(--focus-ring); }
+.hg-card .hg-inner {
+  position: relative;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  overflow: hidden; border-radius: inherit;
+}
+.hg-card .hg-img {
+  position: relative; background-color: var(--bg-elevated);
+  background-size: cover; background-position: center;
+  display: flex; align-items: center; justify-content: center;
+}
+.hg-card .hg-img-empty { background: transparent; }
+.hg-card .hg-img-empty svg { color: var(--line); }
+.hg-card.hg-card-mobile .hg-img { height: var(--h-media-sm); }
+.hg-card.hg-card-desktop .hg-img { height: var(--h-media-lg); }
+.hg-card .hg-body { padding: 14px; }
+.hg-card.hg-card-desktop .hg-body { padding: 16px; }
+.hg-card .hg-title { font-size: 15px; font-weight: 700; margin: 0; }
+.hg-card.hg-card-desktop .hg-title { font-size: 16px; }
+.hg-card .hg-addr { font-size: 12px; color: var(--text-soft); margin: 4px 0 0; }
+.hg-card.hg-card-desktop .hg-addr { font-size: 14px; }
+.hg-card .hg-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.hg-card .hg-tags span {
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-pill);
+  font-size: 11px; padding: 3px 8px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.hg-card.hg-card-desktop .hg-tags span { font-size: 12px; }
+
+/* ── SearchInput ────────────────────────────────────────── */
+.hg-field {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: var(--border-width) solid var(--line);
+  font-family: var(--font-sans); color: var(--text);
+  transition: border-color var(--motion-fast) ease;
+}
+.hg-field-pill { border-radius: var(--radius-pill); padding: 0 var(--space-4); }
+.hg-field-box { border-radius: var(--radius-card); padding: 0 var(--space-3); }
+.hg-field-sm { height: var(--h-control-sm); font-size: var(--fs-2xs); }
+.hg-field-md { height: var(--h-control-md); font-size: 13px; }
+.hg-field-lg { height: var(--h-control-lg); font-size: var(--fs-sm-alt); }
+.hg-field:hover:not(.hg-field-disabled) { border-color: var(--accent-hover); }
+.hg-field-focused { border-color: var(--accent); box-shadow: 0 0 0 2px var(--focus-ring); }
+.hg-field-disabled { opacity: var(--opacity-disabled); cursor: not-allowed; }
+.hg-field input { flex: 1; min-width: 0; border: none; background: none; outline: none; font: inherit; color: inherit; padding: 0; }
+.hg-field input::placeholder { color: var(--text-soft); }
+.hg-field svg { flex-shrink: 0; color: var(--text-soft); }
+.hg-field-clear { flex-shrink: 0; border: none; background: none; padding: 2px; cursor: pointer; color: var(--text-soft); display: flex; line-height: 0; }
+.hg-field-clear:hover { color: var(--text); }
+
+/* ── 접근성: 모션 최소화 ────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .hg-cta, .hg-tag, .hg-card, .hg-field { transition: none !important; animation: none !important; }
+}

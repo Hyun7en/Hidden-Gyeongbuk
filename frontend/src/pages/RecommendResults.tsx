@@ -3,10 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { recommendCourses } from '../api/client'
 import type { CourseResponse } from '../api/types'
-import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
 import CourseCard from '../components/CourseCard'
-import FiberBackground from '../components/FiberBackground'
 import { useHubs } from '../hooks/useHubs'
 import { useLanguage } from '../context/LanguageContext'
 import { DIFFICULTY_OPTIONS, DURATION_OPTIONS, type Difficulty, type Duration, type Interest } from '../types/course'
@@ -36,15 +34,13 @@ function RecommendResults() {
   }, [hubId, duration, difficulty, searchParams.get('interests'), lang])
 
   const matchedHub = hubs.find((h) => h.hubId === hubId)
-  const hubLabel = (lang === 'ko' ? matchedHub?.nameKo : matchedHub?.nameEn) ?? `Hub ${hubId}`
+  const hubLabel = matchedHub?.name ?? `Hub ${hubId}`
   const durationLabel = t(DURATION_OPTIONS.find((o) => o.value === duration)?.labelKey ?? duration)
   const difficultyLabel = t(DIFFICULTY_OPTIONS.find((o) => o.value === difficulty)?.labelKey ?? difficulty)
 
   return (
     <div className="relative min-h-screen bg-bg">
-      <FiberBackground />
       <div className="relative z-10">
-        <BackHeader backTo="/recommend" />
         <Container className="py-8 md:py-14">
           <h1 className="mb-6 text-2xl font-bold md:mb-8 md:text-3xl">{t('recommendResults.title')}</h1>
           {error ? (

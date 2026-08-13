@@ -7,6 +7,8 @@ import type {
   PlaceDetailResponse,
   PlaceSummaryResponse,
   RegionResponse,
+  RegionDetailResponse,
+  PlaceNearbyResponse,
 } from './types'
 
 // 기본값은 same-origin 상대 경로 — 개발은 Vite 프록시(vite.config.ts)가 /api를
@@ -41,8 +43,20 @@ export function fetchMetaOptions(): Promise<MetaOptionsResponse> {
   return request('/api/meta/options')
 }
 
-export function fetchRegions(hubId: number): Promise<RegionResponse[]> {
-  return request(`/api/regions?hubId=${hubId}`)
+/**
+ * 지역 목록. `hubId`를 주면 그 거점 소속 지역이 상단에 오도록 정렬되고, 생략하면
+ * 전체 지역을 기본 순서로 준다(API 명세서 §2.2) — 홈의 지역 카탈로그가 후자를 쓴다.
+ */
+export function fetchRegions(params: { hubId?: number; lang?: string } = {}): Promise<RegionResponse[]> {
+  const query = new URLSearchParams()
+  if (params.hubId !== undefined) query.set('hubId', String(params.hubId))
+  if (params.lang) query.set('lang', params.lang)
+  const qs = query.toString()
+  return request(`/api/regions${qs ? `?${qs}` : ''}`)
+}
+
+export function fetchRegion(regionId: number, lang = 'en'): Promise<RegionDetailResponse> {
+  return request(`/api/regions/${regionId}?lang=${lang}`)
 }
 
 export function recommendCourses(body: CourseRecommendRequest, lang = 'en'): Promise<CourseListResponse> {
@@ -76,6 +90,16 @@ export function searchPlaces(
   if (params.page !== undefined) query.set('page', String(params.page))
   if (params.size !== undefined) query.set('size', String(params.size))
   return request(`/api/places?${query.toString()}`)
+}
+
+/** 주변 장소(FR-S-04). 좌표 기준이라 캐싱 대상이 아니다 — 키 공간이 사실상 무한하다. */
+export function fetchNearby(
+  params: { lat: number; lng: number; radius?: number },
+  lang = 'en',
+): Promise<PlaceNearbyResponse[]> {
+  const query = new URLSearchParams({ lat: String(params.lat), lng: String(params.lng), lang })
+  if (params.radius !== undefined) query.set('radius', String(params.radius))
+  return request(`/api/places/nearby?${query.toString()}`)
 }
 
 export function fetchPlaceDetail(placeId: number, lang = 'en'): Promise<PlaceDetailResponse> {

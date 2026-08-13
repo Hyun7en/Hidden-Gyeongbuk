@@ -1,14 +1,30 @@
 import type { ReactNode } from 'react'
 
-function Tag({ active, onClick, children }: { active?: boolean; onClick?: () => void; children: ReactNode }) {
+/**
+ * 선택 칩. 디자인 시스템 `Tag`(`hg-tag`)를 그대로 쓴다 — 스타일 정의는 `styles/ds.css`.
+ *
+ * prop 이름은 기존 호출부에 맞춰 `active`로 유지한다(디자인 시스템 원본은 `selected`).
+ */
+function Tag({
+  active,
+  size = 'desktop',
+  disabled,
+  onClick,
+  children,
+}: {
+  active?: boolean
+  size?: 'mobile' | 'desktop'
+  disabled?: boolean
+  onClick?: () => void
+  children: ReactNode
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
-      className={`h-[30px] border px-3 text-[13px] font-medium md:h-9 md:px-4 md:text-sm ${
-        active ? 'border-accent bg-accent text-bg-elevated' : 'border-line text-text'
-      }`}
+      className={`hg-tag hg-tag-${size} ${active ? 'hg-tag-selected' : 'hg-tag-unselected'}`}
     >
       {children}
     </button>

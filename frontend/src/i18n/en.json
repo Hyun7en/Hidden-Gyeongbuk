@@ -38,7 +38,13 @@
     "startSubtitle": "Pick the transit hub you're arriving from.",
     "hubsError": "Couldn't load hubs — is the backend running? ({{error}})",
     "loadingHubs": "Loading hubs…",
-    "footer": "Hidden Gyeongbuk · Built from public tourism open data"
+    "footer": "Hidden Gyeongbuk · Built from public tourism open data",
+    "heroCopy": "Unhurried. Unspoiled. Gyeongbuk.",
+    "heroCta": "Get a course",
+    "allRegions": "All regions",
+    "regionSub": "See highlights",
+    "regionsError": "Could not load regions",
+    "retry": "Try again"
   },
   "placeExplore": {
     "title": "Browse Places",
@@ -48,13 +54,24 @@
     "empty": "No places match your filters.",
     "prevPage": "← Prev",
     "nextPage": "Next →",
-    "pageIndicator": "Page {{page}} of {{totalPages}}"
+    "pageIndicator": "Page {{page}} of {{totalPages}}",
+    "endReached": "You've seen all places",
+    "reset": "Reset filters",
+    "inRegion": "Places in {{region}}",
+    "clearRegion": "All regions"
   },
   "placeDetail": {
     "error": "Couldn't load this place — is the backend running? ({{error}})",
     "translatedBadge": "Translated from Korean (AI)",
     "noTranslationYet": "English description not available yet — original Korean text:",
-    "directions": "Directions:"
+    "directions": "Directions:",
+    "localAddress": "Local address (for taxi)",
+    "copy": "Copy",
+    "copied": "Address copied",
+    "noPhoto": "Photo coming soon",
+    "nearby": "Nearby",
+    "festival": "Festival dates",
+    "machineTranslation": "Machine translation"
   },
   "recommendInput": {
     "title": "Course Recommendation",
@@ -90,11 +107,6 @@
       "completeness": "Data completeness"
     }
   },
-  "hubDetail": {
-    "error": "Couldn't load this hub — is the backend running? ({{error}})",
-    "notFound": "Hub not found.",
-    "regionsHeading": "{{count}} counties in this hub"
-  },
   "options": {
     "duration": {
       "ONE_DAY": "One day",
@@ -117,5 +129,63 @@
       "EV": "Festivals & Events",
       "AC": "Stays"
     }
+  },
+  "nav": {
+    "about": "About",
+    "contact": "Contact",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  },
+  "about": {
+    "title": "About",
+    "whyTitle": "Why we built Hidden Gyeongbuk",
+    "why1": "Beyond the well-known sights, Gyeongsangbuk-do holds far more places that only locals reach. The information is scattered and hard to act on, so their value stays unknown.",
+    "why2": "Hidden Gyeongbuk gathers those places and connects them into courses you can actually travel, matched to your dates and interests.",
+    "why3": "Accurate information and plain recommendations over loud marketing, so you can take Gyeongbuk slowly.",
+    "values": "What we value",
+    "value1": "Built for real use",
+    "value1Desc": "Down to the Korean address you can show a taxi driver. Can you actually get there — that is the test.",
+    "value2": "Honest translation",
+    "value2Desc": "Machine translation is labelled as such. We do not hide where text came from.",
+    "value3": "Unhurried by design",
+    "value3Desc": "One or two places seen properly beats a packed itinerary.",
+    "coverage": "So far",
+    "regions": "Regions",
+    "places": "Places",
+    "languages": "Languages",
+    "cta": "Explore regions"
+  },
+  "contact": {
+    "title": "Contact us",
+    "sub": "Send questions or suggestions by email. We reply within 2–3 business days.",
+    "type": "Type of enquiry",
+    "bug": "Bug report",
+    "translation": "Translation error",
+    "partnership": "Partnership",
+    "etc": "Other feedback",
+    "send": "Send email",
+    "copy": "Copy address",
+    "copied": "Copied",
+    "faq": "Frequently asked"
+  },
+  "legal": {
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "effective": "Effective",
+    "prevVersion": "Previous versions",
+    "print": "Print",
+    "summary": "In short",
+    "summaryNote": "This summary is for understanding only; the articles below are what applies.",
+    "toc": "Contents",
+    "inPreparation": "Coming soon.",
+    "privacyLink": "View Privacy Policy"
+  },
+  "region": {
+    "cta": "Get a course for this region",
+    "highlights": "Highlights",
+    "more": "See all places",
+    "error": "Could not load this region",
+    "notFound": "Region not found",
+    "hubBadge": "{{hub}} area"
   }
 }

@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import BackHeader from '../components/BackHeader'
 import Container from '../components/Container'
-import FiberBackground from '../components/FiberBackground'
-import KakaoMap from '../components/KakaoMap'
+import KakaoMap, { type MapMarker } from '../components/KakaoMap'
 import ShareButton from '../components/ShareButton'
 import { fetchCourses } from '../api/client'
 import type { CourseResponse } from '../api/types'
-import { translateCategory } from '../api/labels'
 import { useHubs } from '../hooks/useHubs'
 import { useLanguage } from '../context/LanguageContext'
 import { googleDirectionsUrl } from '../lib/directions'
@@ -32,7 +29,6 @@ const BREAKDOWN_LABEL_KEYS: Record<keyof CourseResponse['breakdown'], string> = 
 
 function CourseDetail() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { lang } = useLanguage()
   const { hubs } = useHubs()
   const { rank } = useParams()
@@ -81,9 +77,7 @@ function CourseDetail() {
   if (!course) {
     return (
       <div className="relative min-h-screen bg-bg">
-        <FiberBackground />
         <div className="relative z-10">
-          <BackHeader onBack={() => navigate(-1)} />
           <Container className="py-16 text-center">
             <h1 className="mb-6 text-2xl font-bold md:text-3xl">{t('common.courseRank', { rank: rank ?? '' })}</h1>
             <p className="text-sm text-text-soft">
@@ -101,16 +95,19 @@ function CourseDetail() {
   // restarts at 1 each day) — the map should show one continuous route. Hub goes
   // first so the route line actually starts where the trip starts (hub-and-spoke
   // design) instead of jumping straight between places with no origin.
-  const routeMarkers = [
-    ...(hub ? [{ lat: hub.lat, lng: hub.lng, label: hub.nameEn, isHub: true }] : []),
-    ...course.days.flatMap((d) => d.places).map((p, i) => ({ lat: p.lat, lng: p.lng, label: p.title, order: i + 1 })),
+  // 좌표 없는 장소는 지도에 못 찍는다(수집 데이터에 결측이 있다).
+  const routeMarkers: MapMarker[] = [
+    ...(hub ? [{ lat: hub.lat, lng: hub.lng, label: hub.name, isHub: true }] : []),
+    ...course.days
+      .flatMap((d) => d.places)
+      .flatMap((p, i) =>
+        p.lat != null && p.lng != null ? [{ lat: p.lat, lng: p.lng, label: p.title ?? '', order: i + 1 }] : [],
+      ),
   ]
 
   return (
     <div className="relative min-h-screen bg-bg">
-      <FiberBackground />
       <div className="relative z-10">
-        <BackHeader onBack={() => navigate(-1)} />
 
         <Container className="py-8 md:py-14">
           <h1 className="mb-6 text-2xl font-bold md:text-3xl">{t('common.courseRank', { rank: course.rank })}</h1>
@@ -141,10 +138,10 @@ function CourseDetail() {
                           </span>
                           <span className="text-sm md:text-base">{place.title}</span>
                           <span className="ml-auto text-[11px] uppercase text-text-soft md:text-xs">
-                            {lang === 'en' ? translateCategory(place.category) : place.category}
+                            {t(`options.interest.${place.placeType}`)}
                           </span>
                           <a
-                            href={googleDirectionsUrl(place.lat, place.lng)}
+                            href={place.lat != null && place.lng != null ? googleDirectionsUrl(place.lat, place.lng) : undefined}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={t('courseDetail.directions')}

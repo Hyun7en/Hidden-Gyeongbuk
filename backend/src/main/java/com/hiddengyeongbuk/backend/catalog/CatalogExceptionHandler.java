@@ -23,7 +23,7 @@ public class CatalogExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(CatalogExceptionHandler.class);
 
-    @ExceptionHandler({PlaceNotFoundException.class, HubNotFoundException.class})
+    @ExceptionHandler({PlaceNotFoundException.class, HubNotFoundException.class, RegionNotFoundException.class})
     public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiErrorResponse(new ApiError("NOT_FOUND", e.getMessage())));
     }

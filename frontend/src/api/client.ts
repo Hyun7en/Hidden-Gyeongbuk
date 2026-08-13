@@ -3,6 +3,7 @@ import type {
   CourseRecommendRequest,
   HubResponse,
   MetaOptionsResponse,
+  MetaLanguagesResponse,
   PageResponse,
   PlaceDetailResponse,
   PlaceSummaryResponse,
@@ -41,6 +42,11 @@ export function fetchHubs(): Promise<HubResponse[]> {
 
 export function fetchMetaOptions(): Promise<MetaOptionsResponse> {
   return request('/api/meta/options')
+}
+
+/** 지원 언어 목록(API 명세서 §2.4). 언어 선택기와 소개 화면 커버리지가 쓴다. */
+export function fetchLanguages(): Promise<MetaLanguagesResponse> {
+  return request('/api/meta/languages')
 }
 
 /**

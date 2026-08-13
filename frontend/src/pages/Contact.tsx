@@ -57,6 +57,22 @@ function Contact() {
         <Button onClick={copyEmail}>{copied ? t('contact.copied') : t('contact.copy')}</Button>
       </div>
       <p className="mt-3 text-xs text-text-soft">{EMAIL}</p>
+
+      {/* FAQ — 문의 상당수를 여기서 자체 해결해 응답 부담을 줄인다(화면 설계서 S8).
+          여러 개를 동시에 열 수 있다 — 서로 비교하며 읽는 편이 자연스럽다. */}
+      <section className="mt-14">
+        <h2 className="mb-4 text-lg font-semibold">{t('contact.faq')}</h2>
+        <div className="border-t border-line">
+          {[1, 2, 3, 4].map((i) => (
+            <details key={i} className="border-b border-line">
+              <summary className="cursor-pointer list-none py-4 text-sm font-medium marker:hidden hover:text-accent-text">
+                {t(`contact.q${i}`)}
+              </summary>
+              <p className="pb-4 text-sm leading-[1.8] text-text-soft">{t(`contact.a${i}`)}</p>
+            </details>
+          ))}
+        </div>
+      </section>
     </Container>
   )
 }

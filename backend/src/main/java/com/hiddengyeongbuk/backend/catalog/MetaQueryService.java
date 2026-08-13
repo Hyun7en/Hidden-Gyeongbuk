@@ -1,10 +1,12 @@
 package com.hiddengyeongbuk.backend.catalog;
 
+import com.hiddengyeongbuk.backend.catalog.dto.MetaLanguagesResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.MetaOptionsResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.MetaOptionsResponse.Option;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import java.util.Arrays;
 import java.util.List;
+import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +23,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class MetaQueryService {
 
     private final HubQueryService hubQueryService;
+    private final LanguageRegistry languages;
 
-    public MetaQueryService(HubQueryService hubQueryService) {
+    public MetaQueryService(HubQueryService hubQueryService, LanguageRegistry languages) {
         this.hubQueryService = hubQueryService;
+        this.languages = languages;
+    }
+
+    /**
+     * 지원 언어 목록(API 명세서 §2.4). 활성 언어만 내려가며, 언어를 추가하면 설정 항목이
+     * 늘어나는 것만으로 이 응답이 커진다 — 프론트는 언어를 하드코딩하지 않는다.
+     */
+    @Cacheable("metaLanguages")
+    public MetaLanguagesResponse languages() {
+        List<MetaLanguagesResponse.Language> list = languages.activeCodes().stream()
+                .map(code -> new MetaLanguagesResponse.Language(code, languages.displayNameOf(code)))
+                .toList();
+        return new MetaLanguagesResponse(list, LanguageRegistry.BASE);
     }
 
     @Cacheable("metaOptions")

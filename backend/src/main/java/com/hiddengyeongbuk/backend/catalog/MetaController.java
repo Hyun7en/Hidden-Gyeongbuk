@@ -1,5 +1,6 @@
 package com.hiddengyeongbuk.backend.catalog;
 
+import com.hiddengyeongbuk.backend.catalog.dto.MetaLanguagesResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.MetaOptionsResponse;
 import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,12 @@ public class MetaController {
     public MetaController(MetaQueryService metaQueryService, LanguageRegistry languages) {
         this.metaQueryService = metaQueryService;
         this.languages = languages;
+    }
+
+    /** 지원 언어 목록(API 명세서 §2.4). 언어 선택기가 이걸로 채워진다. */
+    @GetMapping("/languages")
+    public MetaLanguagesResponse languages() {
+        return metaQueryService.languages();
     }
 
     @GetMapping("/options")

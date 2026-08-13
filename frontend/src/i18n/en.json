@@ -166,7 +166,15 @@
     "send": "Send email",
     "copy": "Copy address",
     "copied": "Copied",
-    "faq": "Frequently asked"
+    "faq": "Frequently asked",
+    "q1": "The translation reads oddly",
+    "a1": "Where no official translation exists we fill the gap with machine translation, and label it as such so you know the source. If you spot an error, send it under \"Translation error\".",
+    "q2": "My region is not listed",
+    "a2": "We cover only the 15 designated population-declining areas of Gyeongsangbuk-do. Large cities and well-known destinations are out of scope.",
+    "q3": "No course is returned",
+    "a3": "Narrow conditions can leave nothing to build from. Raising the travel intensity or picking fewer interests widens the pool.",
+    "q4": "How current is the information",
+    "a4": "Tourism data is collected once a day. Time-bound details such as festival dates may differ on the ground, so check before you travel."
   },
   "legal": {
     "terms": "Terms of Service",
@@ -178,7 +186,186 @@
     "summaryNote": "This summary is for understanding only; the articles below are what applies.",
     "toc": "Contents",
     "inPreparation": "Coming soon.",
-    "privacyLink": "View Privacy Policy"
+    "privacyLink": "View Privacy Policy",
+    "termsDoc": {
+      "title": "Terms of Service",
+      "summary": [
+        "Free to use, with no account required.",
+        "Tourism information is collected from public data in batches and may differ from what you find on site. Please verify before you travel.",
+        "Please do not scrape the service with automated tools."
+      ],
+      "sections": [
+        {
+          "t": "Article 1 (Purpose)",
+          "b": [
+            "These Terms set out the conditions and procedures for using Hidden Gyeongbuk (the \"Service\"), and the rights and obligations of users and the operator."
+          ]
+        },
+        {
+          "t": "Article 2 (Definitions)",
+          "b": [
+            "\"Service\" means the web service operated to let users browse tourism information for the population-declining areas of Gyeongsangbuk-do and receive travel course recommendations.",
+            "\"User\" means anyone who uses the Service under these Terms.",
+            "\"Content\" means all information the Service provides, including place information, descriptions, images and recommended courses."
+          ]
+        },
+        {
+          "t": "Article 3 (Posting and Amendment of Terms)",
+          "b": [
+            "The operator posts these Terms within the Service.",
+            "The operator may amend these Terms within the limits of applicable law. Amendments are posted at least 7 days before they take effect, or at least 30 days before where the change is unfavourable to users.",
+            "Continuing to use the Service after the effective date is treated as acceptance of the amended Terms."
+          ]
+        },
+        {
+          "t": "Article 4 (Provision of the Service)",
+          "b": [
+            "The Service provides: (1) place search and browsing, (2) regional introductions, (3) travel course recommendations, (4) map display and links to external map apps for directions, (5) shareable course links.",
+            "The Service is free and requires no registration or login.",
+            "The operator may change the Service, and will post the reason and details within the Service when doing so."
+          ]
+        },
+        {
+          "t": "Article 5 (Suspension of the Service)",
+          "b": [
+            "The Service may be suspended temporarily where: (1) equipment is being inspected or repaired, (2) a system failure occurs, (3) an external API the Service depends on fails or changes its policy, (4) force majeure such as natural disaster occurs.",
+            "Foreseeable suspensions are announced in advance; where this is not possible, notice may be given afterwards."
+          ]
+        },
+        {
+          "t": "Article 6 (User Obligations)",
+          "b": [
+            "Users must not: (1) collect information from the Service in bulk by automated means, (2) interfere with the normal operation of the Service, (3) use the Service to infringe the rights of others, (4) violate applicable law.",
+            "The operator may restrict access where such conduct is identified."
+          ]
+        },
+        {
+          "t": "Article 7 (Sources and Copyright)",
+          "b": [
+            "Tourism information provided by the Service is based on public data, and copyright in that data belongs to the respective providing institutions.",
+            "Some multilingual descriptions are produced by machine translation; where this applies, it is indicated on the item.",
+            "Copyright in material created by the operator — including the interface, design and recommendation algorithm — belongs to the operator.",
+            "Users may use the Content for personal, non-commercial purposes. Any other use requires prior consent."
+          ]
+        },
+        {
+          "t": "Article 8 (Disclaimer)",
+          "b": [
+            "Tourism information is gathered periodically from external sources. Opening hours, prices and event schedules may differ on the ground. The operator does not warrant accuracy or currency, and recommends verifying before visiting.",
+            "Recommended courses are reference information derived from coordinate-based calculation. Actual travel times, transport connections and accessibility are not guaranteed.",
+            "The operator is not responsible for issues arising from external services the Service links to, such as map applications and sharing features.",
+            "As the Service is provided free of charge, the operator disclaims liability to the extent permitted by applicable law."
+          ]
+        },
+        {
+          "t": "Article 9 (Governing Law and Disputes)",
+          "b": [
+            "These Terms are governed by and construed under the laws of the Republic of Korea.",
+            "Disputes arising from use of the Service are to be resolved by mutual discussion in the first instance; failing that, they may be brought before the court having jurisdiction under the Civil Procedure Act."
+          ]
+        }
+      ],
+      "effectiveDate": "",
+      "versions": []
+    },
+    "privacyDoc": {
+      "title": "Privacy Policy",
+      "summary": [
+        "There is no sign-up, so we do not ask for personal details such as your name or contact information.",
+        "We do not collect your device location. Coordinates shown on the map are the locations of tourist sites.",
+        "We do not use cookies. Only your theme and language choices are stored in your browser and can be cleared from browser settings.",
+        "To display maps, a Kakao script runs directly in your browser."
+      ],
+      "sections": [
+        {
+          "t": "1. Personal data we collect",
+          "b": [
+            "The Service has no registration process and does not ask users to enter personal data such as names or contact details.",
+            "Enquiries are sent directly from your own mail client (mailto); the Service neither relays nor stores their contents. Information contained in an email you send does remain in the operator's mailbox for the purpose of replying.",
+            "Access records such as IP address, access time and browser type may be generated automatically by the server during use. 【To confirm: whether access logs are retained in the deployment environment, and for how long】"
+          ]
+        },
+        {
+          "t": "2. Purpose of use",
+          "b": [
+            "Automatically generated access records are used only to operate the Service, diagnose faults and prevent abuse.",
+            "Information contained in enquiry emails is used only to answer that enquiry."
+          ]
+        },
+        {
+          "t": "3. Retention period",
+          "b": [
+            "Access records are destroyed without delay once their purpose is fulfilled. 【To confirm: the specific retention period】",
+            "Enquiry emails are deleted once there is no further need to retain them after a reply.",
+            "Where applicable law prescribes a separate retention period, that period applies."
+          ]
+        },
+        {
+          "t": "4. Provision to third parties",
+          "b": [
+            "The operator does not provide users' personal data to third parties.",
+            "Where a request is made on a legal basis, the operator complies with it."
+          ]
+        },
+        {
+          "t": "5. Outsourced processing",
+          "b": [
+            "External hosting is used to operate the Service. 【To confirm: hosting provider and the scope of the outsourced work】"
+          ]
+        },
+        {
+          "t": "6. Third-party services",
+          "b": [
+            "To display maps, the Kakao Maps script runs in your browser, and your browser communicates directly with Kakao's servers. Kakao's own privacy policy applies to information processed by Kakao in that exchange.",
+            "The sharing feature operates only when you press the share button, at which point Kakao's sharing script runs.",
+            "Directions buttons are links to external map services; the policies of those services apply once you leave."
+          ]
+        },
+        {
+          "t": "7. Location information",
+          "b": [
+            "The Service does not collect location (GPS) data from your device.",
+            "Coordinates shown on the map are the locations of tourist sites, not your location."
+          ]
+        },
+        {
+          "t": "8. Cookies and similar technologies",
+          "b": [
+            "The Service does not use cookies.",
+            "Two values are stored in your browser's local storage to keep your display settings: (1) colour theme (light/dark), (2) display language.",
+            "Neither identifies an individual, and both are removed when you clear site data in your browser settings."
+          ]
+        },
+        {
+          "t": "9. Your rights",
+          "b": [
+            "Because the Service does not collect or hold personal data directly from users, there is in principle no information subject to access, correction or deletion.",
+            "If you nonetheless need something checked, you may contact us at the address below, and we will handle it as prescribed by applicable law."
+          ]
+        },
+        {
+          "t": "10. Data protection officer",
+          "b": [
+            "【To confirm: name or role of the data protection officer, and a contactable email address】",
+            "Please direct enquiries about the handling of personal data to the contact above."
+          ]
+        },
+        {
+          "t": "11. Changes to this policy",
+          "b": [
+            "Where this policy changes, the effective date and the nature of the change are posted within the Service, and previous versions are kept available to read."
+          ]
+        }
+      ],
+      "effectiveDate": "",
+      "versions": []
+    },
+    "authoritative": "The Korean version of this document prevails; other language versions are provided as a courtesy translation.",
+    "draftNotice": "Draft — not to be relied on before review by a legal professional.",
+    "draft": "Draft",
+    "history": "Revision history",
+    "noHistory": "This document has not been revised yet.",
+    "close": "Close"
   },
   "region": {
     "cta": "Get a course for this region",

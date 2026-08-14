@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 설계 결정 — 문서가 정본이다
 
-설계 문서(SRS, ADR, 아키텍처, ERD, 외부 API 연동, 추천 알고리즘, API 명세)와 WBS는 Notion "Hidden Gyeongbuk" 페이지가 원본이다.
+설계 문서(SRS, 아키텍처, ERD, 외부 API 연동, 추천 알고리즘, API 명세, 화면 설계)와 WBS는 Notion "Hidden Gyeongbuk" 페이지가 원본이다. **ADR만 예외로 저장소 `docs/adr/`가 정본이다** — 코드 결정의 근거라 코드와 같이 버전 관리한다.
 
 **이 문서들은 스스로 "본 문서는 TO-BE(목표 구조)를 기술한다. 코드는 본 문서에 맞춰 변경한다"고 명시하고 있다.** 따라서 코드와 문서가 다르면 **코드가 틀린 것**이다. 코드를 근거로 설계를 추론하지 말 것.
 
@@ -17,45 +17,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 문서 | 버전 |
 |---|---|
 | ERD/DB 설계서 | **v0.10** (2026-08-13) |
-| 의사결정 기록 (ADR) | **ADR-001~024** (최신 2026-08-13) |
+| 의사결정 기록 (ADR) | **ADR-001~024** (최신 2026-08-13) — 정본은 `docs/adr/` |
 | 시스템 아키텍처 설계서 | **v0.6** (2026-08-13) |
 | API 명세서 | **v0.10** (2026-08-13) |
 | 외부 API 연동 설계서 | **v0.8** (2026-08-13) |
 | 추천 알고리즘 명세서 | **v0.3** (2026-08-13) |
 | 요구사항 정의서 (SRS) | v0.5 |
 
-- **ADR 원본은 Notion**이다(001~024). `docs/adr/`는 이전 예정지로 형식 템플릿만 있다 — 여기가 비어 있다고 "ADR이 없다"고 판단하지 말 것.
+- **ADR 정본은 저장소 `docs/adr/`다**(001~024, 2026-08-13에 Notion에서 이전). 코드 작업 중 결정 근거가 필요하면 Notion에 가지 말고 여기를 읽을 것. [`docs/adr/README.md`](docs/adr/README.md)에 결정 요약표와 대체 관계 사슬이 있다 — 본문 전에 여기부터 본다.
+- 새 ADR도 `docs/adr/`에 쓴다. Notion ADR 페이지는 저장소를 가리키는 포인터로만 남아 있다.
 - ADR은 **추가만 하고 수정하지 않는다**. 결정이 바뀌면 기존 ADR을 Superseded로 바꾸고 새 ADR을 쓴다. 그래서 **번호가 큰 쪽이 이긴다** — ADR-015의 결론을 인용하기 전에 ADR-017이 그 일부를 뒤집지 않았는지 확인할 것.
 - 새 기능, 스택 변경, 외부 API 연동 방식 변경 시 관련 ADR을 먼저 읽을 것. 기존 결정과 다른 방향으로 가야 한다면 코드를 쓰기 전에 알릴 것.
 
 ---
 
-## ⚠ 코드가 아직 문서를 안 따라왔다 (2026-08-12 기준)
+## ⚠ 남은 부채 — 추천 영역 (2026-08-13 기준)
 
-설계가 2026-07-30과 08-09에 두 번 크게 바뀌었고, **코드는 그 이전 상태**다. 아래 절들은 전부 **목표 구조**를 기술하므로, 코드를 읽다가 다르더라도 코드가 맞다고 착각하지 말 것.
-
-주요 격차:
+2026-07-30·08-09 설계 개정과 코드의 격차는 **대부분 해소됐다**(스키마·수집 파이프라인·조회 계층·프론트 화면). 남은 것은 추천 영역 하나이며, 서로 얽혀 있어 한 덩어리로 처리한다.
 
 | 영역 | 현재 코드 | 목표 | 근거 |
 |---|---|---|---|
-| 수집 | 국문 수집 → 영문 매칭 2단 | Staging→Resolution→Merge **3단** | ADR-016 |
-| `staging_place` | 없음 | 신설 | ADR-016, ERD §3.1 |
-| `place` | content_id·content_type_id·category·title_ko·overview_ko·addr·has_en·source_modified_at 잔존 | **8개 전부 제거** + `place_type` 추가 | ERD §3.2 |
-| `place_type` 값 | contentTypeId에서 파생한 7종(ATTRACTION/CULTURAL/…) | **관광공사 대분류 9종**(AC/EV/EX/FD/HS/LS/NA/SH/VE) 원본 코드 그대로. "관광지"가 NA·HS·VE·EX로 쪼개져 7→9가 된다 | ADR-024 |
-| `place_tag` | 테이블·PlaceTagType·PlaceTagAssigner 잔존 | **전부 폐기** — 관심사도 `place_type`과 같은 어휘를 쓴다 | ADR-024 |
-| `place.lcls_systm1/2/3` | 잔존(적재만 하고 미사용) | **제거** — 대분류는 `place_type`이 되고, 중·소분류는 staging에만 남는다 | ADR-024 |
-| 국문 텍스트 | `place` 컬럼 | `place_translation(lang='ko')` 행 | ERD v0.7 |
-| `has_en` | 잔존 | **폐기** — translation 행 존재로 판단 | ADR-017 |
-| hub/region | name_ko·name_en 컬럼 | `hub_translation`·`region_translation` + `hub.code`·`region.active` | ERD §3.5/3.7 |
-| 언어 폴백 | 2단계 | **3단계** (요청 언어 → ko → 아무 행) | ERD §6.1 |
 | 추천 가중치 | 5항목 (30/25/20/15/10) | **4항목** (35/30/20/15), 체류 적합도 제거 | ADR-021 |
 | 여행 기간 | `duration` enum | `startDate`·`endDate` 날짜 범위 | ADR-020 |
+| 추천 범위 | `regionIds[]` 미구현 | 지역 다중선택(옵션) | ADR-019 |
+| 추천 응답 | `courses`만 | `constraints`·`resolvedLang` 추가 | API 명세서 §4.1 |
+| S3·S4 화면 | 구 구조(칩 기반 기간 선택) | 날짜 범위 캘린더 · 모바일 아코디언/데스크톱 분할 | 화면 설계서 |
 
-**작업 순서 결정(2026-08-12, 사용자)**: 추천 엔진은 **후순위**. 스키마 → 수집 파이프라인 → 조회 계층을 먼저 한다. 추천은 스키마 위에 얹혀 있어서, 스키마를 먼저 갈면 추천 코드를 한 번만 고치면 되기 때문이다.
+이 다섯은 같은 파일들을 건드리므로 **함께 처리한다.** 프론트 타입 에러 4개가 남아 있는 이유도 이것이며(`npm run dev`는 정상, `npm run build`는 실패), ADR-020/021을 적용하면 함께 사라진다.
 
-그래서 표의 마지막 두 줄(가중치·duration)과 `regionIds[]` 미구현(ADR-019)은 **알고 남긴 부채**다. 스키마 작업 중에는 `PlaceCompleteness`·`CourseRecommendationService` 2개 파일만 컴파일 복구 수준으로 손대고, 추천 재설계는 하지 말 것.
+별도 항목: **`GET /internal/sync/status` 미구현**(API 명세서 §5.2). 언어별 연속 실패·quarantine 누적을 볼 수단이 없어 지금은 SQL로 직접 조회해야 한다. 수집을 본격적으로 돌리기 전에 만들 것.
 
-> 마이그레이션이 끝나면 이 절을 통째로 삭제한다.
+> 위 항목이 끝나면 이 절을 통째로 삭제한다.
 
 ---
 
@@ -119,10 +111,10 @@ npm run build      # tsc -b + vite build
 - 항목 실패는 per-item try/catch로 격리 — 워터마크가 저장 안 되므로 다음 수집에서 자동 재시도된다.
 - 관광공사 신분류체계 코드(`lcls_systm1/2/3`)는 목록 응답에 함께 오므로 수집 시 적재한다. **`lcls_systm1`(대분류)이 곧 `place_type`이다**(ADR-024) — 선택 항목이 아니라 place 생성의 전제이며, 비어 있으면 place를 만들 수 없다. 결측 시엔 1:1 대응이 명확한 6개 타입만 contentTypeId로 폴백하고, **관광지(12/76)는 대분류가 NA·HS·VE·EX 넷으로 갈라져 폴백하지 않고 QUARANTINED로 보류**한다. 중·소분류는 `staging_place`에만 남긴다.
 
-### 데이터 모델 (ERD v0.9)
+### 데이터 모델 (ERD v0.10)
 
 - **언어 중립 / 언어 의존을 분리한다.** 좌표·지역·타입 등 언어 무관 속성만 본체 테이블에 두고, **표시 텍스트는 예외 없이 번역 테이블 행으로 간다 — 국문도 포함**. 국문을 특별대우하면 "국문에 없는 장소"를 표현할 수 없다.
-- 계층: `staging_place`(원본) → `place`/`region`/`hub`/`place_tag`/`place_image`/`festival_detail`(언어 중립) + `place_translation`/`region_translation`/`hub_translation`(언어 의존) + `data_sync_log`(운영).
+- 계층: `staging_place`(원본) → `place`/`region`/`hub`/`place_image`/`festival_detail`(언어 중립) + `place_translation`/`region_translation`/`hub_translation`(언어 의존) + `data_sync_log`(운영). 테이블 10개다 — `place_tag`는 ADR-024로 폐기됐다.
 - **소스 식별자는 소스 계층에.** TourAPI contentId·contentTypeId 같은 외부 식별자는 `staging_place`와 `place_translation`에만 둔다. `place`는 내부 식별자만 갖고 **자연키가 없다** — 정체성은 Resolution 결과로만 결정된다.
 - **모든 적재는 자연키 기준 upsert**(멱등성). `staging_place`는 `UNIQUE(lang, source_content_id)`, `place_translation`은 `UNIQUE(place_id, lang)`. 배치를 몇 번 돌려도 결과가 같아야 하며, 이게 Resolve·Merge 재실행의 전제다.
 - **측정 전 비정규화하지 않는다**(ADR-007/017). 조인 회피용 캐시 컬럼을 선제적으로 두지 않는다 — `has_en`이 이 원칙을 어겼다가 폐기된 사례다. 이 규모(place 약 3,000건)에서는 전체가 메모리에 올라간다.

@@ -74,33 +74,46 @@
     "machineTranslation": "Machine translation"
   },
   "recommendInput": {
-    "title": "Course Recommendation",
-    "subtitle": "Tell us what you're after — we'll match it against real place data for your hub and build a course around it.",
-    "startingFrom": "Starting from",
-    "startingFromBody": "Hidden Gyeongbuk is hub-and-spoke: these four are the transit points you can actually reach from Seoul or Busan. Every course starts and ends at the hub you pick — the 15 counties fan out from there.",
+    "title": "Plan a course",
+    "subtitle": "Tell us where you start and what you're after — we build the route from real collected place data.",
+    "startingFrom": "Starting hub",
     "hubsError": "Couldn't load hubs — is the backend running? ({{error}})",
     "loadingHubs": "Loading hubs…",
     "gettingThereFallback": "Getting there: check the nearest KTX/SRT station or intercity bus terminal for this hub.",
-    "pace": "Pace",
+    "pace": "Travel intensity",
     "interests": "Interests (optional, pick any)",
     "submit": "Get recommendations →",
     "tripDates": "Travel dates",
-    "regions": "Counties (optional)",
+    "regions": "Regions to visit",
     "regionsBody": "Leave this empty and we'll build the course from everything around your hub. Pick one to focus on it, or a few to keep the course inside them.",
-    "regionsError": "Couldn't load counties — is the backend running? ({{error}})"
+    "regionsError": "Couldn't load counties — is the backend running? ({{error}})",
+    "singleSelect": "(single select)",
+    "multiSelect": "(multiple)",
+    "minOne": "(multiple, at least one)",
+    "requiredMark": "(required)",
+    "startDate": "Start",
+    "endDate": "End",
+    "pickDate": "Select"
   },
   "recommendResults": {
-    "title": "Recommended Courses",
+    "title": "Recommended courses",
     "error": "Couldn't load recommendations — is the backend running? ({{error}})",
     "building": "Building your courses…",
     "empty": "No courses matched yet — {{hub}} may not have enough collected place data for this combination.",
     "missingParams": "This link is missing the trip conditions. Please start from the recommendation form.",
     "pastTrip": "These dates have already passed — this is probably an old shared link. The course is still shown as it was planned.",
-    "constraints": "Built for about {{places}} places, up to {{distance}}km of travel, and {{lodging}} night(s) of lodging.",
     "courseFacts": "{{places}} places · {{regions}} counties · {{distance}}km",
     "pickOne": "Pick a course on the left to see the day-by-day plan.",
     "noCourseTitle": "Not enough places for this combination",
-    "noCourseBody": "Try adding counties, widening the dates, or removing some interests. This isn't an error — we just don't have enough collected places inside the range you picked."
+    "noCourseBody": "Try adding counties, widening the dates, or removing some interests. This isn't an error — we just don't have enough collected places inside the range you picked.",
+    "searching": "Building your courses",
+    "searchingSub": "Matching your conditions against collected places",
+    "emptyTitle": "No course fits these conditions",
+    "emptyDesc": "Try adding regions, widening the dates, or removing an interest. This isn't an error — there just aren't enough collected places inside the range you picked.",
+    "resetConditions": "Change conditions",
+    "directions": "Open in maps",
+    "constraintPlaces": "about {{count}} places",
+    "constraintDistance": "up to {{km}}km"
   },
   "courseDetail": {
     "notAvailable": "Course details aren't available directly — please go back and pick a course from the results list.",
@@ -131,6 +144,11 @@
       "SH": "Shopping",
       "EV": "Festivals & Events",
       "AC": "Stays"
+    },
+    "difficultyDesc": {
+      "EASY": "Main sights, short walks",
+      "NORMAL": "Some driving, moderate walking",
+      "LOCAL": "Unpaved and mountain paths"
     }
   },
   "nav": {

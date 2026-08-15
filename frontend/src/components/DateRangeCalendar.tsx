@@ -9,8 +9,7 @@ import { MAX_NIGHTS, addDays, isSameDay, nightsBetween, parseIsoDate, toIsoDate,
  * 두 개를 나란히 두면 "종료일이 시작일보다 앞" 같은 상태를 사용자가 만들 수 있다. 한 그리드에서
  * 두 번 누르게 하면 그 상태 자체가 생기지 않는다(Browser Compatibility §2.9).
  *
- * <p>데스크톱은 두 달을 나란히, 모바일은 한 달만 보여준다 — 여행 날짜는 달을 넘기는 경우가
- * 잦아 두 달이 보이면 이동 없이 고를 수 있다.
+ * <p>한 달만 보여준다 — 프로토타입과 같다. 두 달을 나란히 놓으면 480px 폼 안에서 셀이 뭉개진다.
  */
 function DateRangeCalendar({
   start,
@@ -47,86 +46,65 @@ function DateRangeCalendar({
       return
     }
     // 시작일보다 앞을 누르면 "범위 축소"가 아니라 "다시 고르기"로 읽는 편이 자연스럽다.
-    if (day < startDate) {
-      onChange(toIsoDate(day), null)
-      return
-    }
-    if (nightsBetween(startDate, day) > MAX_NIGHTS) {
+    if (day < startDate || nightsBetween(startDate, day) > MAX_NIGHTS) {
       onChange(toIsoDate(day), null)
       return
     }
     onChange(toIsoDate(startDate), toIsoDate(day))
   }
 
-  const months = [cursor, new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)]
-
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <CalendarNavButton
+    <div className="border border-line bg-bg-elevated p-3.5">
+      <div className="mb-2.5 flex items-center justify-between">
+        <NavButton
           label={t('calendar.prevMonth')}
           onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
           disabled={cursor <= new Date(min.getFullYear(), min.getMonth(), 1)}
         >
           ‹
-        </CalendarNavButton>
-        <p className="text-sm font-bold" aria-live="polite">
-          <span>{monthLabel(i18n.language, months[0])}</span>
-          <span className="hidden md:inline"> — {monthLabel(i18n.language, months[1])}</span>
+        </NavButton>
+        <p className="text-[13px] font-semibold" aria-live="polite">
+          {new Intl.DateTimeFormat(i18n.language, { year: 'numeric', month: 'long' }).format(cursor)}
         </p>
-        <CalendarNavButton
+        <NavButton
           label={t('calendar.nextMonth')}
           onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
         >
           ›
-        </CalendarNavButton>
+        </NavButton>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2" onMouseLeave={() => setHovered(null)}>
-        {months.map((month, index) => (
-          <div key={month.toISOString()} className={index === 1 ? 'hidden md:block' : undefined}>
-            <p className="mb-2 text-center text-xs text-text-soft md:hidden">{monthLabel(i18n.language, month)}</p>
-            <div className="grid grid-cols-7 text-center">
-              {weekdays.map((name) => (
-                <div key={name} className="pb-2 text-[11px] font-bold text-text-soft">
-                  {name}
-                </div>
-              ))}
-              {monthCells(month).map((day, cellIndex) =>
-                day === null ? (
-                  <div key={`empty-${cellIndex}`} />
-                ) : (
-                  <DayCell
-                    key={day.getTime()}
-                    day={day}
-                    disabled={day < min}
-                    isStart={startDate !== null && isSameDay(day, startDate)}
-                    isEnd={endDate !== null && isSameDay(day, endDate)}
-                    inRange={
-                      startDate !== null && previewEnd !== null && day > startDate && day < previewEnd
-                    }
-                    onSelect={() => select(day)}
-                    onHover={() => setHovered(day)}
-                  />
-                ),
-              )}
-            </div>
+      <div className="mb-1 grid grid-cols-7 gap-0.5">
+        {weekdays.map((name) => (
+          <div key={name} className="py-1 text-center text-[10px] text-text-soft">
+            {name}
           </div>
         ))}
       </div>
-
-      <p className="mt-3 text-xs text-text-soft">
-        {!startDate
-          ? t('calendar.pickStart')
-          : !endDate
-            ? t('calendar.pickEnd', { max: MAX_NIGHTS })
-            : t('calendar.reset')}
-      </p>
+      <div className="grid grid-cols-7 gap-0.5" onMouseLeave={() => setHovered(null)}>
+        {monthCells(cursor).map((day, index) =>
+          day === null ? (
+            <div key={`empty-${index}`} />
+          ) : (
+            <DayCell
+              key={day.getTime()}
+              day={day}
+              disabled={day < min}
+              selected={
+                (startDate !== null && isSameDay(day, startDate)) || (endDate !== null && isSameDay(day, endDate))
+              }
+              inRange={startDate !== null && previewEnd !== null && day > startDate && day < previewEnd}
+              onSelect={() => select(day)}
+              onHover={() => setHovered(day)}
+            />
+          ),
+        )}
+      </div>
     </div>
   )
 }
 
-function CalendarNavButton({
+function NavButton({
   label,
   onClick,
   disabled,
@@ -143,7 +121,7 @@ function CalendarNavButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="flex h-8 w-8 items-center justify-center border border-line text-text-soft hover:border-accent-hover hover:text-accent-text disabled:cursor-not-allowed disabled:opacity-30"
+      className="h-7 w-7 text-[15px] text-text-soft transition-colors hover:text-accent-text disabled:cursor-not-allowed disabled:opacity-30"
     >
       {children}
     </button>
@@ -153,21 +131,18 @@ function CalendarNavButton({
 function DayCell({
   day,
   disabled,
-  isStart,
-  isEnd,
+  selected,
   inRange,
   onSelect,
   onHover,
 }: {
   day: Date
   disabled: boolean
-  isStart: boolean
-  isEnd: boolean
+  selected: boolean
   inRange: boolean
   onSelect: () => void
   onHover: () => void
 }) {
-  const selected = isStart || isEnd
   return (
     <button
       type="button"
@@ -177,9 +152,9 @@ function DayCell({
       onFocus={onHover}
       aria-pressed={selected}
       className={[
-        'h-9 text-[13px] tabular-nums transition-colors',
+        'h-[34px] text-xs tabular-nums transition-colors',
         disabled ? 'cursor-not-allowed text-text-soft/35' : 'hover:bg-accent/15',
-        selected ? 'bg-accent font-bold text-bg-elevated' : '',
+        selected ? 'bg-accent font-semibold text-on-accent' : '',
         inRange && !selected ? 'bg-accent/15' : '',
       ]
         .filter(Boolean)
@@ -188,10 +163,6 @@ function DayCell({
       {day.getDate()}
     </button>
   )
-}
-
-function monthLabel(locale: string, month: Date): string {
-  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(month)
 }
 
 /** 앞쪽 빈칸 + 그 달의 날짜들. 주 시작은 일요일. */

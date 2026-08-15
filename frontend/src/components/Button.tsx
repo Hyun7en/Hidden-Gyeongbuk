@@ -22,9 +22,27 @@ export function Button({ children, size = 'desktop', disabled, onClick, classNam
   )
 }
 
-export function ButtonLink({ children, size = 'desktop', to, className }: Props & { to: string }) {
+/**
+ * `external`이면 라우터가 아니라 실제 `<a>`로 낸다. 카카오맵·구글지도 딥링크처럼 앱 밖으로
+ * 나가는 주소를 `Link`에 넣으면 라우터가 자기 경로로 착각해 빈 화면이 뜬다.
+ */
+export function ButtonLink({
+  children,
+  size = 'desktop',
+  to,
+  external,
+  className,
+}: Props & { to: string; external?: boolean }) {
+  const cls = `hg-cta hg-btn-${size} inline-flex items-center justify-center ${className ?? ''}`
+  if (external) {
+    return (
+      <a href={to} target="_blank" rel="noopener noreferrer" className={cls}>
+        {children}
+      </a>
+    )
+  }
   return (
-    <Link to={to} className={`hg-cta hg-btn-${size} inline-flex items-center justify-center ${className ?? ''}`}>
+    <Link to={to} className={cls}>
       {children}
     </Link>
   )

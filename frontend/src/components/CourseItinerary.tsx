@@ -1,99 +1,101 @@
+import { Fragment } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { CourseResponse, HubResponse } from '../api/types'
 import KakaoMap, { type MapMarker } from './KakaoMap'
 import ShareButton from './ShareButton'
-import { googleDirectionsUrl } from '../lib/directions'
-
-function DirectionsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
-      <path d="M3 11l18-8-8 18-2-8-8-2z" />
-    </svg>
-  )
-}
+import { ButtonLink } from './Button'
+import { googleRouteUrl } from '../lib/directions'
 
 /**
- * 코스 하나의 일정 본문. S4의 모바일 아코디언 패널과 데스크톱 상세 영역이 <b>같은 것</b>을
+ * 코스 하나의 일정 본문. S4의 모바일 아코디언 패널과 데스크톱 우측 영역이 <b>같은 것</b>을
  * 보여줘야 해서 컴포넌트로 뺐다 — 두 벌로 두면 한쪽만 고치는 사고가 난다.
  *
- * <p>순위·점수는 여기 없다. 사용자가 고를 때 쓰는 정보가 아니라 내부 정렬 기준이라
- * 노출하지 않기로 했다(화면 설계서 S4).
+ * <p>일자별 장소는 번호 박스가 아니라 <b>이름을 가운뎃점으로 이은 한 줄</b>이다(프로토타입 S4).
+ * 코스는 훑어보고 고르는 대상이라, 카드 목록으로 쌓으면 세 코스를 비교하려고 계속 스크롤하게 된다.
+ *
+ * <p>순위·점수는 여기 없다. 고를 때 쓰는 정보가 아니라 내부 정렬 기준이라 노출하지 않는다
+ * (화면 설계서 S4).
  */
 function CourseItinerary({
   course,
   hub,
-  tripLabel,
+  title,
+  compact = false,
 }: {
   course: CourseResponse
   hub?: HubResponse
-  tripLabel: string
+  title?: string
+  /** 모바일 아코디언 패널. 지도와 글자를 한 단계씩 작게 쓴다. */
+  compact?: boolean
 }) {
   const { t } = useTranslation()
+
   // 지도는 하루가 아니라 여정 전체를 한 줄로 그린다 — CoursePlaceResponse.order는 날마다 1로
   // 돌아가므로 쓸 수 없어 통짜 순번을 다시 매긴다. 거점을 맨 앞에 둬야 선이 출발지에서
   // 시작한다(Hub-and-Spoke). 좌표 없는 장소는 찍을 수 없어 뺀다(수집 데이터에 결측이 있다).
+  const located = course.days
+    .flatMap((d) => d.places)
+    .flatMap((p) => (p.lat != null && p.lng != null ? [{ lat: p.lat, lng: p.lng, title: p.title ?? '' }] : []))
   const routeMarkers: MapMarker[] = [
     ...(hub ? [{ lat: hub.lat, lng: hub.lng, label: hub.name, isHub: true }] : []),
-    ...course.days
-      .flatMap((d) => d.places)
-      .flatMap((p, i) =>
-        p.lat != null && p.lng != null ? [{ lat: p.lat, lng: p.lng, label: p.title ?? '', order: i + 1 }] : [],
-      ),
+    ...located.map((p, i) => ({ lat: p.lat, lng: p.lng, label: p.title, order: i + 1 })),
   ]
+  const routeUrl = googleRouteUrl(located)
+  const lodging = course.days.flatMap((d) => (d.lodging ? [d.lodging.title ?? ''] : []))
 
   return (
-    <div className="md:grid md:grid-cols-[1fr_minmax(0,320px)] md:gap-8">
-      <div className="space-y-6">
-        {course.days.map((day) => (
-          <div key={day.day}>
-            <h3 className="mb-3 text-[15px] font-bold md:text-base">{t('courseDetail.day', { day: day.day })}</h3>
-            <ol className="space-y-2">
-              {day.places.map((place) => (
-                <li
-                  key={place.order}
-                  className="flex items-center gap-3 border border-line bg-bg-elevated px-3 py-2.5 md:px-4 md:py-3"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-accent text-xs font-bold text-bg-elevated">
-                    {place.order}
-                  </span>
-                  <span className="text-sm md:text-[15px]">{place.title}</span>
-                  <span className="ml-auto text-[11px] uppercase text-text-soft md:text-xs">
-                    {t(`options.interest.${place.placeType}`)}
-                  </span>
-                  <a
-                    href={place.lat != null && place.lng != null ? googleDirectionsUrl(place.lat, place.lng) : undefined}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={t('courseDetail.directions')}
-                    title={t('courseDetail.directions')}
-                    className="shrink-0 text-accent"
-                  >
-                    <DirectionsIcon />
-                  </a>
-                </li>
-              ))}
-            </ol>
-            {day.lodging ? (
-              <p className="mt-2 text-[13px] text-text-soft md:text-sm">
-                {t('courseDetail.lodging', { title: day.lodging.title })}
-              </p>
-            ) : null}
-          </div>
-        ))}
+    <div>
+      <div className={`relative ${compact ? 'h-[180px]' : 'h-[340px]'} border border-line bg-bg-elevated`}>
+        <ShareButton title={title ?? t('recommendResults.title')} description={factsOf(course)} />
+        <KakaoMap className="h-full w-full" markers={routeMarkers} drawRoute />
       </div>
 
-      <div className="relative mt-6 h-[180px] border border-line bg-bg-elevated md:mt-0 md:h-[260px] md:self-start">
-        <ShareButton title={tripLabel} description={courseFacts(course, tripLabel)} />
-        <KakaoMap className="h-full w-full" markers={routeMarkers} drawRoute />
+      <div className={compact ? 'mt-3' : 'mt-5'}>
+        {title && !compact ? (
+          <p className="font-[family-name:var(--font-serif-heading)] text-lg font-semibold">{title}</p>
+        ) : null}
+
+        {course.days.map((day) => (
+          <div key={day.day} className={compact ? 'mt-3 first:mt-0' : 'mt-3.5'}>
+            <p className={`font-semibold ${compact ? 'text-xs' : 'text-[13px]'}`}>
+              {t('courseDetail.day', { day: day.day })}
+            </p>
+            <p className={`mt-1.5 flex flex-wrap items-center gap-2 ${compact ? 'text-xs' : 'text-[13px]'}`}>
+              {day.places.map((place, index) => (
+                <Fragment key={place.placeId}>
+                  {index > 0 ? <span className="text-text-soft">·</span> : null}
+                  <Link
+                    to={`/places/${place.placeId}`}
+                    className="border-b border-transparent text-accent-text transition-colors hover:border-accent"
+                  >
+                    {place.title}
+                  </Link>
+                </Fragment>
+              ))}
+            </p>
+          </div>
+        ))}
+
+        <div className={`flex flex-wrap items-center gap-3 ${compact ? 'mt-3.5' : 'mt-4'}`}>
+          {routeUrl ? (
+            <ButtonLink to={routeUrl} size={compact ? 'mobile' : 'desktop'} external>
+              {t('recommendResults.directions')}
+            </ButtonLink>
+          ) : null}
+          {lodging.length > 0 ? (
+            <span className="text-xs text-text-soft">{t('courseDetail.lodging', { title: lodging.join(', ') })}</span>
+          ) : null}
+        </div>
       </div>
     </div>
   )
 }
 
 /** 공유 메시지에 실릴 한 줄 요약. */
-function courseFacts(course: CourseResponse, tripLabel: string): string {
+function factsOf(course: CourseResponse): string {
   const placeCount = course.days.reduce((sum, d) => sum + d.places.length, 0)
-  return `${tripLabel} · ${placeCount} places · ${course.totalDistanceKm.toFixed(1)}km`
+  return `${placeCount} places · ${course.totalDistanceKm.toFixed(1)}km`
 }
 
 export default CourseItinerary

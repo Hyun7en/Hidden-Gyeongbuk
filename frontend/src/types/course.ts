@@ -19,8 +19,10 @@ export const INTEREST_OPTIONS: { value: Interest; labelKey: string }[] = [
   { value: 'AC', labelKey: 'options.interest.AC' },
 ]
 
-export const DIFFICULTY_OPTIONS: { value: Difficulty; labelKey: string }[] = [
-  { value: 'EASY', labelKey: 'options.difficulty.EASY' },
-  { value: 'NORMAL', labelKey: 'options.difficulty.NORMAL' },
-  { value: 'LOCAL', labelKey: 'options.difficulty.LOCAL' },
+// 난이도는 라벨만으로 뜻이 안 통한다("로컬"이 무슨 뜻인지 알 수 없다) — 프로토타입처럼
+// 한 줄 설명을 옆에 붙인다.
+export const DIFFICULTY_OPTIONS: { value: Difficulty; labelKey: string; descKey: string }[] = [
+  { value: 'EASY', labelKey: 'options.difficulty.EASY', descKey: 'options.difficultyDesc.EASY' },
+  { value: 'NORMAL', labelKey: 'options.difficulty.NORMAL', descKey: 'options.difficultyDesc.NORMAL' },
+  { value: 'LOCAL', labelKey: 'options.difficulty.LOCAL', descKey: 'options.difficultyDesc.LOCAL' },
 ]

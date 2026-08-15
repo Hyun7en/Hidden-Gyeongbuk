@@ -88,7 +88,11 @@
   --motion-fast: 200ms;
   --motion-slow: 800ms;
   --motion-stagger: 70ms;
-  --texture-hanji-opacity: 0.035;
+  /*
+   * 디자인 시스템 토큰은 0.035지만 프로토타입 앱은 0.45로 덮어 쓴다. 화면의 기준은
+   * 프로토타입이므로 그쪽을 따른다 — 0.035는 사실상 안 보인다.
+   */
+  --texture-hanji-opacity: 0.45;
 }
 
 /* OS 다크. data-theme='light'로 명시 선택한 경우는 제외한다. */
@@ -190,13 +194,13 @@ a:hover {
 /*
  * 한지 결. 다크에서는 --texture-hanji-opacity가 0이라 렌더링되지 않는다.
  *
- * position은 fixed다 — absolute로 두면 문서 높이만큼만 깔리고 스크롤과 함께 밀려 올라가서
- * 긴 페이지의 아래쪽이 맨 배경으로 드러난다.
+ * position은 absolute다(프로토타입과 동일). 부모가 콘텐츠 높이만큼 자라므로 inset:0이면
+ * 문서 전체를 덮는다 — 잘리지 않는다.
  *
  * background-size는 cover다. repeat로 깔면 타일 경계에 seam이 보인다(Design System v3).
  */
 .hanji-texture {
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: var(--z-fiber);

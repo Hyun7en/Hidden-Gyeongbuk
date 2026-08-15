@@ -74,20 +74,26 @@
     "machineTranslation": "기계 번역"
   },
   "recommendInput": {
-    "title": "코스 추천",
-    "subtitle": "원하는 여행 스타일을 알려주시면, 실제 장소 데이터를 바탕으로 코스를 만들어드립니다.",
-    "startingFrom": "출발지",
-    "startingFromBody": "Hidden Gyeongbuk은 허브 앤 스포크 구조입니다: 이 네 곳은 서울이나 부산에서 실제로 갈 수 있는 환승 거점입니다. 모든 코스는 선택한 허브에서 시작해 그곳으로 돌아오며, 15개 군이 그 주변으로 펼쳐집니다.",
+    "title": "코스 추천받기",
+    "subtitle": "어디서 출발하는지와 무엇을 보고 싶은지만 알려주세요. 실제 수집한 장소 데이터로 코스를 짭니다.",
+    "startingFrom": "출발 거점",
     "hubsError": "허브 목록을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
     "loadingHubs": "허브 목록 불러오는 중…",
     "gettingThereFallback": "가는 방법: 이 허브와 가장 가까운 KTX/SRT역이나 시외버스터미널을 확인하세요.",
-    "pace": "여행 속도",
+    "pace": "이동 난이도",
     "interests": "관심사 (선택, 복수 가능)",
     "submit": "추천 받기 →",
     "tripDates": "여행 날짜",
-    "regions": "지역 (선택)",
+    "regions": "가고 싶은 지역",
     "regionsBody": "비워 두면 거점 주변 전체에서 코스를 짭니다. 하나만 고르면 그 지역에 집중하고, 여러 개를 고르면 그 안에서만 짭니다.",
-    "regionsError": "지역을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})"
+    "regionsError": "지역을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
+    "singleSelect": "(단일 선택)",
+    "multiSelect": "(다중 선택)",
+    "minOne": "(복수 선택, 최소 1개)",
+    "requiredMark": "(필수)",
+    "startDate": "시작일",
+    "endDate": "종료일",
+    "pickDate": "날짜 선택"
   },
   "recommendResults": {
     "title": "추천 코스",
@@ -96,11 +102,18 @@
     "empty": "아직 매칭된 코스가 없습니다 — {{hub}}에 이 조합에 맞는 장소 데이터가 충분하지 않을 수 있습니다.",
     "missingParams": "이 링크에 여행 조건이 없습니다. 추천 입력 화면에서 다시 시작해 주세요.",
     "pastTrip": "이미 지난 날짜입니다 — 오래된 공유 링크로 보입니다. 코스는 계획 당시 기준 그대로 보여 줍니다.",
-    "constraints": "장소 약 {{places}}곳, 이동 최대 {{distance}}km, 숙박 {{lodging}}회 기준으로 짰습니다.",
     "courseFacts": "장소 {{places}}곳 · 지역 {{regions}}곳 · {{distance}}km",
     "pickOne": "왼쪽에서 코스를 고르면 일자별 일정이 나옵니다.",
     "noCourseTitle": "이 조건으로는 장소가 부족합니다",
-    "noCourseBody": "지역을 더 고르거나, 날짜를 늘리거나, 관심사를 줄여 보세요. 오류가 아니라 고른 범위 안에 수집된 장소가 아직 부족한 것입니다."
+    "noCourseBody": "지역을 더 고르거나, 날짜를 늘리거나, 관심사를 줄여 보세요. 오류가 아니라 고른 범위 안에 수집된 장소가 아직 부족한 것입니다.",
+    "searching": "코스를 짜는 중",
+    "searchingSub": "조건에 맞는 장소를 고르고 있습니다",
+    "emptyTitle": "이 조건에 맞는 코스가 없습니다",
+    "emptyDesc": "지역을 더 고르거나, 날짜를 늘리거나, 관심사를 줄여 보세요. 오류가 아니라 고른 범위 안에 수집된 장소가 아직 부족한 것입니다.",
+    "resetConditions": "조건 바꾸기",
+    "directions": "지도에서 열기",
+    "constraintPlaces": "장소 약 {{count}}곳",
+    "constraintDistance": "이동 최대 {{km}}km"
   },
   "courseDetail": {
     "notAvailable": "코스 상세는 직접 접근할 수 없습니다 — 뒤로 가서 결과 목록에서 코스를 선택해 주세요.",
@@ -131,6 +144,11 @@
       "SH": "쇼핑",
       "EV": "축제·공연·행사",
       "AC": "숙박"
+    },
+    "difficultyDesc": {
+      "EASY": "주요 명소 위주, 도보 이동 짧음",
+      "NORMAL": "차량 이동 포함, 적당한 도보",
+      "LOCAL": "비포장·산길 포함, 현지인 코스"
     }
   },
   "nav": {

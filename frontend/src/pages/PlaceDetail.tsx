@@ -84,9 +84,14 @@ function PlaceDetail() {
   const hasPhoto = photos.length > 0
   const showArrows = photos.length > 1
 
+  /**
+   * 주소 복사. 국문 주소를 우선한다 — 택시 기사·현지인에게 보여주는 용도라 번역된 주소로는
+   * 실제 이동이 안 된다(User Persona §4-1). 국문이 없으면 표시 중인 주소라도 복사한다.
+   */
   async function copyLocalAddress() {
-    if (!place?.addrLocal) return
-    await navigator.clipboard.writeText(place.addrLocal)
+    const target = place?.addrLocal ?? place?.addr
+    if (!target) return
+    await navigator.clipboard.writeText(target)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -182,19 +187,33 @@ function PlaceDetail() {
           <div className="border border-line bg-[var(--glass-bg)] p-4">
             <p className="text-[13px] text-text">{place.title}</p>
             {place.addr && <p className="mt-2 text-[13px] text-text-soft">{place.addr}</p>}
+            {/*
+              현지 표기 주소는 요청 언어 주소와 다를 때만 따로 보여준다 — 국문 요청이면 둘이 같다.
+            */}
             {place.addrLocal && place.addrLocal !== place.addr && (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="text-[11px] text-text-soft">{t('placeDetail.localAddress')}</p>
                 <p className="mt-1 text-[13px] text-text" lang="ko">
                   {place.addrLocal}
                 </p>
+              </div>
+            )}
+            {/*
+              복사 버튼은 주소가 있으면 <b>항상</b> 낸다. 예전엔 현지 주소 블록 안에 있어서
+              국문으로 보거나 현지 주소가 없으면 버튼 자체가 사라졌다 — 정작 주소를 복사해
+              택시 기사에게 보여주는 것이 이 화면의 핵심 동작인데(User Persona §4-1).
+              복사되는 값은 국문 주소를 우선한다 — 번역된 주소로는 실제 이동이 안 된다.
+            */}
+            {(place.addrLocal || place.addr) && (
+              <div className="mt-3 flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
                   onClick={copyLocalAddress}
-                  className="mt-2 border border-line px-2.5 py-1 text-[11px] text-text-soft hover:border-accent-hover hover:text-accent-text"
+                  className="border border-line bg-bg-elevated px-3.5 py-1.5 text-[11px] text-text-soft transition-colors hover:border-accent hover:text-accent-text"
                 >
-                  {copied ? t('placeDetail.copied') : t('placeDetail.copy')}
+                  {t('placeDetail.copy')}
                 </button>
+                {copied && <span className="text-[11px] text-accent-text">{t('placeDetail.copied')}</span>}
               </div>
             )}
             {place.lat != null && place.lng != null && (

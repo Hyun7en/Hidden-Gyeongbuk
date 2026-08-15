@@ -204,7 +204,8 @@ a:hover {
   inset: 0;
   pointer-events: none;
   z-index: var(--z-fiber);
-  background-image: url('/textures/texture-hanji.jpg');
+  /* 프로토타입과 같은 자리 — 로고 SVG도 여기 있다(디자인 시스템 Logo의 basePath 규약). */
+  background-image: url('/assets/texture-hanji.jpg');
   background-size: cover;
   opacity: var(--texture-hanji-opacity);
 }

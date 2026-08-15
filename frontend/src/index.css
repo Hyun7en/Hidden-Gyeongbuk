@@ -204,8 +204,15 @@ a:hover {
   inset: 0;
   pointer-events: none;
   z-index: var(--z-fiber);
-  /* 프로토타입과 같은 자리 — 로고 SVG도 여기 있다(디자인 시스템 Logo의 basePath 규약). */
-  background-image: url('/assets/texture-hanji.jpg');
+  /*
+   * 프로토타입과 같은 자리 — 로고 SVG도 여기 있다(디자인 시스템 Logo의 basePath 규약).
+   *
+   * WebP 손실 압축이다. 원본 6000x4000 JPEG은 5.6MB로 JS 번들(380KB)의 15배였다 —
+   * 배경 장식 하나가 페이지 무게를 지배했다. 1920px WebP로 476KB.
+   * 사진 질감이라 PNG는 답이 아니다(노이즈는 무손실 압축이 안 먹어 원본보다 커진다).
+   * 못 읽는 브라우저에서는 텍스처만 빠지고 화면은 멀쩡하다 — 폴백을 두지 않는 이유다.
+   */
+  background-image: url('/assets/texture-hanji.webp');
   background-size: cover;
   opacity: var(--texture-hanji-opacity);
 }

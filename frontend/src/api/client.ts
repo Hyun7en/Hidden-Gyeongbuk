@@ -16,22 +16,43 @@ import type {
 // 백엔드로 전달하고, 배포에서 백엔드 도메인이 다르면 VITE_API_BASE_URL로 지정한다.
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
+/**
+ * 백엔드 표준 에러 포맷 `{ error: { code, message } }`를 그대로 실어 나른다.
+ *
+ * <p><b>코드를 문자열에 녹이지 않고 필드로 남기는 이유</b>: 화면이 코드에 따라 다르게 반응해야
+ * 한다. 422 `NO_COURSE_FOUND`는 고장이 아니라 "조건이 좁다"는 뜻이라 재시도 버튼이 아니라
+ * 조건 완화 안내를 띄워야 한다(화면 설계서 C3).
+ */
+export class ApiRequestError extends Error {
+  // 생성자 파라미터 프로퍼티는 쓰지 않는다 — tsconfig의 erasableSyntaxOnly가 막는다(타입만
+  // 지우면 되는 문법만 허용). 필드를 명시적으로 선언한다.
+  readonly code: string
+  readonly status: number
+
+  constructor(code: string, status: number, message: string) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.code = code
+    this.status = status
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   })
   if (!res.ok) {
-    // 백엔드 표준 에러 포맷 { error: { code, message } }를 살려서 던진다 —
-    // 상태코드만 보여주면 서버가 알려준 원인이 사용자에게 전달되지 않는다.
+    let code = 'INTERNAL_ERROR'
     let detail = `${res.status}`
     try {
       const body = (await res.json()) as { error?: { code?: string; message?: string } }
-      if (body.error?.message) detail = `${body.error.code ?? res.status}: ${body.error.message}`
+      if (body.error?.code) code = body.error.code
+      if (body.error?.message) detail = `${code}: ${body.error.message}`
     } catch {
       // 에러 바디가 JSON이 아니면 상태코드만 사용
     }
-    throw new Error(detail)
+    throw new ApiRequestError(code, res.status, detail)
   }
   return res.json() as Promise<T>
 }
@@ -76,10 +97,12 @@ export function recommendCourses(body: CourseRecommendRequest, lang = 'en'): Pro
 export function fetchCourses(params: CourseRecommendRequest, lang = 'en'): Promise<CourseListResponse> {
   const query = new URLSearchParams({
     hubId: String(params.hubId),
-    duration: params.duration,
+    startDate: params.startDate,
+    endDate: params.endDate,
     difficulty: params.difficulty,
     lang,
   })
+  if (params.regionIds && params.regionIds.length > 0) query.set('regionIds', params.regionIds.join(','))
   if (params.interests.length > 0) query.set('interests', params.interests.join(','))
   return request(`/api/courses?${query.toString()}`)
 }

@@ -1,9 +1,10 @@
 package com.hiddengyeongbuk.backend.catalog.course;
 
+import static com.hiddengyeongbuk.backend.catalog.course.CourseTestConfig.RULES;
+import static com.hiddengyeongbuk.backend.catalog.course.CourseTestConfig.nights;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
-import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
@@ -16,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class CourseAssemblerTest {
 
-    private final CourseAssembler assembler = new CourseAssembler();
+    private final CourseAssembler assembler = new CourseAssembler(RULES);
 
     private final Hub hub =
             Hub.builder().id(1L).code("ANDONG").lat(BigDecimal.valueOf(36.5750)).lng(BigDecimal.valueOf(128.6747)).build();
@@ -35,7 +36,7 @@ class CourseAssemblerTest {
                 attractions,
                 List.of(),
                 List.of(),
-                Duration.ONE_DAY,
+                nights(0),
                 Difficulty.NORMAL,
                 Set.of(PlaceType.NA),
                 CourseAssembler.SelectionStrategy.PRESCORE_FIRST);
@@ -43,7 +44,7 @@ class CourseAssemblerTest {
         assertThat(result).isPresent();
         CourseCandidate candidate = result.get();
         assertThat(candidate.days()).hasSize(1);
-        assertThat(candidate.visitPlaceCount()).isEqualTo(4); // ONE_DAY 목표 장소수 = round((3+4)/2) = 4
+        assertThat(candidate.visitPlaceCount()).isEqualTo(4); // 목표 장소수 = round(3.5 × 1일) = 4
         assertThat(candidate.lodgingCount()).isZero();
     }
 
@@ -60,7 +61,7 @@ class CourseAssemblerTest {
                 attractions,
                 food,
                 lodging,
-                Duration.ONE_NIGHT,
+                nights(1),
                 Difficulty.NORMAL,
                 Set.of(),
                 CourseAssembler.SelectionStrategy.PRESCORE_FIRST);
@@ -75,7 +76,7 @@ class CourseAssemblerTest {
 
     @Test
     void 이동_예산을_초과하는_후보는_선택되지_않는다() {
-        // hub에서 아주 멀리 떨어진(약 300km) 후보뿐이고 EASY/ONE_DAY의 Dmax는 60km라 아무것도 담지 못한다.
+        // hub에서 아주 멀리 떨어진(약 300km) 후보뿐이고 EASY 당일치기의 Dmax는 60 × 1 = 60km라 아무것도 담지 못한다.
         List<Place> farAttractions = List.of(place(1L, PlaceType.NA, 40.0, 128.7));
 
         Optional<CourseCandidate> result = assembler.assemble(
@@ -83,7 +84,7 @@ class CourseAssemblerTest {
                 farAttractions,
                 List.of(),
                 List.of(),
-                Duration.ONE_DAY,
+                nights(0),
                 Difficulty.EASY,
                 Set.of(),
                 CourseAssembler.SelectionStrategy.PRESCORE_FIRST);
@@ -100,7 +101,7 @@ class CourseAssemblerTest {
                 attractions,
                 List.of(),
                 List.of(),
-                Duration.ONE_DAY,
+                nights(0),
                 Difficulty.NORMAL,
                 Set.of(),
                 CourseAssembler.SelectionStrategy.NEAREST_FIRST);

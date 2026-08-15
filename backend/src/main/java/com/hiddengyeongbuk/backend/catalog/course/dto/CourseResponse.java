@@ -11,9 +11,11 @@ public record CourseResponse(
         Breakdown breakdown,
         Long hubId,
         double totalDistanceKm,
+        int regionCount,
         List<DayResponse> days) {
 
-    public record Breakdown(double interest, double access, double stay, double dispersion, double completeness) {}
+    /** 체류 적합도(stay)는 없다 — 점수에서 빠져 제약으로 갔다(ADR-021). */
+    public record Breakdown(double interest, double access, double dispersion, double completeness) {}
 
     public record DayResponse(int day, List<CoursePlaceResponse> places, LodgingResponse lodging) {}
 

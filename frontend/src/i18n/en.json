@@ -81,17 +81,26 @@
     "hubsError": "Couldn't load hubs — is the backend running? ({{error}})",
     "loadingHubs": "Loading hubs…",
     "gettingThereFallback": "Getting there: check the nearest KTX/SRT station or intercity bus terminal for this hub.",
-    "tripLength": "Trip length",
     "pace": "Pace",
     "interests": "Interests (optional, pick any)",
-    "submit": "Get recommendations →"
+    "submit": "Get recommendations →",
+    "tripDates": "Travel dates",
+    "regions": "Counties (optional)",
+    "regionsBody": "Leave this empty and we'll build the course from everything around your hub. Pick one to focus on it, or a few to keep the course inside them.",
+    "regionsError": "Couldn't load counties — is the backend running? ({{error}})"
   },
   "recommendResults": {
     "title": "Recommended Courses",
     "error": "Couldn't load recommendations — is the backend running? ({{error}})",
     "building": "Building your courses…",
     "empty": "No courses matched yet — {{hub}} may not have enough collected place data for this combination.",
-    "summary": "{{count}} courses matched for {{hub}} · {{duration}} · {{difficulty}}"
+    "missingParams": "This link is missing the trip conditions. Please start from the recommendation form.",
+    "pastTrip": "These dates have already passed — this is probably an old shared link. The course is still shown as it was planned.",
+    "constraints": "Built for about {{places}} places, up to {{distance}}km of travel, and {{lodging}} night(s) of lodging.",
+    "courseFacts": "{{places}} places · {{regions}} counties · {{distance}}km",
+    "pickOne": "Pick a course on the left to see the day-by-day plan.",
+    "noCourseTitle": "Not enough places for this combination",
+    "noCourseBody": "Try adding counties, widening the dates, or removing some interests. This isn't an error — we just don't have enough collected places inside the range you picked."
   },
   "courseDetail": {
     "notAvailable": "Course details aren't available directly — please go back and pick a course from the results list.",
@@ -102,17 +111,11 @@
     "breakdown": {
       "interest": "Interest match",
       "access": "Access",
-      "stay": "Stay quality",
       "dispersion": "Dispersion",
       "completeness": "Data completeness"
     }
   },
   "options": {
-    "duration": {
-      "ONE_DAY": "One day",
-      "ONE_NIGHT": "One night",
-      "TWO_NIGHT": "Two nights"
-    },
     "difficulty": {
       "EASY": "Easy",
       "NORMAL": "Normal",
@@ -374,5 +377,17 @@
     "error": "Could not load this region",
     "notFound": "Region not found",
     "hubBadge": "{{hub}} area"
+  },
+  "trip": {
+    "dayTrip": "Day trip",
+    "nights_one": "{{count}} night, {{days}} days",
+    "nights_other": "{{count}} nights, {{days}} days"
+  },
+  "calendar": {
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "pickStart": "Pick your first day.",
+    "pickEnd": "Now pick your last day — up to {{max}} nights.",
+    "reset": "Tap any date to start over."
   }
 }

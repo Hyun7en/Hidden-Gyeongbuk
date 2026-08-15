@@ -28,6 +28,14 @@ record CourseCandidate(List<CourseDay> days, double totalDistanceKm) {
         return (int) days.stream().filter(day -> day.lodging() != null).count();
     }
 
+    /** 코스가 실제로 걸치는 지역 수. 응답에 그대로 나가고 지역분산 점수의 근거이기도 하다. */
+    int regionCount() {
+        return (int) allPlaces().stream()
+                .map(p -> p.getRegion().getId())
+                .distinct()
+                .count();
+    }
+
     Set<Long> placeIdSet() {
         return allPlaces().stream().map(Place::getId).collect(Collectors.toSet());
     }

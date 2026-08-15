@@ -1,14 +1,9 @@
-export type Duration = 'ONE_DAY' | 'ONE_NIGHT' | 'TWO_NIGHT'
+// 기간은 enum이 아니라 날짜 범위다(ADR-020) — DURATION_OPTIONS는 폐기됐고, 박 수·일 수 계산은
+// lib/tripDates.ts에 있다.
 // 관심사 어휘는 장소 분류와 같다(ADR-024). 단일 출처는 API 계층의 PlaceType이다.
 export type { Interest } from '../api/types'
 import type { Interest } from '../api/types'
 export type Difficulty = 'EASY' | 'NORMAL' | 'LOCAL'
-
-export const DURATION_OPTIONS: { value: Duration; labelKey: string }[] = [
-  { value: 'ONE_DAY', labelKey: 'options.duration.ONE_DAY' },
-  { value: 'ONE_NIGHT', labelKey: 'options.duration.ONE_NIGHT' },
-  { value: 'TWO_NIGHT', labelKey: 'options.duration.TWO_NIGHT' },
-]
 
 // 9종이며 6종이던 구 자체 태그를 대체한다. 칩이 늘었으니 줄바꿈을 전제한 레이아웃이어야
 // 한다(화면 설계서 S3). 라벨은 meta/options로 옮기는 중이라 이 표는 과도기다.

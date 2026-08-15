@@ -77,7 +77,9 @@ function RegionDetail() {
       )}
 
       <div className="mt-8">
-        <ButtonLink to={`/recommend?regionIds=${regionId}`}>{t('region.cta')}</ButtonLink>
+        {/* 이 지역이 미리 선택된 채로 추천 입력에 들어간다(ADR-019 결과 ④).
+            파라미터 이름은 결과 화면(S4)과 같은 `regions`여야 한다 — 어긋나면 조용히 무시된다. */}
+        <ButtonLink to={`/recommend?regions=${regionId}`}>{t('region.cta')}</ButtonLink>
       </div>
 
       {/* 대표 관광지 — 0개면 미리보기·더보기를 함께 숨긴다 */}

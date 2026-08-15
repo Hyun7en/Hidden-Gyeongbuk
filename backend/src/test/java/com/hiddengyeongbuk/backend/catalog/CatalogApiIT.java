@@ -20,6 +20,7 @@ import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -199,13 +200,35 @@ class CatalogApiIT {
 
     @Test
     void 코스_추천_요청이_정상_구조로_응답한다() {
-        CourseRecommendRequest request =
-                new CourseRecommendRequest(1L, Duration.ONE_DAY, List.of(PlaceType.NA), Difficulty.EASY);
+        LocalDate start = LocalDate.of(2026, 5, 1);
+        CourseRecommendRequest request = new CourseRecommendRequest(
+                1L, List.of(), start, start.plusDays(1), List.of(PlaceType.NA), Difficulty.EASY);
 
         ResponseEntity<CourseListResponse> response =
                 restTemplate.postForEntity(url("/api/courses/recommend"), request, CourseListResponse.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().courses()).isNotNull();
+        // 수집이 어디까지 돌았는지에 따라 코스가 나올 수도, 장소가 부족할 수도 있다. 이 테스트가
+        // 보는 것은 "엔드포인트가 규격대로 응답하는가"이므로 둘 다 정상으로 받아들이고,
+        // 성공했을 때만 제약 블록이 채워졌는지 확인한다.
+        assertThat(response.getStatusCode())
+                .isIn(HttpStatus.OK, HttpStatus.UNPROCESSABLE_ENTITY);
+        if (response.getStatusCode() == HttpStatus.OK) {
+            assertThat(response.getBody().courses()).isNotNull();
+            assertThat(response.getBody().constraints()).isNotNull();
+            assertThat(response.getBody().constraints().lodgingCount()).isEqualTo(1);
+            assertThat(response.getBody().resolvedLang()).isNotBlank();
+        }
+    }
+
+    @Test
+    void 종료일이_시작일보다_앞서면_400이다() {
+        CourseRecommendRequest request = new CourseRecommendRequest(
+                1L, List.of(), LocalDate.of(2026, 5, 3), LocalDate.of(2026, 5, 1), List.of(), Difficulty.EASY);
+
+        ResponseEntity<ApiErrorResponse> response =
+                restTemplate.postForEntity(url("/api/courses/recommend"), request, ApiErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().error().code()).isEqualTo("INVALID_PARAM");
     }
 }

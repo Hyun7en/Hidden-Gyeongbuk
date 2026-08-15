@@ -1,5 +1,6 @@
 package com.hiddengyeongbuk.backend.catalog;
 
+import com.hiddengyeongbuk.backend.catalog.course.NoCourseFoundException;
 import com.hiddengyeongbuk.backend.catalog.dto.ApiErrorResponse;
 import com.hiddengyeongbuk.backend.catalog.dto.ApiErrorResponse.ApiError;
 import org.slf4j.Logger;
@@ -26,6 +27,16 @@ public class CatalogExceptionHandler {
     @ExceptionHandler({PlaceNotFoundException.class, HubNotFoundException.class, RegionNotFoundException.class})
     public ResponseEntity<ApiErrorResponse> handleNotFound(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiErrorResponse(new ApiError("NOT_FOUND", e.getMessage())));
+    }
+
+    /**
+     * 422 — 요청 자체는 올바른데 결과를 만들 수 없는 경우. 400(요청이 틀림)이나 빈 200(결과 없음)과
+     * 구분해야 클라이언트가 "조건을 넓혀 보세요"를 띄울 수 있다.
+     */
+    @ExceptionHandler(NoCourseFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoCourseFound(NoCourseFoundException e) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ApiErrorResponse(new ApiError("NO_COURSE_FOUND", e.getMessage())));
     }
 
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentTypeMismatchException.class})

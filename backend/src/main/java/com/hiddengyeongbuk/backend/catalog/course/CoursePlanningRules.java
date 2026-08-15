@@ -1,62 +1,50 @@
 package com.hiddengyeongbuk.backend.catalog.course;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
-import com.hiddengyeongbuk.backend.catalog.Duration;
-import java.util.Map;
+import org.springframework.stereotype.Component;
 
-/** 추천 알고리즘 명세서 2·4.2·4.3·4.4장의 기간·난이도별 상수(목표 장소 수, 필요 숙박, Dmax, 목표 지역 수)를 담는다. */
-final class CoursePlanningRules {
+/**
+ * 코스 제약 계산(추천 알고리즘 명세서 2·4.2·4.4장). 기간별 룩업 표였던 것을 <b>공식</b>으로
+ * 일반화했다 — 날짜 범위 입력이 임의 박 수를 허용하면서 3단계 표로는 표현할 수 없게 됐다(ADR-020).
+ *
+ * <p>여기 값들은 <b>채점 대상이 아니다.</b> 목표 장소 수·필요 숙박은 코스를 조립할 때 걸리는
+ * 제약일 뿐이고, 그 결과를 다시 점수로 매기지 않는다 — 우리가 정한 값을 우리가 채점하는 구조라
+ * 점수 항목에서 제외됐다(ADR-021).
+ */
+@Component
+class CoursePlanningRules {
 
-    private record Range(int min, int max) {}
+    private final CourseProperties.Constraints constraints;
 
-    private static final Map<Duration, Integer> DAYS =
-            Map.of(Duration.ONE_DAY, 1, Duration.ONE_NIGHT, 2, Duration.TWO_NIGHT, 3);
-
-    private static final Map<Duration, Range> PLACE_RANGE = Map.of(
-            Duration.ONE_DAY, new Range(3, 4),
-            Duration.ONE_NIGHT, new Range(5, 7),
-            Duration.TWO_NIGHT, new Range(8, 11));
-
-    private static final Map<Duration, Integer> REQUIRED_LODGING =
-            Map.of(Duration.ONE_DAY, 0, Duration.ONE_NIGHT, 1, Duration.TWO_NIGHT, 2);
-
-    private static final Map<Duration, Integer> TARGET_REGION_COUNT =
-            Map.of(Duration.ONE_DAY, 1, Duration.ONE_NIGHT, 2, Duration.TWO_NIGHT, 3);
-
-    private static final Map<Difficulty, Map<Duration, Integer>> DMAX = Map.of(
-            Difficulty.EASY, Map.of(Duration.ONE_DAY, 60, Duration.ONE_NIGHT, 120, Duration.TWO_NIGHT, 180),
-            Difficulty.NORMAL, Map.of(Duration.ONE_DAY, 100, Duration.ONE_NIGHT, 200, Duration.TWO_NIGHT, 300),
-            Difficulty.LOCAL, Map.of(Duration.ONE_DAY, 150, Duration.ONE_NIGHT, 300, Duration.TWO_NIGHT, 450));
-
-    private CoursePlanningRules() {}
-
-    static int days(Duration duration) {
-        return DAYS.get(duration);
+    CoursePlanningRules(CourseProperties properties) {
+        this.constraints = properties.constraints();
     }
 
-    static int minPlaces(Duration duration) {
-        return PLACE_RANGE.get(duration).min();
+    int maxNights() {
+        return constraints.maxNights();
     }
 
-    static int maxPlaces(Duration duration) {
-        return PLACE_RANGE.get(duration).max();
+    /** 목표 장소 수 ≈ {@code placesPerDay × days}. 숙박은 여기 포함되지 않는다. */
+    int targetPlaceCount(int days) {
+        return Math.max(1, (int) Math.round(constraints.placesPerDay() * days));
     }
 
-    /** 코스 조립 시 목표로 삼는 장소 수(목표 범위의 중간값, 5장 조립 규칙에서 사용). */
-    static int targetPlaceCount(Duration duration) {
-        Range range = PLACE_RANGE.get(duration);
-        return (int) Math.round((range.min() + range.max()) / 2.0);
+    /** 거리 예산 {@code Dmax = base(difficulty) × days}. */
+    double maxDistanceKm(Difficulty difficulty, int days) {
+        return constraints.baseDistanceKm().get(difficulty) * (double) days;
     }
 
-    static int requiredLodging(Duration duration) {
-        return REQUIRED_LODGING.get(duration);
+    /** 필요 숙박 = 박 수. 당일치기면 0. */
+    int requiredLodging(int nights) {
+        return nights;
     }
 
-    static int targetRegionCount(Duration duration) {
-        return TARGET_REGION_COUNT.get(duration);
-    }
-
-    static double dmax(Difficulty difficulty, Duration duration) {
-        return DMAX.get(difficulty).get(duration);
+    /**
+     * 지역분산 점수의 분모가 되는 목표 지역 수. 하루에 한 지역을 목표로 하되 <b>범위 안에 실제로
+     * 있는 지역 수를 넘지 않는다</b> — 지역 한 곳만 고른 사용자(ADR-019의 "그 지역 집중")에게
+     * 도달 불가능한 목표를 세워 놓고 감점하면 안 된다.
+     */
+    int targetRegionCount(int days, int availableRegions) {
+        return Math.max(1, Math.min(days, availableRegions));
     }
 }

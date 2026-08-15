@@ -81,17 +81,26 @@
     "hubsError": "허브 목록을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
     "loadingHubs": "허브 목록 불러오는 중…",
     "gettingThereFallback": "가는 방법: 이 허브와 가장 가까운 KTX/SRT역이나 시외버스터미널을 확인하세요.",
-    "tripLength": "여행 기간",
     "pace": "여행 속도",
     "interests": "관심사 (선택, 복수 가능)",
-    "submit": "추천 받기 →"
+    "submit": "추천 받기 →",
+    "tripDates": "여행 날짜",
+    "regions": "지역 (선택)",
+    "regionsBody": "비워 두면 거점 주변 전체에서 코스를 짭니다. 하나만 고르면 그 지역에 집중하고, 여러 개를 고르면 그 안에서만 짭니다.",
+    "regionsError": "지역을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})"
   },
   "recommendResults": {
     "title": "추천 코스",
     "error": "추천 코스를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
     "building": "코스를 만드는 중…",
     "empty": "아직 매칭된 코스가 없습니다 — {{hub}}에 이 조합에 맞는 장소 데이터가 충분하지 않을 수 있습니다.",
-    "summary": "{{hub}} · {{duration}} · {{difficulty}} 조건으로 {{count}}개 코스 매칭됨"
+    "missingParams": "이 링크에 여행 조건이 없습니다. 추천 입력 화면에서 다시 시작해 주세요.",
+    "pastTrip": "이미 지난 날짜입니다 — 오래된 공유 링크로 보입니다. 코스는 계획 당시 기준 그대로 보여 줍니다.",
+    "constraints": "장소 약 {{places}}곳, 이동 최대 {{distance}}km, 숙박 {{lodging}}회 기준으로 짰습니다.",
+    "courseFacts": "장소 {{places}}곳 · 지역 {{regions}}곳 · {{distance}}km",
+    "pickOne": "왼쪽에서 코스를 고르면 일자별 일정이 나옵니다.",
+    "noCourseTitle": "이 조건으로는 장소가 부족합니다",
+    "noCourseBody": "지역을 더 고르거나, 날짜를 늘리거나, 관심사를 줄여 보세요. 오류가 아니라 고른 범위 안에 수집된 장소가 아직 부족한 것입니다."
   },
   "courseDetail": {
     "notAvailable": "코스 상세는 직접 접근할 수 없습니다 — 뒤로 가서 결과 목록에서 코스를 선택해 주세요.",
@@ -102,17 +111,11 @@
     "breakdown": {
       "interest": "관심사 일치도",
       "access": "접근성",
-      "stay": "숙박 품질",
       "dispersion": "분산도",
       "completeness": "데이터 완성도"
     }
   },
   "options": {
-    "duration": {
-      "ONE_DAY": "당일치기",
-      "ONE_NIGHT": "1박 2일",
-      "TWO_NIGHT": "2박 3일"
-    },
     "difficulty": {
       "EASY": "여유롭게",
       "NORMAL": "보통",
@@ -374,5 +377,16 @@
     "error": "지역 정보를 불러오지 못했어요",
     "notFound": "지역을 찾을 수 없어요",
     "hubBadge": "{{hub}}권"
+  },
+  "trip": {
+    "dayTrip": "당일치기",
+    "nights_other": "{{count}}박 {{days}}일"
+  },
+  "calendar": {
+    "prevMonth": "이전 달",
+    "nextMonth": "다음 달",
+    "pickStart": "여행 첫날을 고르세요.",
+    "pickEnd": "마지막 날을 고르세요 — 최대 {{max}}박까지.",
+    "reset": "아무 날짜나 누르면 다시 고를 수 있습니다."
   }
 }

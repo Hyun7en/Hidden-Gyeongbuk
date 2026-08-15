@@ -1,36 +1,58 @@
 package com.hiddengyeongbuk.backend.catalog.course;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
-import com.hiddengyeongbuk.backend.catalog.Duration;
-import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.catalog.PlaceTexts;
 import com.hiddengyeongbuk.backend.domain.place.Place;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/** 추천 알고리즘 명세서 4장: 관심사·접근성·체류·지역분산·데이터완성도 5개 항목을 가중 합산한다. */
+/**
+ * 추천 알고리즘 명세서 4장: 관심사·접근성·지역분산·데이터완성도 <b>4개 항목</b>을 가중 합산한다.
+ *
+ * <p>체류 적합도가 빠져 5개에서 4개가 됐다(ADR-021). 뺀 이유는 그 항목만 <b>우리가 만든 값을
+ * 우리가 채점하는</b> 구조였기 때문이다 — 장소 수는 조립할 때 우리가 정하는 값이지, 관심사나
+ * 좌표처럼 수집된 데이터에서 나오는 값이 아니다. 기간 대비 장소 수 조절 자체는 여전히 필요하므로
+ * {@link CoursePlanningRules}의 제약으로 남아 있다.
+ */
 @Component
 class CourseScorer {
 
-    record Breakdown(double interest, double access, double stay, double dispersion, double completeness, double total) {}
+    record Breakdown(double interest, double access, double dispersion, double completeness, double total) {}
 
+    private final CourseProperties.Weights weights;
+    private final CoursePlanningRules rules;
+
+    CourseScorer(CourseProperties properties, CoursePlanningRules rules) {
+        this.weights = properties.weights();
+        this.rules = rules;
+    }
+
+    /**
+     * @param availableRegions 추천 범위에 실제로 존재하는 지역 수. 지역분산의 목표치를 여기에
+     *     맞춰 깎는다 — 자세한 이유는 {@link CoursePlanningRules#targetRegionCount}.
+     */
     Breakdown score(
             CourseCandidate candidate,
             Set<PlaceType> interests,
-            Duration duration,
+            TravelDates dates,
             Difficulty difficulty,
+            int availableRegions,
             Map<Long, PlaceTexts> texts) {
         List<Place> allPlaces = candidate.allPlaces();
         double interest = interestScore(allPlaces, interests);
-        double access = accessScore(candidate.totalDistanceKm(), duration, difficulty);
-        double stay = stayScore(candidate, duration);
-        double dispersion = dispersionScore(allPlaces, duration);
+        double access = accessScore(candidate.totalDistanceKm(), dates, difficulty);
+        double dispersion = dispersionScore(allPlaces, dates, availableRegions);
         double completeness = completenessScore(allPlaces, texts);
-        double total = 0.30 * interest + 0.25 * access + 0.20 * stay + 0.15 * dispersion + 0.10 * completeness;
-        return new Breakdown(interest, access, stay, dispersion, completeness, total);
+        double total = (weights.interest() * interest
+                        + weights.access() * access
+                        + weights.dispersion() * dispersion
+                        + weights.completeness() * completeness)
+                / 100.0;
+        return new Breakdown(interest, access, dispersion, completeness, total);
     }
 
     /**
@@ -54,25 +76,14 @@ class CourseScorer {
     }
 
     /** 4.2 접근성 적합도: 총 이동거리를 난이도·기간 예산(Dmax) 대비 정규화. */
-    private double accessScore(double totalDistanceKm, Duration duration, Difficulty difficulty) {
-        double dmax = CoursePlanningRules.dmax(difficulty, duration);
+    private double accessScore(double totalDistanceKm, TravelDates dates, Difficulty difficulty) {
+        double dmax = rules.maxDistanceKm(difficulty, dates.days());
         return Math.max(0, 1 - totalDistanceKm / dmax) * 100;
     }
 
-    /** 4.3 체류 적합도: 목표 장소 수 범위 이탈·필요 숙박 누락에 대한 감점. */
-    private double stayScore(CourseCandidate candidate, Duration duration) {
-        int n = candidate.visitPlaceCount();
-        int min = CoursePlanningRules.minPlaces(duration);
-        int max = CoursePlanningRules.maxPlaces(duration);
-        int deviation = n < min ? min - n : Math.max(0, n - max);
-        boolean lodgingMissing = candidate.lodgingCount() < CoursePlanningRules.requiredLodging(duration);
-        double score = 100 - 15.0 * deviation - (lodgingMissing ? 40 : 0);
-        return clamp(score);
-    }
-
-    /** 4.4 지역분산 기여도: 방문 지역 다양성. Rmax=1인 당일 코스는 항상 만점. */
-    private double dispersionScore(List<Place> places, Duration duration) {
-        int rmax = CoursePlanningRules.targetRegionCount(duration);
+    /** 4.4 지역분산 기여도: 방문 지역 다양성. 목표 지역 수가 1이면(당일·단일지역) 항상 만점. */
+    private double dispersionScore(List<Place> places, TravelDates dates, int availableRegions) {
+        int rmax = rules.targetRegionCount(dates.days(), availableRegions);
         if (rmax == 1) {
             return 100.0;
         }
@@ -91,9 +102,5 @@ class CourseScorer {
                 .mapToDouble(p -> PlaceCompleteness.score(p, texts.getOrDefault(p.getId(), PlaceTexts.empty())))
                 .average()
                 .orElse(0);
-    }
-
-    private static double clamp(double value) {
-        return Math.max(0, Math.min(100, value));
     }
 }

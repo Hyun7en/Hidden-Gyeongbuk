@@ -4,7 +4,6 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import RecommendInput from './pages/RecommendInput'
 import RecommendResults from './pages/RecommendResults'
-import CourseDetail from './pages/CourseDetail'
 import PlaceExplore from './pages/PlaceExplore'
 import PlaceDetail from './pages/PlaceDetail'
 import RegionDetail from './pages/RegionDetail'
@@ -25,7 +24,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/recommend" element={<RecommendInput />} />
           <Route path="/recommend/results" element={<RecommendResults />} />
-          <Route path="/recommend/results/:rank" element={<CourseDetail />} />
+          {/* 결과와 상세가 한 화면이라 :rank는 "이 코스를 펼친 상태"를 뜻한다(화면 설계서 S4). */}
+          <Route path="/recommend/results/:rank" element={<RecommendResults />} />
           <Route path="/places" element={<PlaceExplore />} />
           <Route path="/places/:placeId" element={<PlaceDetail />} />
           <Route path="/regions/:regionId" element={<RegionDetail />} />

@@ -3,16 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Container from '../components/Container'
 import Tag from '../components/Tag'
+import DateRangeCalendar from '../components/DateRangeCalendar'
 import { useHubs } from '../hooks/useHubs'
+import { useRegions } from '../hooks/useRegions'
 import { useLanguage } from '../context/LanguageContext'
-import {
-  DIFFICULTY_OPTIONS,
-  DURATION_OPTIONS,
-  INTEREST_OPTIONS,
-  type Difficulty,
-  type Duration,
-  type Interest,
-} from '../types/course'
+import { formatDateRange, tripLengthLabel } from '../lib/tripDates'
+import { DIFFICULTY_OPTIONS, INTEREST_OPTIONS, type Difficulty, type Interest } from '../types/course'
 
 // 키는 hub.code다 — 표시명은 요청 언어로 바뀌므로 식별자로 쓸 수 없다.
 const HUB_ACCESS: Record<string, { en: string; ko: string }> = {
@@ -34,6 +30,12 @@ const HUB_ACCESS: Record<string, { en: string; ko: string }> = {
   },
 }
 
+/**
+ * S3 추천 입력. 거점 → 날짜 → 지역 → 속도 → 관심사 순으로 좁혀 간다.
+ *
+ * <p>기간은 칩이 아니라 <b>날짜 범위 캘린더</b>다(ADR-020). 지역은 <b>선택 사항인 다중선택</b>이고,
+ * 거점만 고르고 넘어가면 그 거점 주변 전체에서 코스가 짜인다(ADR-019).
+ */
 function RecommendInput() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -45,19 +47,38 @@ function RecommendInput() {
     const raw = searchParams.get('hub')
     return raw ? Number(raw) : null
   })
-  const [duration, setDuration] = useState<Duration | null>(null)
+  const [startDate, setStartDate] = useState<string | null>(null)
+  const [endDate, setEndDate] = useState<string | null>(null)
+  // 지역 상세(S2)의 "이 지역 코스 추천받기"가 지역을 미리 채워 보낸다(ADR-019 결과 ④).
+  const [regionIds, setRegionIds] = useState<number[]>(() => {
+    const raw = searchParams.get('regions')
+    return raw ? raw.split(',').map(Number).filter((n) => !Number.isNaN(n)) : []
+  })
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null)
   const [interests, setInterests] = useState<Interest[]>([])
 
-  const canSubmit = hubId !== null && duration !== null && difficulty !== null
+  // 거점을 고르면 그 거점 소속 지역이 위로 온다 — 위치 권한 없이 선택을 돕는다(ADR-019 (3)).
+  const { regions, error: regionsError } = useRegions(hubId ?? undefined)
+
+  const canSubmit = hubId !== null && startDate !== null && endDate !== null && difficulty !== null
 
   function toggleInterest(value: Interest) {
     setInterests((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]))
   }
 
+  function toggleRegion(value: number) {
+    setRegionIds((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]))
+  }
+
   function handleSubmit() {
     if (!canSubmit) return
-    const params = new URLSearchParams({ hub: String(hubId), duration: duration!, difficulty: difficulty! })
+    const params = new URLSearchParams({
+      hub: String(hubId),
+      startDate: startDate!,
+      endDate: endDate!,
+      difficulty: difficulty!,
+    })
+    if (regionIds.length > 0) params.set('regions', regionIds.join(','))
     if (interests.length > 0) params.set('interests', interests.join(','))
     navigate(`/recommend/results?${params.toString()}`)
   }
@@ -67,7 +88,6 @@ function RecommendInput() {
   return (
     <div className="relative min-h-screen bg-bg">
       <div className="relative z-10">
-
         <Container className="py-8 md:py-14">
           <div className="mx-auto max-w-2xl">
             <h1 className="mb-6 text-2xl font-bold md:mb-8 md:text-3xl">{t('recommendInput.title')}</h1>
@@ -107,15 +127,49 @@ function RecommendInput() {
 
               <fieldset>
                 <legend className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-accent md:text-xs">
-                  {t('recommendInput.tripLength')}
+                  {t('recommendInput.tripDates')}
                 </legend>
-                <div className="flex flex-wrap gap-2">
-                  {DURATION_OPTIONS.map((opt) => (
-                    <Tag key={opt.value} active={duration === opt.value} onClick={() => setDuration(opt.value)}>
-                      {t(opt.labelKey)}
-                    </Tag>
-                  ))}
+                <div className="border border-line bg-bg-elevated p-3 md:p-4">
+                  <DateRangeCalendar
+                    start={startDate}
+                    end={endDate}
+                    onChange={(nextStart, nextEnd) => {
+                      setStartDate(nextStart)
+                      setEndDate(nextEnd)
+                    }}
+                  />
                 </div>
+                {startDate && endDate ? (
+                  <p className="mt-3 text-[13px] text-text-soft md:text-sm">
+                    {formatDateRange(lang, startDate, endDate)} · {tripLengthLabel(t, startDate, endDate)}
+                  </p>
+                ) : null}
+              </fieldset>
+
+              <fieldset>
+                <legend className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-accent md:text-xs">
+                  {t('recommendInput.regions')}
+                </legend>
+                <p className="mb-3 text-[13px] leading-relaxed text-text-soft md:text-sm">
+                  {t('recommendInput.regionsBody')}
+                </p>
+                {regionsError ? (
+                  <p className="text-sm text-text-soft">{t('recommendInput.regionsError', { error: regionsError })}</p>
+                ) : regions === null ? (
+                  <p className="text-sm text-text-soft">{t('common.loading')}</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {regions.map((region) => (
+                      <Tag
+                        key={region.regionId}
+                        active={regionIds.includes(region.regionId)}
+                        onClick={() => toggleRegion(region.regionId)}
+                      >
+                        {region.name}
+                      </Tag>
+                    ))}
+                  </div>
+                )}
               </fieldset>
 
               <fieldset>

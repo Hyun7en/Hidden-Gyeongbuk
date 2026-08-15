@@ -1,7 +1,6 @@
 package com.hiddengyeongbuk.backend.catalog.course;
 
 import com.hiddengyeongbuk.backend.catalog.Difficulty;
-import com.hiddengyeongbuk.backend.catalog.Duration;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.place.Place;
@@ -11,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,6 +19,12 @@ import org.springframework.stereotype.Component;
  */
 @Component
 class CourseAssembler {
+
+    private final CoursePlanningRules rules;
+
+    CourseAssembler(CoursePlanningRules rules) {
+        this.rules = rules;
+    }
 
     enum SelectionStrategy {
         /** 사전점수 우선, 거리로 동점 처리 — 명세 문구를 그대로 따르는 기본 전략. */
@@ -36,13 +40,13 @@ class CourseAssembler {
             List<Place> attractionPool,
             List<Place> foodPool,
             List<Place> lodgingPool,
-            Duration duration,
+            TravelDates dates,
             Difficulty difficulty,
             Set<PlaceType> interests,
             SelectionStrategy strategy) {
-        int totalDays = CoursePlanningRules.days(duration);
-        int[] perDayTargets = splitEvenly(CoursePlanningRules.targetPlaceCount(duration), totalDays);
-        double dmax = CoursePlanningRules.dmax(difficulty, duration);
+        int totalDays = dates.days();
+        int[] perDayTargets = splitEvenly(rules.targetPlaceCount(totalDays), totalDays);
+        double dmax = rules.maxDistanceKm(difficulty, totalDays);
 
         Set<Long> used = new HashSet<>();
         List<CourseDay> courseDays = new ArrayList<>();

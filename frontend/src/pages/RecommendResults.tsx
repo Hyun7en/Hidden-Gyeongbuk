@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiRequestError, recommendCourses } from '../api/client'
 import type { CourseConstraints, CourseResponse } from '../api/types'
+import Container from '../components/Container'
 import CourseItinerary from '../components/CourseItinerary'
 import { ButtonLink } from '../components/Button'
 import { useHubs } from '../hooks/useHubs'
@@ -267,7 +268,11 @@ function metaOf(t: ReturnType<typeof useTranslation>['t'], course: CourseRespons
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="screen-in mx-auto w-full max-w-[1180px] px-4 py-8 pb-14 md:px-6">{children}</div>
+  return (
+    <Container className="screen-in py-8 pb-14">
+      {children}
+    </Container>
+  )
 }
 
 export default RecommendResults

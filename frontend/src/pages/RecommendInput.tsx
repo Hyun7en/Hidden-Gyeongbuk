@@ -104,7 +104,8 @@ function RecommendInput() {
   }
 
   return (
-    <div className="screen-in mx-auto w-full max-w-[480px] px-4 py-11 pb-16 md:px-0">
+    // 폼은 본문 컨테이너(1180px)가 아니라 프로토타입과 같은 480px 단일 컬럼이다.
+    <div className="screen-in mx-auto w-full max-w-[var(--container-mobile)] px-4 py-11 pb-16 md:px-0">
       <div className="text-center">
         <h1 className="font-[family-name:var(--font-serif-heading)] text-[26px] font-semibold">
           {t('recommendInput.title')}

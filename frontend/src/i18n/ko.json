@@ -71,7 +71,8 @@
     "noPhoto": "사진 준비 중",
     "nearby": "주변 장소",
     "festival": "축제 기간",
-    "machineTranslation": "기계 번역"
+    "machineTranslation": "기계 번역",
+    "noOverview": "이 장소는 원본 관광 데이터에 설명이 없습니다. 주소와 위치는 아래에서 확인할 수 있습니다."
   },
   "recommendInput": {
     "title": "코스 추천받기",

@@ -71,7 +71,8 @@
     "noPhoto": "Photo coming soon",
     "nearby": "Nearby",
     "festival": "Festival dates",
-    "machineTranslation": "Machine translation"
+    "machineTranslation": "Machine translation",
+    "noOverview": "The source tourism data has no description for this place. Address and location are below."
   },
   "recommendInput": {
     "title": "Plan a course",

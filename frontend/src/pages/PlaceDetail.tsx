@@ -170,7 +170,12 @@ function PlaceDetail() {
             )}
           </div>
 
-          {place.overview && (
+          {/*
+            설명이 없는 장소가 적지 않다 — 관광공사 원본이 음식점에는 overview를 거의 주지
+            않는다(실측: FD 8%, 전체 43%). 자리를 그냥 비워두면 화면이 고장 난 것처럼 보이므로
+            없다는 사실을 밝힌다. 추천 점수에서는 데이터 완성도로 이미 감점된다(PlaceCompleteness).
+          */}
+          {place.overview ? (
             <>
               {place.translationSource === 'TRANSLATE' && (
                 <p className="mt-5 inline-block border border-line px-2 py-1 text-[11px] text-text-soft">
@@ -179,6 +184,10 @@ function PlaceDetail() {
               )}
               <p className="mt-4 max-w-[560px] text-[15px] leading-[1.8] text-text-soft">{place.overview}</p>
             </>
+          ) : (
+            <p className="mt-4 max-w-[560px] text-[13px] leading-[1.8] text-text-soft/80">
+              {t('placeDetail.noOverview')}
+            </p>
           )}
         </div>
 

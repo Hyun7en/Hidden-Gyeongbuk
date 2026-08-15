@@ -15,11 +15,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 못한다. 그래서 실패를 기동 시점으로 당긴다.
  */
 @ConfigurationProperties(prefix = "course")
-public record CourseProperties(Weights weights, Constraints constraints) {
+public record CourseProperties(Weights weights, Constraints constraints, Festival festival) {
 
     public CourseProperties {
-        if (weights == null || constraints == null) {
-            throw new IllegalStateException("course.weights와 course.constraints는 필수 설정입니다");
+        if (weights == null || constraints == null || festival == null) {
+            throw new IllegalStateException("course.weights·constraints·festival은 모두 필수 설정입니다");
         }
     }
 
@@ -57,6 +57,25 @@ public record CourseProperties(Weights weights, Constraints constraints) {
                     .toList();
             if (!missing.isEmpty()) {
                 throw new IllegalStateException("course.constraints.base-distance-km에 난이도가 빠졌습니다 — " + missing);
+            }
+        }
+    }
+
+    /**
+     * 축제 날짜 겹침 보정(추천 알고리즘 §4.7). <b>점수 항목이 아니다</b> — 후보를 고르는 단계의
+     * 가산이라 {@link Weights}와 섞이지 않고, 합계 100 검증에도 들어가지 않는다.
+     *
+     * <p>기간이 안 맞는 축제를 <b>빼는</b> 쪽은 설정으로 끄지 않는다. 열리지도 않는 축제를 일정에
+     * 넣는 것은 취향 문제가 아니라 틀린 데이터다.
+     *
+     * @param preScoreBonus 여행 날짜와 겹치는 축제에 얹는 사전점수 가산. 그 시기에만 가능한
+     *     경험이라 같은 조건이면 먼저 담을 이유가 있다.
+     */
+    public record Festival(int preScoreBonus) {
+
+        public Festival {
+            if (preScoreBonus < 0) {
+                throw new IllegalStateException("course.festival.pre-score-bonus는 음수일 수 없습니다 — 현재 " + preScoreBonus);
             }
         }
     }

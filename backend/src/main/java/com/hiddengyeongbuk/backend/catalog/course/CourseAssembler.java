@@ -8,6 +8,7 @@ import com.hiddengyeongbuk.backend.support.GeoUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -21,9 +22,11 @@ import org.springframework.stereotype.Component;
 class CourseAssembler {
 
     private final CoursePlanningRules rules;
+    private final int festivalBonus;
 
-    CourseAssembler(CoursePlanningRules rules) {
+    CourseAssembler(CoursePlanningRules rules, CourseProperties properties) {
         this.rules = rules;
+        this.festivalBonus = properties.festival().preScoreBonus();
     }
 
     enum SelectionStrategy {
@@ -43,6 +46,7 @@ class CourseAssembler {
             TravelDates dates,
             Difficulty difficulty,
             Set<PlaceType> interests,
+            Map<Long, FestivalPeriod> festivals,
             SelectionStrategy strategy) {
         int totalDays = dates.days();
         int[] perDayTargets = splitEvenly(rules.targetPlaceCount(totalDays), totalDays);
@@ -57,7 +61,7 @@ class CourseAssembler {
         for (int day = 1; day <= totalDays; day++) {
             List<Place> dayPlaces = new ArrayList<>();
 
-            Place food = pickNext(foodPool, used, lat, lng, interests, strategy, dmax - totalDistance);
+            Place food = pickNext(foodPool, used, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
             if (food != null) {
                 totalDistance += GeoUtils.haversineKm(lat, lng, food.getLat().doubleValue(), food.getLng().doubleValue());
                 lat = food.getLat().doubleValue();
@@ -68,7 +72,8 @@ class CourseAssembler {
 
             int target = perDayTargets[day - 1];
             while (dayPlaces.size() < target) {
-                Place next = pickNext(attractionPool, used, lat, lng, interests, strategy, dmax - totalDistance);
+                Place next =
+                        pickNext(attractionPool, used, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
                 if (next == null) {
                     break;
                 }
@@ -85,7 +90,7 @@ class CourseAssembler {
 
             Place lodging = null;
             if (day < totalDays) {
-                lodging = pickNext(lodgingPool, used, lat, lng, interests, strategy, dmax - totalDistance);
+                lodging = pickNext(lodgingPool, used, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
                 if (lodging != null) {
                     totalDistance +=
                             GeoUtils.haversineKm(lat, lng, lodging.getLat().doubleValue(), lodging.getLng().doubleValue());
@@ -110,6 +115,8 @@ class CourseAssembler {
             double lat,
             double lng,
             Set<PlaceType> interests,
+            Map<Long, FestivalPeriod> festivals,
+            TravelDates dates,
             SelectionStrategy strategy,
             double remainingBudget) {
         Place best = null;
@@ -118,12 +125,18 @@ class CourseAssembler {
             if (used.contains(candidate.getId()) || candidate.getLat() == null || candidate.getLng() == null) {
                 continue;
             }
+            // 여행 기간에 안 열리는 축제는 후보에서 뺀다 — 점수를 깎는 게 아니라 제외다.
+            // 닫힌 축제를 일정에 넣는 것은 선호의 문제가 아니라 틀린 정보다(추천 알고리즘 §4.7).
+            FestivalPeriod festival = festivals.get(candidate.getId());
+            if (festival != null && !festival.overlaps(dates)) {
+                continue;
+            }
             double distance =
                     GeoUtils.haversineKm(lat, lng, candidate.getLat().doubleValue(), candidate.getLng().doubleValue());
             if (distance > remainingBudget) {
                 continue;
             }
-            double preScore = preScore(candidate, interests);
+            double preScore = preScore(candidate, interests) + (festival != null ? festivalBonus : 0);
             double key =
                     switch (strategy) {
                         case PRESCORE_FIRST -> preScore * 1000 - distance;
@@ -138,7 +151,12 @@ class CourseAssembler {
         return best;
     }
 
-    /** 5장 1단계: 관심사 매치(70%) + 데이터 완성도(30%)로 산정하는 place 레벨 사전점수. */
+    /**
+     * 5장 1단계: 관심사 매치(70%) + 데이터 완성도(30%)로 산정하는 place 레벨 사전점수.
+     *
+     * <p>호출부에서 축제 가산이 더해지므로 결과가 100을 넘을 수 있다. 사용자에게 보여주는
+     * 점수가 아니라 후보 정렬 키라 상한을 두지 않는다 — 응답의 {@code breakdown}과는 무관하다.
+     */
     private double preScore(Place place, Set<PlaceType> interests) {
         double interestScore;
         if (interests.isEmpty()) {

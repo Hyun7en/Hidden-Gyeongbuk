@@ -13,12 +13,13 @@ final class CourseTestConfig {
     static final CourseProperties PROPERTIES = new CourseProperties(
             new CourseProperties.Weights(35, 30, 20, 15),
             new CourseProperties.Constraints(
-                    3.5, 14, Map.of(Difficulty.EASY, 60, Difficulty.NORMAL, 100, Difficulty.LOCAL, 150)));
+                    3.5, 14, Map.of(Difficulty.EASY, 60, Difficulty.NORMAL, 100, Difficulty.LOCAL, 150)),
+            new CourseProperties.Festival(20));
 
     static final CoursePlanningRules RULES = new CoursePlanningRules(PROPERTIES);
 
-    /** 임의의 기준일 — 계절 가중이 없으므로 어느 날이든 결과가 같다. */
-    private static final LocalDate BASE_DATE = LocalDate.of(2026, 5, 1);
+    /** 기준일. 축제 겹침 판정이 이 날짜를 기준으로 돈다. */
+    static final LocalDate BASE_DATE = LocalDate.of(2026, 5, 1);
 
     static TravelDates nights(int nights) {
         return new TravelDates(BASE_DATE, BASE_DATE.plusDays(nights));

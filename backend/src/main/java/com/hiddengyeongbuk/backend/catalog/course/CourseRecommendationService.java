@@ -9,6 +9,8 @@ import com.hiddengyeongbuk.backend.catalog.course.dto.CourseListResponse;
 import com.hiddengyeongbuk.backend.catalog.course.dto.CourseResponse;
 import com.hiddengyeongbuk.backend.domain.hub.Hub;
 import com.hiddengyeongbuk.backend.domain.hub.HubRepository;
+import com.hiddengyeongbuk.backend.domain.place.FestivalDetail;
+import com.hiddengyeongbuk.backend.domain.place.FestivalDetailRepository;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
@@ -22,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,7 @@ public class CourseRecommendationService {
     private final HubRepository hubRepository;
     private final RegionRepository regionRepository;
     private final PlaceRepository placeRepository;
+    private final FestivalDetailRepository festivalDetailRepository;
     private final CourseAssembler courseAssembler;
     private final CourseScorer courseScorer;
     private final CoursePlanningRules rules;
@@ -48,6 +52,7 @@ public class CourseRecommendationService {
             HubRepository hubRepository,
             RegionRepository regionRepository,
             PlaceRepository placeRepository,
+            FestivalDetailRepository festivalDetailRepository,
             CourseAssembler courseAssembler,
             CourseScorer courseScorer,
             CoursePlanningRules rules,
@@ -55,6 +60,7 @@ public class CourseRecommendationService {
         this.hubRepository = hubRepository;
         this.regionRepository = regionRepository;
         this.placeRepository = placeRepository;
+        this.festivalDetailRepository = festivalDetailRepository;
         this.courseAssembler = courseAssembler;
         this.courseScorer = courseScorer;
         this.rules = rules;
@@ -105,10 +111,21 @@ public class CourseRecommendationService {
                 .distinct()
                 .count();
 
+        Map<Long, FestivalPeriod> festivals = festivalPeriods(places);
+
         Map<Set<Long>, CourseCandidate> uniqueCandidates = new LinkedHashMap<>();
         for (CourseAssembler.SelectionStrategy strategy : CourseAssembler.SelectionStrategy.values()) {
             courseAssembler
-                    .assemble(hub, attractionPool, foodPool, lodgingPool, dates, difficulty, effectiveInterests, strategy)
+                    .assemble(
+                            hub,
+                            attractionPool,
+                            foodPool,
+                            lodgingPool,
+                            dates,
+                            difficulty,
+                            effectiveInterests,
+                            festivals,
+                            strategy)
                     .ifPresent(candidate -> uniqueCandidates.putIfAbsent(candidate.placeIdSet(), candidate));
         }
         if (uniqueCandidates.isEmpty()) {
@@ -137,6 +154,24 @@ public class CourseRecommendationService {
             courses.add(toResponse(rank++, scored, hub, texts));
         }
         return new CourseListResponse(courses, constraintsOf(dates, difficulty), lang);
+    }
+
+    /**
+     * 후보 풀에 있는 축제의 개최 기간(추천 알고리즘 §4.7).
+     *
+     * <p><b>날짜가 없는 행사는 지도에 올리지 않는다</b> — 여기 없으면 기간 판단을 아예 하지 않고
+     * 일반 장소처럼 다룬다. 결측을 "안 열린다"로 읽어 빼버리면 수집된 콘텐츠를 근거 없이 잃고,
+     * "열린다"로 읽으면 닫힌 축제를 넣게 된다. 모르는 것은 판단하지 않는 쪽이 맞다(ADR-021).
+     */
+    private Map<Long, FestivalPeriod> festivalPeriods(List<Place> places) {
+        List<Long> placeIds = places.stream().map(Place::getId).toList();
+        if (placeIds.isEmpty()) {
+            return Map.of();
+        }
+        return festivalDetailRepository.findByPlaceIdIn(placeIds).stream()
+                .filter(f -> f.getStartDate() != null && f.getEndDate() != null)
+                .collect(Collectors.toMap(
+                        FestivalDetail::getPlaceId, f -> new FestivalPeriod(f.getStartDate(), f.getEndDate())));
     }
 
     /**

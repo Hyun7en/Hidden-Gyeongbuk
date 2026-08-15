@@ -28,6 +28,7 @@ class CoursePropertiesBindingTest {
         map.put("course.constraints.base-distance-km.EASY", "60");
         map.put("course.constraints.base-distance-km.NORMAL", "100");
         map.put("course.constraints.base-distance-km.LOCAL", "150");
+        map.put("course.festival.pre-score-bonus", "20");
         return map;
     }
 
@@ -49,6 +50,8 @@ class CoursePropertiesBindingTest {
                 .containsEntry(Difficulty.EASY, 60)
                 .containsEntry(Difficulty.NORMAL, 100)
                 .containsEntry(Difficulty.LOCAL, 150);
+        // 축제 가산은 점수 항목이 아니라 별도 그룹이다 — weights 합계 100에 섞이지 않는다.
+        assertThat(properties.festival().preScoreBonus()).isEqualTo(20);
     }
 
     @Test

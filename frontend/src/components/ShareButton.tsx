@@ -196,7 +196,7 @@ function ShareButton({ title, description, imageUrl, className }: ShareContext &
     // bottom-full anchors the wrapper's bottom edge to the card's top border;
     // mb-2 lifts it further so it floats fully clear of the card with a gap,
     // instead of touching or overlapping the border.
-    <div ref={wrapperRef} className={className ?? 'absolute bottom-full right-0 z-20 mb-2'}>
+    <div ref={wrapperRef} className={className ?? 'absolute right-3 top-3 z-20'}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

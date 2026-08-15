@@ -63,17 +63,17 @@ function PlaceDetail() {
 
   if (!place) {
     return (
-      <Container className="py-8 md:py-14">
-        <div className="md:grid md:grid-cols-[1.2fr_1fr] md:gap-16">
-          <div className="flex flex-col gap-3.5">
-            <div className="h-[200px] skeleton md:h-[320px]" />
-            <div className="h-6 w-2/5 skeleton" />
-            <div className="h-3 w-11/12 skeleton" />
-            <div className="h-3 w-4/5 skeleton" />
+      <Container className="screen-in py-9 pb-14">
+        <div className="flex flex-col items-start gap-9 md:flex-row">
+          <div className="flex min-w-0 flex-1 flex-col gap-3.5">
+            <div className="skeleton h-[220px] md:h-[320px]" />
+            <div className="skeleton h-6 w-2/5" />
+            <div className="skeleton h-3 w-11/12" />
+            <div className="skeleton h-3 w-4/5" />
           </div>
-          <div className="mt-8 flex flex-col gap-4 md:mt-0">
-            <div className="h-[120px] skeleton" />
-            <div className="h-[260px] skeleton" />
+          <div className="flex w-full flex-none flex-col gap-4 md:w-[360px]">
+            <div className="skeleton h-[120px]" />
+            <div className="skeleton h-[260px]" />
           </div>
         </div>
       </Container>
@@ -231,7 +231,7 @@ function PlaceDetail() {
                   href={googleDirectionsUrl(place.lat, place.lng)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="border border-line bg-bg-elevated px-3.5 py-2 text-[11px] text-text-soft transition-colors hover:border-accent"
+                  className="hg-cta hg-btn-mobile inline-flex items-center justify-center px-4 text-[13px]"
                 >
                   Google Maps
                 </a>

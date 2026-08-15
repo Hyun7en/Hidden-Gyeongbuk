@@ -82,7 +82,7 @@
     "loadingHubs": "Loading hubs…",
     "gettingThereFallback": "Getting there: check the nearest KTX/SRT station or intercity bus terminal for this hub.",
     "pace": "Travel intensity",
-    "interests": "Interests (optional, pick any)",
+    "interests": "Interests",
     "submit": "Get recommendations →",
     "tripDates": "Travel dates",
     "regions": "Regions to visit",

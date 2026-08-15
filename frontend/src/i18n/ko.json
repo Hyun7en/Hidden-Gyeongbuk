@@ -82,7 +82,7 @@
     "loadingHubs": "허브 목록 불러오는 중…",
     "gettingThereFallback": "가는 방법: 이 허브와 가장 가까운 KTX/SRT역이나 시외버스터미널을 확인하세요.",
     "pace": "이동 난이도",
-    "interests": "관심사 (선택, 복수 가능)",
+    "interests": "관심사",
     "submit": "추천 받기 →",
     "tripDates": "여행 날짜",
     "regions": "가고 싶은 지역",

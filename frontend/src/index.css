@@ -187,9 +187,16 @@ a:hover {
   color: var(--accent-hover);
 }
 
-/* 한지 결. 다크에서는 opacity가 0이라 렌더링되지 않는다. */
+/*
+ * 한지 결. 다크에서는 --texture-hanji-opacity가 0이라 렌더링되지 않는다.
+ *
+ * position은 fixed다 — absolute로 두면 문서 높이만큼만 깔리고 스크롤과 함께 밀려 올라가서
+ * 긴 페이지의 아래쪽이 맨 배경으로 드러난다.
+ *
+ * background-size는 cover다. repeat로 깔면 타일 경계에 seam이 보인다(Design System v3).
+ */
 .hanji-texture {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: var(--z-fiber);

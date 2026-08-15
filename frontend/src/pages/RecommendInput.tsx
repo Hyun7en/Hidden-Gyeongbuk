@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Container from '../components/Container'
 import Tag from '../components/Tag'
+import { Button } from '../components/Button'
 import DateRangeCalendar from '../components/DateRangeCalendar'
 import { useHubs } from '../hooks/useHubs'
 import { useRegions } from '../hooks/useRegions'
@@ -199,14 +200,16 @@ function RecommendInput() {
               </fieldset>
             </div>
 
-            <button
-              type="button"
-              disabled={!canSubmit}
-              onClick={handleSubmit}
-              className="mt-10 flex h-12 w-full items-center justify-center bg-seal px-[22px] text-[15px] font-bold text-[#f5f1e7] disabled:cursor-not-allowed disabled:opacity-35 md:mt-14 md:h-14 md:w-auto md:px-8 md:text-base"
-            >
-              {t('recommendInput.submit')}
-            </button>
+            {/*
+              디자인 시스템 Button(`hg-cta`)을 쓴다. 예전엔 여기서 `bg-seal`로 직접 칠했는데
+              `--color-seal`이 정의된 적이 없어 Tailwind가 규칙을 아예 만들지 않았고, 그래서
+              배경 없는 버튼에 밝은 글자만 남아 사실상 안 보였다. 색을 손으로 칠하지 말 것.
+            */}
+            <div className="mt-10 md:mt-14">
+              <Button disabled={!canSubmit} onClick={handleSubmit} className="w-full md:w-auto">
+                {t('recommendInput.submit')}
+              </Button>
+            </div>
           </div>
         </Container>
       </div>

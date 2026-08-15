@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Container from '../components/Container'
 import Card from '../components/Card'
+import CardSkeleton from '../components/CardSkeleton'
 import { ButtonLink } from '../components/Button'
 import { useRegions } from '../hooks/useRegions'
 
@@ -27,17 +28,16 @@ function Home() {
   }
 
   return (
-    <>
+    <div className="screen-in">
       {/*
         히어로. 설계는 영상(포스터 폴백)이지만 아직 에셋이 없어 그라데이션으로 자리를 잡아뒀다
         — 프로토타입도 같은 자리에 HERO VIDEO / POSTER 플레이스홀더를 둔다.
         화면을 꽉 채우지 않아 아래 지역 섹션이 살짝 걸쳐 보이게(peek) 높이를 잡는다.
       */}
-      <section className="relative h-[72vh] max-h-[560px] min-h-[380px] overflow-hidden bg-[linear-gradient(160deg,#8c8577,#5f5b52)]">
+      <section className="relative h-[420px] overflow-hidden bg-[linear-gradient(160deg,#8c8577,#5f5b52)] md:h-[560px]">
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 px-6 text-center">
           <h1
-            className="font-[family-name:var(--font-serif-display)] font-extrabold leading-[1.16] text-white [text-shadow:0_2px_18px_rgba(0,0,0,.45)]"
-            style={{ fontSize: 'clamp(var(--fs-hero-mobile), 6vw, 56px)' }}
+            className="font-[family-name:var(--font-serif-display)] text-[26px] font-extrabold leading-[1.16] text-white [text-shadow:0_2px_18px_rgba(0,0,0,.45)] md:text-[48px]"
           >
             &ldquo;{t('home.heroCopy')}&rdquo;
           </h1>
@@ -45,7 +45,7 @@ function Home() {
         </div>
       </section>
 
-      <Container className="py-8 md:py-12">
+      <Container className="py-8 pb-14">
         <h2 className="px-2 pb-4 text-lg font-semibold">
           {t('home.allRegions')}
           {regions && <span className="ml-2 text-sm font-normal text-text-soft">({regions.length})</span>}
@@ -67,12 +67,8 @@ function Home() {
             <div ref={trackRef} className="hg-hscroll flex flex-1 gap-4 overflow-x-auto md:gap-[18px]">
               {loading
                 ? Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="w-[220px] flex-none border border-line bg-bg-elevated">
-                      <div className="h-[180px] animate-pulse bg-line" />
-                      <div className="flex flex-col gap-2 p-3.5">
-                        <div className="h-3 w-3/5 animate-pulse bg-line" />
-                        <div className="h-2.5 w-2/5 animate-pulse bg-line" />
-                      </div>
+                    <div key={i} className="w-[220px] flex-none">
+                      <CardSkeleton />
                     </div>
                   ))
                 : regions?.map((r) => (
@@ -98,7 +94,7 @@ function Home() {
           </div>
         )}
       </Container>
-    </>
+    </div>
   )
 }
 

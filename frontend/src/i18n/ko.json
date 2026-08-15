@@ -56,9 +56,9 @@
     "nextPage": "다음 →",
     "pageIndicator": "{{page}} / {{totalPages}} 페이지",
     "endReached": "모든 장소를 봤어요",
-    "reset": "필터 초기화",
     "inRegion": "{{region}}의 장소",
-    "clearRegion": "전체 지역 보기"
+    "clearRegion": "전체 지역 보기",
+    "placeType": "장소 타입"
   },
   "placeDetail": {
     "error": "이 장소를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
@@ -170,11 +170,11 @@
     "value2Desc": "기계 번역은 기계 번역이라고 밝힙니다. 출처를 감추지 않습니다.",
     "value3": "느리게 걷기",
     "value3Desc": "많이 담기보다 하루에 한두 곳을 제대로 보는 여행을 돕습니다.",
-    "coverage": "지금까지",
     "regions": "지역",
     "places": "장소",
     "languages": "지원 언어",
-    "cta": "지역 둘러보기"
+    "cta": "지역 둘러보기",
+    "tagline": "서두르지 않고, 훼손되지 않은 경북."
   },
   "contact": {
     "title": "문의하기",

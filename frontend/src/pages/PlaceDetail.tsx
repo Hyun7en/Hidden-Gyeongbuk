@@ -66,14 +66,14 @@ function PlaceDetail() {
       <Container className="py-8 md:py-14">
         <div className="md:grid md:grid-cols-[1.2fr_1fr] md:gap-16">
           <div className="flex flex-col gap-3.5">
-            <div className="h-[200px] animate-pulse bg-line md:h-[320px]" />
-            <div className="h-6 w-2/5 animate-pulse bg-line" />
-            <div className="h-3 w-11/12 animate-pulse bg-line" />
-            <div className="h-3 w-4/5 animate-pulse bg-line" />
+            <div className="h-[200px] skeleton md:h-[320px]" />
+            <div className="h-6 w-2/5 skeleton" />
+            <div className="h-3 w-11/12 skeleton" />
+            <div className="h-3 w-4/5 skeleton" />
           </div>
           <div className="mt-8 flex flex-col gap-4 md:mt-0">
-            <div className="h-[120px] animate-pulse bg-line" />
-            <div className="h-[260px] animate-pulse bg-line" />
+            <div className="h-[120px] skeleton" />
+            <div className="h-[260px] skeleton" />
           </div>
         </div>
       </Container>
@@ -92,9 +92,10 @@ function PlaceDetail() {
   }
 
   return (
-    <Container className="py-8 md:py-14">
-      <div className="md:grid md:grid-cols-[1.2fr_1fr] md:gap-12">
-        <div className="min-w-0">
+    <Container className="screen-in py-9 pb-14">
+      {/* 우측은 360px 고정이다 — 비율(1fr)로 두면 창이 넓어질수록 지도·주소 박스가 같이 커진다 */}
+      <div className="flex flex-col items-start gap-9 md:flex-row">
+        <div className="min-w-0 flex-1">
           {/* 이미지 캐러셀 — 데스크톱은 화살표, 모바일은 스와이프 */}
           <div
             className="relative touch-pan-y"
@@ -156,7 +157,7 @@ function PlaceDetail() {
 
           {/* 분류 배지는 하나다 — 장소당 place_type이 정확히 하나이고 별도 태그 축은 없다(ADR-024) */}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            <span className="hg-tag hg-tag-mobile hg-tag-unselected">{t(`options.interest.${place.placeType}`)}</span>
+            <span className="hg-tag hg-tag-desktop hg-tag-unselected">{t(`options.interest.${place.placeType}`)}</span>
             {place.festival && (
               <span className="text-xs text-text-soft">
                 {t('placeDetail.festival')} · {place.festival.startDate} ~ {place.festival.endDate}
@@ -177,7 +178,7 @@ function PlaceDetail() {
         </div>
 
         {/* 우측: 주소 · 지도 */}
-        <div className="mt-8 flex flex-col gap-4 md:mt-0">
+        <div className="flex w-full flex-none flex-col gap-4 md:w-[360px]">
           <div className="border border-line bg-[var(--glass-bg)] p-4">
             <p className="text-[13px] text-text">{place.title}</p>
             {place.addr && <p className="mt-2 text-[13px] text-text-soft">{place.addr}</p>}
@@ -197,16 +198,25 @@ function PlaceDetail() {
               </div>
             )}
             {place.lat != null && place.lng != null && (
-              <p className="mt-3 text-[11px] text-text-soft">
-                {t('placeDetail.directions')}{' '}
-                <a href={kakaoDirectionsUrl(place.title ?? '', place.lat, place.lng)} target="_blank" rel="noopener noreferrer" className="text-accent-text underline">
+              // 지도 앱은 둘 다 둔다 — 국내는 카카오가 정확하고, 해외 이용자는 구글만 쓰는 경우가 많다.
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <a
+                  href={kakaoDirectionsUrl(place.title ?? '', place.lat, place.lng)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hg-cta hg-btn-mobile inline-flex items-center justify-center !px-4 !text-[13px]"
+                >
                   Kakao Map
-                </a>{' '}
-                ·{' '}
-                <a href={googleDirectionsUrl(place.lat, place.lng)} target="_blank" rel="noopener noreferrer" className="text-accent-text underline">
+                </a>
+                <a
+                  href={googleDirectionsUrl(place.lat, place.lng)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border border-line bg-bg-elevated px-3.5 py-2 text-[11px] text-text-soft transition-colors hover:border-accent"
+                >
                   Google Maps
                 </a>
-              </p>
+              </div>
             )}
           </div>
 
@@ -222,10 +232,10 @@ function PlaceDetail() {
 
       {/* 주변 장소 — 0개면 섹션째 숨긴다 */}
       {nearby.length > 0 && (
-        <section className="mt-14">
+        <section className="mt-10">
           <h2 className="mb-4 text-lg font-semibold">{t('placeDetail.nearby')}</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6">
-            {nearby.slice(0, 4).map((n) => (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
+            {nearby.slice(0, 6).map((n) => (
               <Card
                 key={n.place.placeId}
                 to={`/places/${n.place.placeId}`}

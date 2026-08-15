@@ -39,9 +39,9 @@ function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
   const [historyOpen, setHistoryOpen] = useState(false)
 
   return (
-    <Container className="py-10 md:py-16">
+    <Container className="screen-in py-9 pb-15">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="font-[family-name:var(--font-serif-heading)] text-2xl font-semibold md:text-3xl">{title}</h1>
+        <h1 className="font-[family-name:var(--font-serif-heading)] text-[26px] font-semibold">{title}</h1>
         <button
           type="button"
           onClick={() => window.print()}
@@ -96,7 +96,7 @@ function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
         <p className="mt-4 text-xs text-text-soft">{t('legal.summaryNote')}</p>
       </section>
 
-      <div className="mt-10 md:grid md:grid-cols-[220px_1fr] md:gap-10">
+      <div className="mt-9 md:grid md:grid-cols-[200px_1fr] md:gap-10">
         <nav className="mb-8 md:sticky md:top-6 md:mb-0 md:self-start">
           <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-accent-text">{t('legal.toc')}</p>
           <ul className="flex flex-col gap-2 text-sm text-text-soft">

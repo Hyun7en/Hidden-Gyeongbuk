@@ -56,9 +56,9 @@
     "nextPage": "Next →",
     "pageIndicator": "Page {{page}} of {{totalPages}}",
     "endReached": "You've seen all places",
-    "reset": "Reset filters",
     "inRegion": "Places in {{region}}",
-    "clearRegion": "All regions"
+    "clearRegion": "All regions",
+    "placeType": "Place type"
   },
   "placeDetail": {
     "error": "Couldn't load this place — is the backend running? ({{error}})",
@@ -170,11 +170,11 @@
     "value2Desc": "Machine translation is labelled as such. We do not hide where text came from.",
     "value3": "Unhurried by design",
     "value3Desc": "One or two places seen properly beats a packed itinerary.",
-    "coverage": "So far",
     "regions": "Regions",
     "places": "Places",
     "languages": "Languages",
-    "cta": "Explore regions"
+    "cta": "Explore regions",
+    "tagline": "Unhurried. Unspoiled. Gyeongbuk."
   },
   "contact": {
     "title": "Contact us",

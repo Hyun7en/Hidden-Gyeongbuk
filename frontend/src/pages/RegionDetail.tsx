@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Container from '../components/Container'
 import Card from '../components/Card'
+import CardSkeleton from '../components/CardSkeleton'
 import { ButtonLink } from '../components/Button'
 import { fetchRegion, searchPlaces } from '../api/client'
 import type { PlaceSummaryResponse, RegionDetailResponse } from '../api/types'
@@ -54,49 +55,47 @@ function RegionDetail() {
   const hubName = hubs.find((h) => h.hubId === region?.hubId)?.name
 
   return (
-    <Container className="py-8 md:py-14">
-      {/* 지역 헤더 — 대표 이미지 + 지역명 + Hub 배지 */}
-      <div
-        className="h-[200px] border border-line bg-bg-elevated bg-cover bg-center md:h-[300px]"
-        style={region?.images?.[0] ? { backgroundImage: `url(${region.images[0]})` } : undefined}
-      />
-      <div className="mt-5 flex flex-wrap items-baseline gap-3">
-        <h1 className="font-[family-name:var(--font-serif-heading)] text-2xl font-semibold md:text-3xl">
-          {region ? region.name : <span className="inline-block h-7 w-32 animate-pulse bg-line align-middle" />}
-        </h1>
-        {hubName && (
-          <span className="border border-line px-2.5 py-1 text-[11px] text-text-soft md:text-xs">
-            {t('region.hubBadge', { hub: hubName })}
-          </span>
-        )}
-      </div>
+    <Container className="screen-in py-9 pb-14">
+      {/* 사진과 소개를 좌우로 나눈다 — 사진을 전체폭으로 깔면 소개 글이 접힌 화면 아래로 밀린다 */}
+      <div className="flex flex-col items-start gap-9 md:flex-row">
+        <div
+          className="h-[200px] w-full flex-none border border-line bg-bg-elevated bg-cover bg-center md:h-[300px] md:w-[420px]"
+          style={region?.images?.[0] ? { backgroundImage: `url(${region.images[0]})` } : undefined}
+        />
+        <div className="min-w-0 flex-1 md:pt-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-[family-name:var(--font-serif-heading)] text-2xl font-semibold md:text-[30px]">
+              {region ? region.name : <span className="skeleton inline-block h-7 w-32 align-middle" />}
+            </h1>
+            {hubName && (
+              <span className="rounded-[var(--radius-pill)] border border-line bg-[var(--glass-bg)] px-3 py-1 text-[11px] tracking-[0.08em] text-accent-text">
+                {t('region.hubBadge', { hub: hubName })}
+              </span>
+            )}
+          </div>
 
-      {/* 소개 글 — 없으면 섹션째 숨긴다(화면 설계서 S2 엣지 케이스) */}
-      {region?.description && (
-        <p className="mt-5 max-w-[60ch] text-sm leading-[1.9] text-text-soft md:text-[15px]">{region.description}</p>
-      )}
+          {/* 소개 글 — 없으면 섹션째 숨긴다(화면 설계서 S2 엣지 케이스) */}
+          {region?.description && (
+            <p className="mt-4 max-w-[520px] text-sm leading-[1.8] text-text-soft md:text-[15px]">
+              {region.description}
+            </p>
+          )}
 
-      <div className="mt-8">
-        {/* 이 지역이 미리 선택된 채로 추천 입력에 들어간다(ADR-019 결과 ④).
-            파라미터 이름은 결과 화면(S4)과 같은 `regions`여야 한다 — 어긋나면 조용히 무시된다. */}
-        <ButtonLink to={`/recommend?regions=${regionId}`}>{t('region.cta')}</ButtonLink>
+          <div className="mt-5">
+            {/* 이 지역이 미리 선택된 채로 추천 입력에 들어간다(ADR-019 결과 ④).
+                파라미터 이름은 결과 화면(S4)과 같은 `regions`여야 한다 — 어긋나면 조용히 무시된다. */}
+            <ButtonLink to={`/recommend?regions=${regionId}`}>{t('region.cta')}</ButtonLink>
+          </div>
+        </div>
       </div>
 
       {/* 대표 관광지 — 0개면 미리보기·더보기를 함께 숨긴다 */}
       {places === null || places.length > 0 ? (
-        <section className="mt-14">
+        <section className="mt-10">
           <h2 className="mb-4 text-lg font-semibold">{t('region.highlights')}</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
             {places === null
-              ? Array.from({ length: PREVIEW_SIZE }).map((_, i) => (
-                  <div key={i} className="border border-line bg-bg-elevated">
-                    <div className="h-[140px] animate-pulse bg-line md:h-[180px]" />
-                    <div className="flex flex-col gap-2 p-3.5">
-                      <div className="h-3 w-3/5 animate-pulse bg-line" />
-                      <div className="h-2.5 w-2/5 animate-pulse bg-line" />
-                    </div>
-                  </div>
-                ))
+              ? Array.from({ length: PREVIEW_SIZE }).map((_, i) => <CardSkeleton key={i} />)
               : places.map((p) => (
                   <Card
                     key={p.placeId}
@@ -107,8 +106,8 @@ function RegionDetail() {
                   />
                 ))}
           </div>
-          <div className="mt-6">
-            <Link to={`/places?regionId=${regionId}`} className="text-sm text-accent-text hover:text-accent-hover">
+          <div className="mt-5 text-center">
+            <Link to={`/places?regionId=${regionId}`} className="text-[13px] font-semibold text-accent-text hover:text-accent-hover">
               {t('region.more')} →
             </Link>
           </div>

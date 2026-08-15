@@ -7,6 +7,7 @@ import { useRegions } from '../hooks/useRegions'
 import type { PlaceSummaryResponse } from '../api/types'
 import Container from '../components/Container'
 import Card from '../components/Card'
+import CardSkeleton from '../components/CardSkeleton'
 import Tag from '../components/Tag'
 import SearchInput from '../components/SearchInput'
 import { INTEREST_OPTIONS, type Interest } from '../types/course'
@@ -17,9 +18,13 @@ const labelKey = (code: string) => `options.interest.${code}`
 const PAGE_SIZE = 20
 
 /**
- * S5 장소 목록/검색.
+ * S5 장소 목록/검색. 레이아웃은 프로토타입을 따른다 — 제목과 검색창이 한 줄, 그 아래 좌측
+ * 220px 필터 사이드바 + 우측 4열 그리드.
  *
- * <b>필터는 한 줄이다</b> — 구 tag 축이 placeType과 같은 어휘로 합쳐졌다(ADR-024).
+ * <p><b>필터를 위가 아니라 옆에 두는 이유</b>: 분류가 9종이라 가로로 늘어놓으면 두 줄을
+ * 차지하고, 그만큼 결과가 접힌다. 세로로 세우면 목록을 보면서 필터를 바꿀 수 있다.
+ *
+ * <p>필터축은 하나다 — 구 tag 축이 placeType과 같은 어휘로 합쳐졌다(ADR-024).
  * 페이징은 버튼이 아니라 <b>무한 스크롤</b>이다(Wireframe S5).
  */
 function PlaceExplore() {
@@ -103,94 +108,82 @@ function PlaceExplore() {
     setSearchParams(next)
   }
 
-  function resetFilters() {
-    setActiveType(null)
-    setKeyword('')
-    clearRegion()
-  }
-
   return (
-    <Container className="py-8 md:py-14">
-      {/* 컨텍스트 바 — 지역 경유로 들어왔으면 그 지역을 보여주고 해제할 수 있게 한다 */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold md:text-3xl">
+    <Container className="screen-in py-6 pb-14">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-[family-name:var(--font-serif-heading)] text-2xl font-semibold">
           {regionName ? t('placeExplore.inRegion', { region: regionName }) : t('placeExplore.title')}
         </h1>
-        {regionId !== undefined && (
-          <button
-            type="button"
-            onClick={clearRegion}
-            className="border border-line px-2.5 py-1 text-xs text-text-soft hover:border-accent-hover hover:text-accent-text"
-          >
-            {t('placeExplore.clearRegion')} ×
-          </button>
-        )}
+        <SearchInput
+          value={keyword}
+          onChange={setKeyword}
+          placeholder={t('placeExplore.searchPlaceholder') ?? undefined}
+          size="md"
+          className="w-full md:w-[280px]"
+        />
       </div>
 
-      <SearchInput
-        value={keyword}
-        onChange={setKeyword}
-        placeholder={t('placeExplore.searchPlaceholder') ?? undefined}
-        size="lg"
-        className="mb-5 md:max-w-md"
-      />
+      {/* 지역 경유로 들어왔으면 그 지역을 보여주고 해제할 수 있게 한다 */}
+      {regionId !== undefined && (
+        <button
+          type="button"
+          onClick={clearRegion}
+          className="mt-3 border border-line px-2.5 py-1 text-xs text-text-soft transition-colors hover:border-accent-hover hover:text-accent-text"
+        >
+          {t('placeExplore.clearRegion')} ×
+        </button>
+      )}
 
-      <div className="mb-8 flex flex-wrap gap-2 md:mb-10">
-        <Tag active={activeType === null} onClick={() => setActiveType(null)}>
-          {t('placeExplore.all')}
-        </Tag>
-        {INTEREST_OPTIONS.map((opt) => (
-          <Tag key={opt.value} active={activeType === opt.value} onClick={() => setActiveType(opt.value)}>
-            {t(opt.labelKey)}
-          </Tag>
-        ))}
-      </div>
-
-      {error ? (
-        <p className="text-sm text-text-soft">{t('placeExplore.error', { error })}</p>
-      ) : places === null ? (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="border border-line bg-bg-elevated">
-              <div className="h-[140px] animate-pulse bg-line md:h-[180px]" />
-              <div className="flex flex-col gap-2 p-3.5">
-                <div className="h-3 w-3/5 animate-pulse bg-line" />
-                <div className="h-2.5 w-2/5 animate-pulse bg-line" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : places.length === 0 ? (
-        <div className="flex flex-col items-start gap-4">
-          <p className="text-sm text-text-soft">{t('placeExplore.empty')}</p>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="border border-line px-3 py-1.5 text-xs text-text hover:border-accent-hover"
-          >
-            {t('placeExplore.reset')}
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
-            {places.map((place) => (
-              <Card
-                key={place.placeId}
-                to={`/places/${place.placeId}`}
-                title={place.title ?? ''}
-                subtitle={place.addr}
-                badge={t(labelKey(place.placeType))}
-                imageUrl={place.firstImage}
-              />
+      <div className="mt-4 flex flex-col items-start gap-5 md:flex-row md:gap-8">
+        <aside className="w-full flex-none md:w-[220px]">
+          <p className="mb-2.5 text-[13px] font-semibold">{t('placeExplore.placeType')}</p>
+          <div className="flex flex-wrap items-start gap-2 md:flex-col">
+            <Tag active={activeType === null} onClick={() => setActiveType(null)}>
+              {t('placeExplore.all')}
+            </Tag>
+            {INTEREST_OPTIONS.map((opt) => (
+              <Tag key={opt.value} active={activeType === opt.value} onClick={() => setActiveType(opt.value)}>
+                {t(opt.labelKey)}
+              </Tag>
             ))}
           </div>
-          <div ref={sentinelRef} className="h-px" />
-          <p className="mt-8 text-center text-xs text-text-soft">
-            {loadingMore ? t('common.loading') : !hasMore ? t('placeExplore.endReached') : ''}
-          </p>
-        </>
-      )}
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          {error ? (
+            <p className="text-sm text-text-soft">{t('placeExplore.error', { error })}</p>
+          ) : places === null ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : places.length === 0 ? (
+            <p className="py-16 text-center text-sm text-text-soft">{t('placeExplore.empty')}</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+                {places.map((place) => (
+                  <Card
+                    key={place.placeId}
+                    to={`/places/${place.placeId}`}
+                    title={place.title ?? ''}
+                    subtitle={place.addr}
+                    badge={t(labelKey(place.placeType))}
+                    imageUrl={place.firstImage}
+                  />
+                ))}
+                {/* 다음 페이지를 기다리는 동안 그리드 안에 자리를 채운다 — 목록이 튀지 않는다 */}
+                {loadingMore ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={`more-${i}`} />) : null}
+              </div>
+              <div ref={sentinelRef} className="h-px" />
+              {!hasMore && !loadingMore ? (
+                <p className="mt-8 text-center text-xs text-text-soft">{t('placeExplore.endReached')}</p>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
     </Container>
   )
 }

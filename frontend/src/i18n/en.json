@@ -1,7 +1,5 @@
 {
   "common": {
-    "back": "← Back",
-    "home": "Hidden Gyeongbuk — Home",
     "share": "Share",
     "copied": "Copied!",
     "copyLink": "Copy link",
@@ -14,37 +12,14 @@
     "shareInstagramHint": "Link copied — paste it into Instagram.",
     "mapNoLocation": "No location data for this map yet.",
     "mapLoadFailed": "Couldn't load the map.",
-    "loading": "Loading…",
-    "courseRank": "Course {{rank}}"
+    "loading": "Loading…"
   },
   "home": {
-    "eyebrow": "Gyeongsangbuk-do, South Korea",
-    "heroTitle": "The Korea beyond Seoul is fifteen quiet counties wide.",
-    "heroSubtitle": "Hub-and-spoke day trips and overnight courses built from real local data — temples, markets, mountains no guidebook covers.",
-    "ctaRecommend": "Get a course recommendation →",
-    "ctaBrowse": "Browse places",
-    "whereEyebrow": "Where is this",
-    "whereTitle": "Gyeongsangbuk-do sits inland, east of Daegu.",
-    "whereBody": "Korea's largest province by area, wrapping the country's southeastern coast and mountainous interior. Most visitors pass through on the KTX without stopping — this app is built around four transit hubs you can actually reach.",
-    "mapPin": "● Andong Hub",
-    "whyEyebrow": "Why these 15 counties",
-    "whyTitle": "Officially declining. Still worth the detour.",
-    "whyBody": "The Korean government designates counties losing population fastest as \"population-declining regions.\" All 15 in Gyeongsangbuk-do are here — not because they're empty, but because they're where local life hasn't been rebuilt for tourists yet.",
-    "statCounties": "counties covered",
-    "statHubs": "transit hubs",
-    "sourcedFrom": "Sourced from public tourism open data",
-    "startEyebrow": "Start from",
-    "startTitle": "Four hubs, fifteen spokes",
-    "startSubtitle": "Pick the transit hub you're arriving from.",
-    "hubsError": "Couldn't load hubs — is the backend running? ({{error}})",
-    "loadingHubs": "Loading hubs…",
-    "footer": "Hidden Gyeongbuk · Built from public tourism open data",
     "heroCopy": "Unhurried. Unspoiled. Gyeongbuk.",
     "heroCta": "Get a course",
     "allRegions": "All regions",
     "regionSub": "See highlights",
-    "regionsError": "Could not load regions",
-    "retry": "Try again"
+    "regionsError": "Could not load regions"
   },
   "placeExplore": {
     "title": "Browse Places",
@@ -52,9 +27,6 @@
     "all": "All",
     "error": "Couldn't load places — is the backend running? ({{error}})",
     "empty": "No places match your filters.",
-    "prevPage": "← Prev",
-    "nextPage": "Next →",
-    "pageIndicator": "Page {{page}} of {{totalPages}}",
     "endReached": "You've seen all places",
     "inRegion": "Places in {{region}}",
     "clearRegion": "All regions",
@@ -62,9 +34,6 @@
   },
   "placeDetail": {
     "error": "Couldn't load this place — is the backend running? ({{error}})",
-    "translatedBadge": "Translated from Korean (AI)",
-    "noTranslationYet": "English description not available yet — original Korean text:",
-    "directions": "Directions:",
     "localAddress": "Local address (for taxi)",
     "copy": "Copy address",
     "copied": "Copied",
@@ -98,14 +67,11 @@
   "recommendResults": {
     "title": "Recommended courses",
     "error": "Couldn't load recommendations — is the backend running? ({{error}})",
-    "building": "Building your courses…",
     "empty": "No courses matched yet — {{hub}} may not have enough collected place data for this combination.",
     "missingParams": "This link is missing the trip conditions. Please start from the recommendation form.",
     "pastTrip": "These dates have already passed — this is probably an old shared link. The course is still shown as it was planned.",
     "courseFacts": "{{places}} places · {{regions}} counties · {{distance}}km",
     "pickOne": "Pick a course on the left to see the day-by-day plan.",
-    "noCourseTitle": "Not enough places for this combination",
-    "noCourseBody": "Try adding counties, widening the dates, or removing some interests. This isn't an error — we just don't have enough collected places inside the range you picked.",
     "searching": "Building your courses",
     "searchingSub": "Matching your conditions against collected places",
     "emptyTitle": "No course fits these conditions",
@@ -116,17 +82,8 @@
     "constraintDistance": "up to {{km}}km"
   },
   "courseDetail": {
-    "notAvailable": "Course details aren't available directly — please go back and pick a course from the results list.",
-    "directions": "Directions to this place",
     "day": "Day {{day}}",
-    "lodging": "Lodging: {{title}}",
-    "scoreBreakdown": "Score breakdown",
-    "breakdown": {
-      "interest": "Interest match",
-      "access": "Access",
-      "dispersion": "Dispersion",
-      "completeness": "Data completeness"
-    }
+    "lodging": "Lodging: {{title}}"
   },
   "options": {
     "difficulty": {
@@ -158,7 +115,6 @@
     "privacy": "Privacy Policy"
   },
   "about": {
-    "title": "About",
     "whyTitle": "Why we built Hidden Gyeongbuk",
     "why1": "Beyond the well-known sights, Gyeongsangbuk-do holds far more places that only locals reach. The information is scattered and hard to act on, so their value stays unknown.",
     "why2": "Hidden Gyeongbuk gathers those places and connects them into courses you can actually travel, matched to your dates and interests.",
@@ -206,7 +162,6 @@
     "summary": "In short",
     "summaryNote": "This summary is for understanding only; the articles below are what applies.",
     "toc": "Contents",
-    "inPreparation": "Coming soon.",
     "privacyLink": "View Privacy Policy",
     "termsDoc": {
       "title": "Terms of Service",
@@ -385,7 +340,6 @@
     "draftNotice": "Draft — not to be relied on before review by a legal professional.",
     "draft": "Draft",
     "history": "Revision history",
-    "noHistory": "This document has not been revised yet.",
     "close": "Close"
   },
   "region": {
@@ -393,7 +347,6 @@
     "highlights": "Highlights",
     "more": "See all places",
     "error": "Could not load this region",
-    "notFound": "Region not found",
     "hubBadge": "{{hub}} area"
   },
   "trip": {
@@ -403,9 +356,6 @@
   },
   "calendar": {
     "prevMonth": "Previous month",
-    "nextMonth": "Next month",
-    "pickStart": "Pick your first day.",
-    "pickEnd": "Now pick your last day — up to {{max}} nights.",
-    "reset": "Tap any date to start over."
+    "nextMonth": "Next month"
   }
 }

@@ -1,7 +1,5 @@
 {
   "common": {
-    "back": "← 뒤로",
-    "home": "Hidden Gyeongbuk — 홈으로",
     "share": "공유",
     "copied": "복사됨!",
     "copyLink": "링크 복사",
@@ -14,37 +12,14 @@
     "shareInstagramHint": "링크가 복사되었어요 — 인스타그램에 붙여넣어 공유하세요.",
     "mapNoLocation": "이 장소는 아직 위치 정보가 없어요.",
     "mapLoadFailed": "지도를 불러오지 못했어요.",
-    "loading": "불러오는 중…",
-    "courseRank": "코스 {{rank}}"
+    "loading": "불러오는 중…"
   },
   "home": {
-    "eyebrow": "대한민국 경상북도",
-    "heroTitle": "서울 너머의 한국은, 조용한 열다섯 개 군(郡)만큼 넓습니다.",
-    "heroSubtitle": "실제 현지 데이터로 만든 허브 기반 당일·숙박 코스 — 어떤 가이드북에도 없는 사찰, 시장, 산을 만나보세요.",
-    "ctaRecommend": "코스 추천 받기 →",
-    "ctaBrowse": "관광지 둘러보기",
-    "whereEyebrow": "여기가 어디냐면",
-    "whereTitle": "경상북도는 대구 동쪽 내륙에 자리합니다.",
-    "whereBody": "면적 기준 한국에서 가장 큰 도(道)로, 남동쪽 해안과 산악 내륙을 아우릅니다. 대부분의 여행자는 KTX로 그냥 지나치지만, 이 앱은 실제로 갈 수 있는 네 개의 환승 거점을 중심으로 만들어졌습니다.",
-    "mapPin": "● 안동 허브",
-    "whyEyebrow": "왜 이 15개 군인가",
-    "whyTitle": "공식적으로는 인구감소지역. 그래도 들를 가치는 있습니다.",
-    "whyBody": "한국 정부는 인구가 가장 빠르게 줄어드는 군(郡)을 \"인구감소지역\"으로 지정합니다. 경상북도의 15곳이 모두 여기 있습니다 — 사람이 없어서가 아니라, 아직 관광객을 위해 다시 정비되지 않은 지역의 삶이 있는 곳이기 때문입니다.",
-    "statCounties": "개 군 포함",
-    "statHubs": "개 환승 거점",
-    "sourcedFrom": "공공 관광 데이터 기반",
-    "startEyebrow": "출발지 선택",
-    "startTitle": "네 개의 허브, 열다섯 개의 스포크",
-    "startSubtitle": "도착하는 환승 거점을 선택하세요.",
-    "hubsError": "허브 목록을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
-    "loadingHubs": "허브 목록 불러오는 중…",
-    "footer": "Hidden Gyeongbuk · 공공 관광 데이터 기반",
     "heroCopy": "Unhurried. Unspoiled. Gyeongbuk.",
     "heroCta": "코스 추천받기",
     "allRegions": "지역 전체",
     "regionSub": "대표 관광지 보기",
-    "regionsError": "지역을 불러오지 못했어요",
-    "retry": "다시 시도"
+    "regionsError": "지역을 불러오지 못했어요"
   },
   "placeExplore": {
     "title": "관광지 둘러보기",
@@ -52,9 +27,6 @@
     "all": "전체",
     "error": "관광지를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
     "empty": "필터에 맞는 관광지가 없습니다.",
-    "prevPage": "← 이전",
-    "nextPage": "다음 →",
-    "pageIndicator": "{{page}} / {{totalPages}} 페이지",
     "endReached": "모든 장소를 봤어요",
     "inRegion": "{{region}}의 장소",
     "clearRegion": "전체 지역 보기",
@@ -62,9 +34,6 @@
   },
   "placeDetail": {
     "error": "이 장소를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
-    "translatedBadge": "한국어에서 번역됨 (AI)",
-    "noTranslationYet": "아직 영문 설명이 없습니다 — 원문(국문):",
-    "directions": "길찾기:",
     "localAddress": "현지 주소 (기사용)",
     "copy": "주소 복사",
     "copied": "복사됨",
@@ -98,14 +67,11 @@
   "recommendResults": {
     "title": "추천 코스",
     "error": "추천 코스를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
-    "building": "코스를 만드는 중…",
     "empty": "아직 매칭된 코스가 없습니다 — {{hub}}에 이 조합에 맞는 장소 데이터가 충분하지 않을 수 있습니다.",
     "missingParams": "이 링크에 여행 조건이 없습니다. 추천 입력 화면에서 다시 시작해 주세요.",
     "pastTrip": "이미 지난 날짜입니다 — 오래된 공유 링크로 보입니다. 코스는 계획 당시 기준 그대로 보여 줍니다.",
     "courseFacts": "장소 {{places}}곳 · 지역 {{regions}}곳 · {{distance}}km",
     "pickOne": "왼쪽에서 코스를 고르면 일자별 일정이 나옵니다.",
-    "noCourseTitle": "이 조건으로는 장소가 부족합니다",
-    "noCourseBody": "지역을 더 고르거나, 날짜를 늘리거나, 관심사를 줄여 보세요. 오류가 아니라 고른 범위 안에 수집된 장소가 아직 부족한 것입니다.",
     "searching": "코스를 짜는 중",
     "searchingSub": "조건에 맞는 장소를 고르고 있습니다",
     "emptyTitle": "이 조건에 맞는 코스가 없습니다",
@@ -116,17 +82,8 @@
     "constraintDistance": "이동 최대 {{km}}km"
   },
   "courseDetail": {
-    "notAvailable": "코스 상세는 직접 접근할 수 없습니다 — 뒤로 가서 결과 목록에서 코스를 선택해 주세요.",
-    "directions": "이 장소로 길찾기",
     "day": "{{day}}일차",
-    "lodging": "숙소: {{title}}",
-    "scoreBreakdown": "점수 세부 내역",
-    "breakdown": {
-      "interest": "관심사 일치도",
-      "access": "접근성",
-      "dispersion": "분산도",
-      "completeness": "데이터 완성도"
-    }
+    "lodging": "숙소: {{title}}"
   },
   "options": {
     "difficulty": {
@@ -158,7 +115,6 @@
     "privacy": "개인정보처리방침"
   },
   "about": {
-    "title": "소개",
     "whyTitle": "왜 숨은 경북을 만들었을까요",
     "why1": "경상북도에는 유명 관광지 너머로 아는 사람만 찾아가는 장소들이 훨씬 많습니다. 정보가 흩어져 있고 접근이 쉽지 않아, 그 가치가 충분히 알려지지 않았습니다.",
     "why2": "숨은 경북은 이런 장소들을 체계적으로 모으고, 여행자의 일정과 관심사에 맞춰 실제로 갈 수 있는 코스로 연결하는 것을 목표로 만들어졌습니다.",
@@ -206,7 +162,6 @@
     "summary": "한눈에 보기",
     "summaryNote": "아래 요약은 이해를 돕기 위한 것이며 법적 효력은 조항 전문에 있습니다.",
     "toc": "목차",
-    "inPreparation": "준비 중입니다.",
     "privacyLink": "개인정보처리방침 보기",
     "termsDoc": {
       "title": "이용약관",
@@ -385,7 +340,6 @@
     "draftNotice": "초안입니다 — 법률 전문가의 검토 전에는 효력을 주장할 수 없습니다.",
     "draft": "초안",
     "history": "개정 이력",
-    "noHistory": "아직 개정된 적이 없습니다.",
     "close": "닫기"
   },
   "region": {
@@ -393,7 +347,6 @@
     "highlights": "대표 관광지",
     "more": "관광지 더보기",
     "error": "지역 정보를 불러오지 못했어요",
-    "notFound": "지역을 찾을 수 없어요",
     "hubBadge": "{{hub}}권"
   },
   "trip": {
@@ -402,9 +355,6 @@
   },
   "calendar": {
     "prevMonth": "이전 달",
-    "nextMonth": "다음 달",
-    "pickStart": "여행 첫날을 고르세요.",
-    "pickEnd": "마지막 날을 고르세요 — 최대 {{max}}박까지.",
-    "reset": "아무 날짜나 누르면 다시 고를 수 있습니다."
+    "nextMonth": "다음 달"
   }
 }

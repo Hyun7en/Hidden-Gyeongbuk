@@ -86,7 +86,6 @@
     "submit": "추천 받기 →",
     "tripDates": "여행 날짜",
     "regions": "가고 싶은 지역",
-    "regionsBody": "비워 두면 거점 주변 전체에서 코스를 짭니다. 하나만 고르면 그 지역에 집중하고, 여러 개를 고르면 그 안에서만 짭니다.",
     "regionsError": "지역을 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",
     "singleSelect": "(단일 선택)",
     "multiSelect": "(다중 선택)",

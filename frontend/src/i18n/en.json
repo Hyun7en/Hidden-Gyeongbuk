@@ -86,7 +86,6 @@
     "submit": "Get recommendations →",
     "tripDates": "Travel dates",
     "regions": "Regions to visit",
-    "regionsBody": "Leave this empty and we'll build the course from everything around your hub. Pick one to focus on it, or a few to keep the course inside them.",
     "regionsError": "Couldn't load counties — is the backend running? ({{error}})",
     "singleSelect": "(single select)",
     "multiSelect": "(multiple)",

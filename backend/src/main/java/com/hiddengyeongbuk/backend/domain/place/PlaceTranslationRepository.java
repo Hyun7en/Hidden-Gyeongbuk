@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface PlaceTranslationRepository extends JpaRepository<PlaceTranslation, Long> {
 
@@ -24,4 +25,8 @@ public interface PlaceTranslationRepository extends JpaRepository<PlaceTranslati
 
     /** 번역 백필 대상 — 해당 언어 행이 아직 없는 장소를 찾기 위해 존재하는 조합을 읽는다. */
     List<PlaceTranslation> findByLang(String lang);
+
+    /** 언어별 번역 행 수 — place 수와의 차이가 곧 번역 백필 잔량이다(GET /internal/sync/status). */
+    @Query("select t.lang, count(t) from PlaceTranslation t group by t.lang")
+    List<Object[]> countGroupedByLang();
 }

@@ -5,6 +5,7 @@ import com.hiddengyeongbuk.backend.ingest.Merger;
 import com.hiddengyeongbuk.backend.ingest.Resolver;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,11 +26,25 @@ public class SyncAdminController {
     private final Collector collector;
     private final Resolver resolver;
     private final Merger merger;
+    private final SyncStatusService syncStatusService;
 
-    public SyncAdminController(Collector collector, Resolver resolver, Merger merger) {
+    public SyncAdminController(
+            Collector collector, Resolver resolver, Merger merger, SyncStatusService syncStatusService) {
         this.collector = collector;
         this.resolver = resolver;
         this.merger = merger;
+        this.syncStatusService = syncStatusService;
+    }
+
+    /**
+     * 수집 상태 조회(API 명세서 §5.2). 외부 호출도 쓰기도 없으니 언제든 불러도 된다.
+     *
+     * <p>전량 수집은 며칠에 걸쳐 도는데, 이게 없으면 그동안 무슨 일이 벌어지는지 SQL로만
+     * 볼 수 있다. 특히 <b>어느 언어가 연속 실패 중인지</b>는 로그를 눈으로 훑어서는 안 보인다.
+     */
+    @GetMapping("/status")
+    public SyncStatusResponse status() {
+        return syncStatusService.status();
     }
 
     /** 1단계. 언어 미지정 시 활성 언어 전체. TourAPI 호출량이 큰 경로다. */

@@ -3,6 +3,7 @@ package com.hiddengyeongbuk.backend.domain.place;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface StagingPlaceRepository extends JpaRepository<StagingPlace, Long> {
 
@@ -16,4 +17,15 @@ public interface StagingPlaceRepository extends JpaRepository<StagingPlace, Long
 
     /** QUARANTINED 누적 건수 — 데이터 품질 지표로 관측한다(NFR-10). */
     long countByResolutionStatus(ResolutionStatus status);
+
+    /**
+     * 판정 상태별 건수 — 운영 상태 조회(GET /internal/sync/status)가 쓴다.
+     *
+     * <p>상태마다 count 쿼리를 따로 날리면 상태가 늘 때 쿼리도 는다. 한 번에 묶어 받는다.
+     */
+    @Query("select s.resolutionStatus, count(s) from StagingPlace s group by s.resolutionStatus")
+    List<Object[]> countGroupedByResolutionStatus();
+
+    @Query("select s.lang, count(s) from StagingPlace s group by s.lang")
+    List<Object[]> countGroupedByLang();
 }

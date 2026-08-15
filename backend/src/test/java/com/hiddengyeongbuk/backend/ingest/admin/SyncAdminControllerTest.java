@@ -1,13 +1,18 @@
 package com.hiddengyeongbuk.backend.ingest.admin;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.hiddengyeongbuk.backend.domain.sync.SyncPhase;
+import com.hiddengyeongbuk.backend.domain.sync.SyncStatus;
 import com.hiddengyeongbuk.backend.ingest.Collector;
 import com.hiddengyeongbuk.backend.ingest.Merger;
 import com.hiddengyeongbuk.backend.ingest.Resolver;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +37,33 @@ class SyncAdminControllerTest {
 
     @MockitoBean
     private Merger merger;
+
+    @MockitoBean
+    private SyncStatusService syncStatusService;
+
+    @Test
+    void 상태_조회는_단계별_연속_실패와_데이터_현황을_함께_준다() throws Exception {
+        BDDMockito.given(syncStatusService.status())
+                .willReturn(new SyncStatusResponse(
+                        List.of(new SyncStatusResponse.PhaseStatus(
+                                SyncPhase.COLLECT,
+                                "en",
+                                SyncStatus.FAIL,
+                                LocalDateTime.of(2026, 8, 14, 3, 0),
+                                LocalDateTime.of(2026, 8, 14, 3, 5),
+                                0,
+                                "timeout",
+                                2)),
+                        new SyncStatusResponse.DataCounts(
+                                Map.of("QUARANTINED", 44L), Map.of("en", 297L), 525L, Map.of("en", 251L))));
+
+        mockMvc.perform(get("/internal/sync/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phases[0].lang").value("en"))
+                .andExpect(jsonPath("$.phases[0].consecutiveFailures").value(2))
+                .andExpect(jsonPath("$.data.stagingByStatus.QUARANTINED").value(44))
+                .andExpect(jsonPath("$.data.places").value(525));
+    }
 
     @Test
     void 언어_미지정_수집은_활성_언어_전체를_돈다() throws Exception {

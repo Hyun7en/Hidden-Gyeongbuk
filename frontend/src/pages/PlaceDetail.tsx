@@ -204,7 +204,7 @@ function PlaceDetail() {
                   href={kakaoDirectionsUrl(place.title ?? '', place.lat, place.lng)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hg-cta hg-btn-mobile inline-flex items-center justify-center !px-4 !text-[13px]"
+                  className="hg-cta hg-btn-mobile inline-flex items-center justify-center px-4 text-[13px]"
                 >
                   Kakao Map
                 </a>

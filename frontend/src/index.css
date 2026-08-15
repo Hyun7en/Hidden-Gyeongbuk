@@ -1,5 +1,13 @@
 @import 'tailwindcss';
-@import './styles/ds.css';
+/*
+ * 디자인 시스템 컴포넌트는 components 레이어에 넣는다.
+ *
+ * 레이어 없이 import하면 Tailwind 유틸리티를 <b>항상</b> 이긴다 — 레이어에 속하지 않은
+ * 규칙이 레이어에 속한 규칙보다 우선하는 것이 CSS 캐스케이드 규칙이기 때문이다. 그러면
+ * `.hg-field`의 width:100% 같은 선언을 `md:w-[280px]`로 덮을 수 없어, 호출부에서 크기를
+ * 조정할 방법이 사라진다(실제로 S5 검색창이 이 이유로 전체폭이 됐다).
+ */
+@import './styles/ds.css' layer(components);
 
 /*
  * 디자인 토큰 — Claude Design 프로토타입(Hidden Gyeongbuk Prototype)의 styles.css가 원본이다.

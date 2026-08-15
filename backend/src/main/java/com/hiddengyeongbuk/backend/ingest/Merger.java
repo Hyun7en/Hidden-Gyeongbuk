@@ -44,7 +44,13 @@ public class Merger {
         this.eventPublisher = eventPublisher;
     }
 
-    public record Result(int places, int translations, int failed, int quarantined) {}
+    public record Result(int places, int translations, int failed, int quarantined) {
+
+        String breakdown() {
+            return "places=%d, translations=%d, quarantined=%d, failed=%d"
+                    .formatted(places, translations, quarantined, failed);
+        }
+    }
 
     public Result merge() {
         List<StagingPlace> matched = stagingPlaceRepository.findByResolutionStatus(ResolutionStatus.MATCHED);
@@ -78,10 +84,15 @@ public class Merger {
         log.info(
                 "Merge 완료: places={}, translations={}, failed={}, quarantined={}",
                 places, translations, failed, quarantined);
-        // quarantined는 실패가 아니라 정상 판정 결과다. 다만 lclsSystm1 결측률을 실측해야 하므로
-        // (ADR-024 결과 ⑦) 실패와 나눠 메시지에 남긴다.
+        // quarantined는 실패가 아니라 정상 판정 결과다(lclsSystm1 결측 보류, ADR-024 결과 ⑦).
+        // 그래서 내역에만 넣고 failMessage로는 올리지 않는다 — 올리면 정상 실행이 PARTIAL로 기록된다.
         syncLogger.record(
-                SyncPhase.MERGE, null, "MATCHED 전체", grouping.groups().size(), mergeNote(failed, quarantined));
+                SyncPhase.MERGE,
+                null,
+                "MATCHED 전체",
+                grouping.groups().size(),
+                result.breakdown(),
+                failed > 0 ? failed + "건 병합 실패" : null);
 
         // 조회 캐시가 stale로 남지 않도록 알린다. ingest는 catalog를 직접 참조하지 않으므로
         // 이벤트로만 통신한다.
@@ -89,12 +100,5 @@ public class Merger {
             eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
         }
         return result;
-    }
-
-    private static String mergeNote(int failed, int quarantined) {
-        if (failed == 0 && quarantined == 0) {
-            return null;
-        }
-        return "실패 " + failed + "건, 분류불명 보류 " + quarantined + "건";
     }
 }

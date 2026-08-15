@@ -64,7 +64,14 @@ public class Translator {
     }
 
     public record BackfillResult(
-            String lang, int requested, int translated, int skipped, int failed, int charactersUsed) {}
+            String lang, int requested, int translated, int skipped, int failed, int charactersUsed) {
+
+        /** 사용 글자 수까지 남긴다 — 무료 한도가 월 50만 자라 누적 소모를 사후에 봐야 한다. */
+        String breakdown() {
+            return "translated=%d, skipped=%d, failed=%d, characters=%d"
+                    .formatted(translated, skipped, failed, charactersUsed);
+        }
+    }
 
     /**
      * 대상 언어의 빠진 조합을 최대 {@code limit}건 채운다.
@@ -124,7 +131,12 @@ public class Translator {
         BackfillResult result =
                 new BackfillResult(targetLang, limit, translated, skipped, failed, characters);
         syncLogger.record(
-                SyncPhase.TRANSLATE, targetLang, "백필", translated, failed > 0 ? failed + "건 실패" : null);
+                SyncPhase.TRANSLATE,
+                targetLang,
+                "백필",
+                translated,
+                result.breakdown(),
+                failed > 0 ? failed + "건 실패" : null);
         return result;
     }
 

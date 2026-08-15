@@ -35,7 +35,13 @@ public class Resolver {
         this.syncLogger = syncLogger;
     }
 
-    public record Result(int matched, int quarantined, int groups) {}
+    public record Result(int matched, int quarantined, int groups) {
+
+        /** quarantined는 실패가 아니라 정상 판정 결과라 내역에 넣는다 — failMessage가 아니다. */
+        String breakdown() {
+            return "matched=%d, quarantined=%d, groups=%d".formatted(matched, quarantined, groups);
+        }
+    }
 
     /**
      * PENDING 행을 전부 판정한다.
@@ -74,7 +80,7 @@ public class Resolver {
                 result.matched(),
                 result.quarantined(),
                 result.groups());
-        syncLogger.record(SyncPhase.RESOLVE, null, "PENDING 전체", pending.size(), null);
+        syncLogger.record(SyncPhase.RESOLVE, null, "PENDING 전체", pending.size(), result.breakdown(), null);
         return result;
     }
 

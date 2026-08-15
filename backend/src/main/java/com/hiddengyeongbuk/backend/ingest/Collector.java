@@ -55,6 +55,15 @@ public class Collector {
         int total() {
             return upserted + unchanged + skipped + failed;
         }
+
+        /**
+         * {@code total()}의 내역. data_sync_log에 합계만 남기면 staging 행 수와 어긋났을 때
+         * 원인을 알 수 없다 — skipped(수집 대상 아닌 타입)와 unchanged(변경 없음)는 staging
+         * 행을 늘리지 않으므로 이 셋을 갈라 놔야 산수가 맞는다.
+         */
+        String breakdown() {
+            return "upserted=%d, unchanged=%d, skipped=%d, failed=%d".formatted(upserted, unchanged, skipped, failed);
+        }
     }
 
     /**
@@ -82,7 +91,7 @@ public class Collector {
         }
 
         Result result = counters.toResult(lang);
-        syncLogger.record(SyncPhase.COLLECT, lang, "전체 지역", result.total(), failMessage);
+        syncLogger.record(SyncPhase.COLLECT, lang, "전체 지역", result.total(), result.breakdown(), failMessage);
         return result;
     }
 
@@ -100,7 +109,8 @@ public class Collector {
             log.error("[{}] region {} 수집 중 오류", lang, regionId, e);
         }
         Result result = counters.toResult(lang);
-        syncLogger.record(SyncPhase.COLLECT, lang, "region=" + regionId, result.total(), failMessage);
+        syncLogger.record(
+                SyncPhase.COLLECT, lang, "region=" + regionId, result.total(), result.breakdown(), failMessage);
         return result;
     }
 

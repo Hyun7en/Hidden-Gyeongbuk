@@ -128,7 +128,10 @@ npm run build      # tsc -b + vite build
 
 - API 레이어는 `api/client.ts`+`api/types.ts`(백엔드 DTO와 필드명 일치 유지).
 - `placeType` 등 enum 코드의 표시 라벨은 `GET /api/meta/options`가 요청 언어로 해석해 내려준다(API 명세서 §2.3). 프론트가 자체 라벨 사전을 갖지 않게 해서 언어 추가 시 백엔드 한 곳만 고치게 한다.
-- 디자인은 한지/쪽빛/단청 토큰(Tailwind `@theme`). 반응형은 `Container` 컴포넌트 기준 sm/md/lg.
+- **화면의 정본은 Claude Design 프로토타입**(`Hidden Gyeongbuk Prototype.dc.html`, 프로젝트 `f7a894dc-5eaa-47fa-8429-d0aabcdcae2b`)이다. 레이아웃이 애매하면 추측하지 말고 `DesignSync`로 받아서 대조할 것 — 화면 설계서와 프로토타입이 어긋나면 **프로토타입이 이긴다**(사용자 결정 2026-08-15, 컨테이너 폭 960 vs 1180이 그 사례).
+- 디자인 토큰은 프로토타입의 `_ds/.../styles.css`가 원본이고 `index.css`가 그 복제다. 구 한지/쪽빛/단청 팔레트는 전면 재설계로 폐기됐다 — accent는 골든 우드톤(`#c08a3e`)이다.
+- **컴포넌트 스타일을 손으로 재현하지 말 것.** `styles/ds.css`가 프로토타입 `_ds_bundle.js`의 CSS를 그대로 옮긴 것이고, 옮기지 않은 컴포넌트(MapMarker·Sheet·`.hg-score`)는 그 파일 주석에 적혀 있다. 필요해지면 원본에서 가져온다.
+- 폭은 `Container`(`--container-lg` 1180px) 하나로 통일한다. 화면별로 `max-w-*`를 직접 박지 말 것 — S3(480px)·S7(760px)·S8(640px)처럼 프로토타입이 좁게 정한 화면만 예외이고, 그때도 토큰이 있으면 토큰을 쓴다.
 - **PWA를 쓰지 않는다**(ADR-022). 서비스워커·매니페스트를 두지 말 것. 그 결과로 **자체 뒤로가기 버튼도 전 화면에서 두지 않는다** — 일반 반응형 웹이라 브라우저 뒤로가기가 항상 있고, 로고가 이미 "홈으로"를 맡는다.
 
 ## 함정·제약 (실측으로 확인된 것)
@@ -140,6 +143,8 @@ npm run build      # tsc -b + vite build
 - **국문/영문 contentId 공간 분리**: KorService2와 EngService2는 같은 장소라도 contentId가 다르다(실측: 영문 "Andong Dam" contentId를 KorService2 detailCommon2로 조회 시 NO_DATA). **각 언어 서비스는 자기 areaBasedSyncList2로 독자 수집할 것 — 다른 언어의 contentId 재사용 금지.** 이건 영문만의 특성이 아니라 모든 언어에 해당한다고 전제한다.
 - **호출 한도는 오퍼레이션별**로 각각 일 1,000건(사용자 확인). areaBasedSyncList2와 detailCommon2가 별도 카운트다. 그래도 무한정은 아니니 상세 조회는 `src_content_id`+`src_modified_at`으로 캐싱해 재호출을 막는다.
 - **`/internal/*` 엔드포인트**(수집·백필 트리거)는 인증 없는 로컬 전용이며 `@Profile("local")` 빈이다. 프로파일 미지정 실행은 local로 동작(`spring.profiles.default`), **운영 배포는 반드시 `SPRING_PROFILES_ACTIVE=prod`** — 그러면 이 엔드포인트가 아예 안 뜨고 show-sql도 꺼진다.
+- **Tailwind v4 레이어**: `ds.css`는 반드시 `@import './styles/ds.css' layer(components)`로 넣을 것. 레이어 없이 import하면 **레이어에 속하지 않은 규칙이 레이어 규칙을 이긴다는 CSS 캐스케이드 규칙** 때문에 Tailwind 유틸리티(utilities 레이어)를 전부 이겨버린다. 그러면 `hg-*` 컴포넌트에 Tailwind로 크기·여백을 주는 시도가 **조용히 무시된다** — 선언 순서를 바꿔도 해결되지 않는다. (S5 검색창이 `md:w-[280px]`를 무시하고 전체폭이 된 원인이었다.)
+- **TourAPI `overview`는 타입마다 보유율이 다르다**(2026-08-15 안동 150곳 실측): VE·NA·EX 100%, HS·SH 80%, AC 54%, **FD 8%**. 음식점에는 사실상 설명이 오지 않는다. 우리 파이프라인 버그로 오해하기 쉬우니 먼저 타입을 확인할 것. 화면은 "설명 없음"을 명시하고, 추천에서는 `PlaceCompleteness`가 이미 감점한다.
 - **공모전 규정**: 서비스 화면·카피에 "한국관광공사"/"KTO" 명칭·로고 사용 금지.
 - **통합 테스트(*IT)**: 테스트 데이터는 전용 접두사로 격리하고 컬럼 길이 제약을 먼저 확인. 정리는 저장 시 받은 엔티티를 기본 CRUD `delete(entity)`로 — 파생 삭제 쿼리는 앰비언트 트랜잭션이 없는 teardown에서 실패한다. `TestRestTemplate`는 별도 커넥션이라 테스트 `@Transactional` 롤백 패턴을 쓰지 말 것.
-- **Kakao Maps/Share**: JS SDK는 반드시 "JavaScript 키"(`VITE_KAKAO_MAP_KEY`)를 쓸 것 — REST API 키를 쓰면 에러. 카카오맵은 2024-12-01 이후 신규 앱이면 카카오 디벨로퍼스 콘솔의 앱 관리 > [카카오맵] > [사용 설정]을 ON으로 켜야 API 호출이 동작함(비즈 앱 전환은 불필요, 콘솔 설정이라 Claude가 대신 못 함 — 사용자 확인 필요). 카카오톡 공유는 별도 사용 설정 토글이 없고 앱 생성만으로 기본 제공되지만, 대신 공유 메시지의 webUrl/mobileWebUrl 도메인을 [앱] > [제품 링크 관리] > [웹 도메인]에 등록해야 함(카카오맵이 쓰는 [플랫폼] Web 도메인 목록과는 다른 목록). 두 제품 다 같은 앱의 JS 키를 공유해서 쓴다.
+- **Kakao Maps/Share**: JS SDK는 반드시 "JavaScript 키"(`VITE_KAKAO_MAP_KEY`)를 쓸 것 — REST API 키를 쓰면 에러. 카카오맵은 2024-12-01 이후 신규 앱이면 카카오 디벨로퍼스 콘솔의 앱 관리 > [카카오맵] > [사용 설정]을 ON으로 켜야 API 호출이 동작함(비즈 앱 전환은 불필요, 콘솔 설정이라 Claude가 대신 못 함 — 사용자 확인 필요). 카카오톡 공유는 별도 사용 설정 토글이 없고 앱 생성만으로 기본 제공되지만, 대신 공유 메시지의 webUrl/mobileWebUrl 도메인을 [앱] > [제품 링크 관리] > [웹 도메인]에 등록해야 함(카카오맵이 쓰는 [플랫폼] Web 도메인 목록과는 다른 목록). 두 제품 다 같은 앱의 JS 키를 공유해서 쓴다. **도메인 등록은 호스트 문자열 단위라 `localhost`와 `127.0.0.1`이 서로 다른 도메인으로 취급된다**(2026-08-15 실측: `127.0.0.1:5173`에서는 지도가 안 뜨고 `localhost:5173`에서는 뜸). 개발 중 지도가 안 보이면 주소창부터 확인할 것.

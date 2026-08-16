@@ -68,7 +68,7 @@ class SyncAdminControllerTest {
     @Test
     void 언어_미지정_수집은_활성_언어_전체를_돈다() throws Exception {
         BDDMockito.given(collector.collectAll())
-                .willReturn(List.of(new Collector.Result("ko", 10, 2, 1, 0), new Collector.Result("en", 7, 0, 3, 1)));
+                .willReturn(List.of(new Collector.Result("ko", 10, 2, 1, 0, 0), new Collector.Result("en", 7, 0, 3, 1, 0)));
 
         mockMvc.perform(post("/internal/sync/collect"))
                 .andExpect(status().isOk())
@@ -80,7 +80,7 @@ class SyncAdminControllerTest {
 
     @Test
     void 언어를_지정하면_그_언어만_수집한다() throws Exception {
-        BDDMockito.given(collector.collectLanguage("en")).willReturn(new Collector.Result("en", 5, 0, 0, 0));
+        BDDMockito.given(collector.collectLanguage("en")).willReturn(new Collector.Result("en", 5, 0, 0, 0, 0));
 
         mockMvc.perform(post("/internal/sync/collect").param("lang", "en"))
                 .andExpect(status().isOk())

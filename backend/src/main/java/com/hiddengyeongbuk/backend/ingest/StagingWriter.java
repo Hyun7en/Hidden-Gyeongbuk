@@ -81,6 +81,27 @@ public class StagingWriter {
 
     public record UpsertResult(Long stagingId, boolean changed) {}
 
+    /**
+     * 워터마크를 지워 다음 수집이 이 행을 "바뀐 항목"으로 다시 보게 한다. 상세(detailCommon2)를
+     * <b>못 받았을 때</b> 호출한다.
+     *
+     * <p>이게 없으면 상세 실패가 영구 손실이 된다. {@link #upsert}는 별도 트랜잭션이라 상세를
+     * 부르기 전에 이미 커밋되고, 그때 워터마크도 함께 저장된다. 그래서 상세가 실패해도 다음
+     * 수집에서는 unchanged로 판정돼 재시도 대상에서 빠진다 — overview가 영영 빈 채로 남는다.
+     *
+     * <p>그 결과가 특히 나쁜 이유는 <b>원본에 설명이 없는 장소와 구분되지 않기</b> 때문이다.
+     * 관광공사가 음식점에 overview를 거의 주지 않아(실측 FD 8%) 화면은 "설명 없음"을 정상
+     * 상태로 다루는데, 여기 섞이면 우리 실패를 원본 탓으로 표시하게 된다. 추천의
+     * PlaceCompleteness 점수도 같이 깎인다.
+     */
+    @Transactional
+    public void clearWatermark(Long stagingId) {
+        stagingPlaceRepository.findById(stagingId).ifPresent(staging -> {
+            staging.setSourceModifiedAt(null);
+            stagingPlaceRepository.save(staging);
+        });
+    }
+
     /** 상세(detailCommon2)로 받은 overview를 채운다. 목록 응답에는 overview가 없다. */
     @Transactional
     public void applyOverview(Long stagingId, String overview) {

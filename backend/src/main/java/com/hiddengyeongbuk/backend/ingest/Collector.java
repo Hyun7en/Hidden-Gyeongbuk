@@ -51,7 +51,14 @@ public class Collector {
         this.syncLogger = syncLogger;
     }
 
-    public record Result(String lang, int upserted, int unchanged, int skipped, int failed) {
+    /**
+     * @param detailFailed 목록은 받았으나 상세(overview)를 못 받은 건수. <b>upserted의 부분집합</b>이라
+     *     {@code total()}에 더하지 않는다 — 더하면 목록에서 훑은 항목 수와 어긋난다. 별도로 세는
+     *     이유는 이게 <b>호출 한도에 걸렸다는 신호</b>라서다. 전량 수집이 며칠에 걸쳐 도는 동안
+     *     이 값이 오르기 시작하면 그날 예산이 끝났다는 뜻이고, 해당 건은 워터마크가 지워져
+     *     다음 수집에서 자동 재시도된다.
+     */
+    public record Result(String lang, int upserted, int unchanged, int skipped, int failed, int detailFailed) {
         int total() {
             return upserted + unchanged + skipped + failed;
         }
@@ -62,7 +69,8 @@ public class Collector {
          * 행을 늘리지 않으므로 이 셋을 갈라 놔야 산수가 맞는다.
          */
         String breakdown() {
-            return "upserted=%d, unchanged=%d, skipped=%d, failed=%d".formatted(upserted, unchanged, skipped, failed);
+            return "upserted=%d, unchanged=%d, skipped=%d, failed=%d, detailFailed=%d"
+                    .formatted(upserted, unchanged, skipped, failed, detailFailed);
         }
     }
 
@@ -163,11 +171,29 @@ public class Collector {
         }
         counters.upserted++;
 
-        // 목록 응답에는 overview가 없어 상세를 한 번 더 부른다. 바뀐 항목만 부르는 것이
-        // 오퍼레이션별 일 1,000건 한도를 지키는 핵심이다.
-        Optional<DetailCommonItem> detail = tourApiClient.fetchDetailCommon(serviceName, item.contentid());
-        detail.map(DetailCommonItem::overview)
-                .ifPresent(overview -> stagingWriter.applyOverview(upserted.stagingId(), overview));
+        // 목록 응답에는 overview가 없어 상세를 한 번 더 부른다(2026-08-16 원본 응답으로 확인 —
+        // 목록 26개 필드에 overview가 없다). 바뀐 항목만 부르는 것이 오퍼레이션별 일 1,000건
+        // 한도를 지키는 핵심이다.
+        try {
+            Optional<DetailCommonItem> detail = tourApiClient.fetchDetailCommon(serviceName, item.contentid());
+            detail.map(DetailCommonItem::overview)
+                    .ifPresent(overview -> stagingWriter.applyOverview(upserted.stagingId(), overview));
+        } catch (RuntimeException e) {
+            // 상세를 못 받았으면 워터마크를 지워 다음 수집에서 다시 시도하게 한다. upsert가
+            // 이미 커밋된 뒤라 여기서 되돌리지 않으면 "안 바뀐 항목"이 되어 영영 재시도되지
+            // 않는다. 위 catch에 맡기지 않고 여기서 잡는 이유는 stagingId가 여기에만 있어서다.
+            //
+            // 응답은 왔는데 overview가 비어 있는 경우는 여기 오지 않는다 — 그건 실패가 아니라
+            // "원본에 설명이 없다"는 정상 결과이고, 워터마크를 지우면 매 수집마다 무한 재시도가
+            // 된다(안동 기준 그런 장소가 절반이 넘는다).
+            stagingWriter.clearWatermark(upserted.stagingId());
+            counters.detailFailed++;
+            log.warn(
+                    "[{}] 상세 조회 실패 contentId={} — 워터마크를 지워 다음 수집에서 재시도한다",
+                    lang,
+                    item.contentid(),
+                    e);
+        }
     }
 
     private static final class Counters {
@@ -175,9 +201,10 @@ public class Collector {
         int unchanged;
         int skipped;
         int failed;
+        int detailFailed;
 
         Result toResult(String lang) {
-            return new Result(lang, upserted, unchanged, skipped, failed);
+            return new Result(lang, upserted, unchanged, skipped, failed, detailFailed);
         }
     }
 }

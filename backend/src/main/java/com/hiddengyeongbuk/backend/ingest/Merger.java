@@ -28,6 +28,7 @@ public class Merger {
     private final StagingPlaceRepository stagingPlaceRepository;
     private final IdentityGrouper grouper;
     private final MergeWriter mergeWriter;
+    private final StalePlaceSweeper stalePlaceSweeper;
     private final SyncLogger syncLogger;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -35,27 +36,35 @@ public class Merger {
             StagingPlaceRepository stagingPlaceRepository,
             IdentityGrouper grouper,
             MergeWriter mergeWriter,
+            StalePlaceSweeper stalePlaceSweeper,
             SyncLogger syncLogger,
             ApplicationEventPublisher eventPublisher) {
         this.stagingPlaceRepository = stagingPlaceRepository;
         this.grouper = grouper;
         this.mergeWriter = mergeWriter;
+        this.stalePlaceSweeper = stalePlaceSweeper;
         this.syncLogger = syncLogger;
         this.eventPublisher = eventPublisher;
     }
 
-    public record Result(int places, int translations, int failed, int quarantined) {
+    /**
+     * @param places 새로 만든 place 수. 이미 있던 그룹은 place를 재사용하므로 여기 세지 않는다
+     * @param stalePlacesRemoved 근거를 잃어 지운 place 수. 재판정으로 그룹 구성이 바뀌면
+     *     승자 아닌 place가 남는데, 그게 목록에 중복으로 뜨므로 정리한다(StalePlaceSweeper)
+     */
+    public record Result(
+            int places, int translations, int failed, int quarantined, int stalePlacesRemoved) {
 
         String breakdown() {
-            return "places=%d, translations=%d, quarantined=%d, failed=%d"
-                    .formatted(places, translations, quarantined, failed);
+            return "places=%d, translations=%d, quarantined=%d, failed=%d, stalePlacesRemoved=%d"
+                    .formatted(places, translations, quarantined, failed, stalePlacesRemoved);
         }
     }
 
     public Result merge() {
         List<StagingPlace> matched = stagingPlaceRepository.findByResolutionStatus(ResolutionStatus.MATCHED);
         if (matched.isEmpty()) {
-            return new Result(0, 0, 0, 0);
+            return new Result(0, 0, 0, 0, 0);
         }
 
         // Resolver와 같은 결정적 판정을 다시 돌려 그룹을 복원한다 — 판정 결과를 담을 컬럼이
@@ -80,10 +89,13 @@ public class Merger {
             }
         }
 
-        Result result = new Result(places, translations, failed, quarantined);
+        // 병합이 끝난 뒤에 쓸어낸다 — 승자 place가 확정되기 전에 지우면 살아 있어야 할 것을 지운다.
+        StalePlaceSweeper.Result swept = stalePlaceSweeper.sweep();
+
+        Result result = new Result(places, translations, failed, quarantined, swept.deletedPlaces());
         log.info(
-                "Merge 완료: places={}, translations={}, failed={}, quarantined={}",
-                places, translations, failed, quarantined);
+                "Merge 완료: places={}, translations={}, failed={}, quarantined={}, stalePlacesRemoved={}",
+                places, translations, failed, quarantined, swept.deletedPlaces());
         // quarantined는 실패가 아니라 정상 판정 결과다(lclsSystm1 결측 보류, ADR-024 결과 ⑦).
         // 그래서 내역에만 넣고 failMessage로는 올리지 않는다 — 올리면 정상 실행이 PARTIAL로 기록된다.
         syncLogger.record(
@@ -96,7 +108,7 @@ public class Merger {
 
         // 조회 캐시가 stale로 남지 않도록 알린다. ingest는 catalog를 직접 참조하지 않으므로
         // 이벤트로만 통신한다.
-        if (places > 0 || translations > 0) {
+        if (places > 0 || translations > 0 || swept.deletedPlaces() > 0) {
             eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
         }
         return result;

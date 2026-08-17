@@ -28,4 +28,20 @@ public interface StagingPlaceRepository extends JpaRepository<StagingPlace, Long
 
     @Query("select s.lang, count(s) from StagingPlace s group by s.lang")
     List<Object[]> countGroupedByLang();
+
+    /**
+     * 판정이 MATCHED가 아닌데도 place를 가리키고 있는 행. <b>ADR-016 위반 상태</b>다 —
+     * 보류 건은 place를 만들지 않는 것이 원칙인데, 이전 판정에서 붙은 링크가 남아 있는 것이다.
+     *
+     * <p>이 링크가 살아 있으면 place를 지울 수도 없다. {@code resolved_place_id} FK가 RESTRICT라
+     * (V1 스키마 주석 — SET NULL로 두면 MATCHED인데 링크가 끊긴 모순 상태가 생긴다) 링크를
+     * 먼저 끊어야 정리가 가능하다.
+     */
+    @Query("select s from StagingPlace s where s.resolvedPlaceId is not null and s.resolutionStatus <> :matched")
+    List<StagingPlace> findLinkedButNotMatched(ResolutionStatus matched);
+
+    /** MATCHED 행이 실제로 가리키는 place id 전체. 이 집합 밖의 place는 살아 있을 근거가 없다. */
+    @Query("select distinct s.resolvedPlaceId from StagingPlace s "
+            + "where s.resolvedPlaceId is not null and s.resolutionStatus = :matched")
+    List<Long> findPlaceIdsReferencedByMatched(ResolutionStatus matched);
 }

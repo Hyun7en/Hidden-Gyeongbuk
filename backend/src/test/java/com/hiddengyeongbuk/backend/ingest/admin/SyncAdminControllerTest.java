@@ -114,7 +114,7 @@ class SyncAdminControllerTest {
 
     @Test
     void 병합_결과를_반환한다() throws Exception {
-        BDDMockito.given(merger.merge()).willReturn(new Merger.Result(9, 15, 0, 0));
+        BDDMockito.given(merger.merge()).willReturn(new Merger.Result(9, 15, 0, 0, 0));
 
         mockMvc.perform(post("/internal/sync/merge"))
                 .andExpect(status().isOk())

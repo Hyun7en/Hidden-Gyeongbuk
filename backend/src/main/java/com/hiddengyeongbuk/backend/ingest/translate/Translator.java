@@ -41,6 +41,15 @@ public class Translator {
     private static final Logger log = LoggerFactory.getLogger(Translator.class);
     private static final int MAX_OVERVIEW_CHARS = 3000;
 
+    /**
+     * 재시도를 다 소진했을 때 한 번 길게 쉬는 시간. 분당 창 기반 제한이면 이걸로 풀리고, 일일
+     * 할당량 소진이면 안 풀린다 — 두 원인이 같은 403 {@code userRateLimitExceeded}로 와서
+     * 응답만으로는 못 가리므로 <b>기다려 보고 판정한다</b>.
+     *
+     * <p>final이 아닌 이유는 테스트가 줄여 쓰기 때문이다 — 단위 테스트가 60초를 실제로 잘 수는 없다.
+     */
+    long quotaRecheckWaitMs = 60_000;
+
     private final TranslateClient translateClient;
     private final PlaceRepository placeRepository;
     private final PlaceTranslationRepository placeTranslationRepository;
@@ -118,6 +127,7 @@ public class Translator {
 
         String stoppedBy = null;
         int handled = 0;
+        boolean quotaRechecked = false;
 
         for (Place place : candidates) {
             if (attempts >= limit) {
@@ -137,13 +147,40 @@ public class Translator {
                 translated++;
                 pace();
             } catch (TranslateExhaustedException e) {
-                // 재시도를 다 쓰고도 실패했다 — 쉬어서 풀릴 문제가 아니므로 남은 후보를 두드리지
-                // 않는다. 이걸 안 하면 후보마다 22초(재시도 21초 + 페이싱 1초)를 태우며 limit까지
-                // 간다. 2026-08-17에 limit=300으로 1시간 45분이 걸릴 상황이 실제로 있었다.
-                failed++;
-                stoppedBy = "일일 할당량 소진 추정 — 재시도 소진";
-                log.warn("장소 {} {} 번역 실패, 배치를 중단한다: {}", place.getId(), targetLang, e.getMessage());
-                break;
+                // 재시도(3·6·12초)를 다 쓰고도 실패했다. 원인이 둘인데 응답으로는 못 가린다 —
+                // 분당 창 기반 제한이면 더 기다리면 풀리고, 일일 할당량 소진이면 안 풀린다.
+                // 그래서 한 번 길게 쉬고 같은 장소를 재확인한다. 60초면 분당 창은 넘긴다.
+                if (quotaRechecked) {
+                    // 이미 한 번 확인했다. 반복하면 배치가 무한정 늘어난다.
+                    failed++;
+                    stoppedBy = "재시도 소진 반복 — 대기 후 재확인은 이미 사용함";
+                    log.warn("장소 {} {} 번역 실패, 배치를 중단한다: {}", place.getId(), targetLang, e.getMessage());
+                    break;
+                }
+                quotaRechecked = true;
+                log.warn(
+                        "재시도를 모두 소진했다. 분당 제한일 수 있어 {}초 쉬고 한 번 재확인한다: {}",
+                        quotaRecheckWaitMs / 1000,
+                        e.getMessage());
+                if (!sleepQuietly(quotaRecheckWaitMs)) {
+                    failed++;
+                    stoppedBy = "대기 중 인터럽트";
+                    break;
+                }
+                try {
+                    characters += translateInto(place, source, targetLang);
+                    translated++;
+                    pace();
+                    log.info("대기 후 성공했다 — 분당 제한이었던 것으로 보인다. 배치를 계속한다");
+                } catch (RuntimeException stillFailing) {
+                    // 60초를 쉬고도 안 풀렸다. 일일 할당량 소진으로 보고 남은 후보는 두드리지 않는다.
+                    // 안 멈추면 후보마다 22초(재시도 21초 + 페이싱 1초)를 태우며 limit까지 간다 —
+                    // 2026-08-17에 limit=300으로 1시간 45분이 걸릴 상황이 실제로 있었다.
+                    failed++;
+                    stoppedBy = "일일 할당량 소진 추정 — " + (quotaRecheckWaitMs / 1000) + "초 대기 후에도 실패";
+                    log.warn("대기 후에도 실패했다. 배치를 중단한다: {}", stillFailing.getMessage());
+                    break;
+                }
             } catch (RuntimeException e) {
                 // 그 장소만의 문제(원문 이상 등)로 본다. 다음 후보로 넘어간다.
                 failed++;
@@ -229,10 +266,19 @@ public class Translator {
     // 연속 호출 시 403 userRateLimitExceeded가 난다(429가 아님 — 레거시 v2 특성). 하루 글자수
     // 한도와는 별개인 "초당 요청 수" 제한이라 호출 직후 무조건 쉰다(2026-07-17 실측, 0.3초로는 부족).
     private static void pace() {
+        sleepQuietly(1_000);
+    }
+
+    /**
+     * @return 끝까지 쉬었으면 true, 인터럽트되면 false — 호출부가 배치를 접을 수 있게 한다
+     */
+    private static boolean sleepQuietly(long millis) {
         try {
-            Thread.sleep(1_000);
+            Thread.sleep(millis);
+            return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            return false;
         }
     }
 }

@@ -42,6 +42,11 @@ class TranslatorTest {
     private final Translator translator =
             new Translator(client, places, translations, languages, syncLogger, events);
 
+    TranslatorTest() {
+        // 재확인 대기를 10ms로 줄인다 — 단위 테스트가 60초를 실제로 잘 수는 없다.
+        translator.quotaRecheckWaitMs = 10;
+    }
+
     private static Place place(long id) {
         Place p = Place.builder().build();
         ReflectionTestUtils.setField(p, "id", id);
@@ -70,7 +75,7 @@ class TranslatorTest {
     }
 
     @Test
-    void 재시도를_다_소진한_실패가_나오면_즉시_중단한다() {
+    void 대기_후에도_실패하면_일일_할당량으로_보고_중단한다() {
         given(50);
         BDDMockito.given(client.translate(anyList(), anyString(), anyString()))
                 .willReturn(List.of("Andong", "Andong-si")) // 1곳 성공
@@ -82,9 +87,42 @@ class TranslatorTest {
         assertThat(r.failed()).isEqualTo(1);
         // 50곳 중 2곳만 손댔다 — 나머지는 건드리지 않았다.
         assertThat(r.remaining()).isEqualTo(48);
-        assertThat(r.stoppedBy()).contains("할당량");
-        // 두 번만 호출됐는지가 핵심이다. 안 멈추면 50번 호출되고 그만큼 시간을 태운다.
-        BDDMockito.then(client).should(Mockito.times(2)).translate(anyList(), anyString(), anyString());
+        assertThat(r.stoppedBy()).contains("일일 할당량").contains("대기 후에도 실패");
+        // 성공 1 + 소진 1 + 대기 후 재확인 1 = 3회. 안 멈추면 50번 호출되고 그만큼 시간을 태운다.
+        BDDMockito.then(client).should(Mockito.times(3)).translate(anyList(), anyString(), anyString());
+    }
+
+    @Test
+    void 대기_후_성공하면_분당_제한으로_보고_배치를_계속한다() {
+        // 분당 창 기반 제한이면 기다리면 풀린다. 여기서 배치를 접으면 남은 후보를 헛되게 미룬다.
+        given(3);
+        BDDMockito.given(client.translate(anyList(), anyString(), anyString()))
+                .willThrow(new TranslateExhaustedException("재시도 4회를 모두 소진했다", null))
+                .willReturn(List.of("Andong", "Andong-si")); // 대기 후 재확인부터 계속 성공
+
+        Translator.BackfillResult r = translator.backfill("en", 10);
+
+        assertThat(r.translated()).isEqualTo(3);
+        assertThat(r.failed()).isZero();
+        assertThat(r.remaining()).isZero();
+        assertThat(r.stoppedBy()).isNull();
+    }
+
+    @Test
+    void 대기_후_재확인은_배치당_한_번만_쓴다() {
+        // 매번 60초를 쉬면 배치가 무한정 늘어난다. 두 번째 소진에서는 바로 접는다.
+        given(10);
+        BDDMockito.given(client.translate(anyList(), anyString(), anyString()))
+                .willThrow(new TranslateExhaustedException("1차 소진", null))
+                .willReturn(List.of("Andong", "Andong-si")) // 대기 후 재확인 성공
+                .willThrow(new TranslateExhaustedException("2차 소진", null));
+
+        Translator.BackfillResult r = translator.backfill("en", 10);
+
+        assertThat(r.translated()).isEqualTo(1);
+        assertThat(r.stoppedBy()).contains("이미 사용함");
+        // 1차 소진 + 재확인 + 2차 소진 = 3회. 두 번째는 대기 없이 바로 중단한다.
+        BDDMockito.then(client).should(Mockito.times(3)).translate(anyList(), anyString(), anyString());
     }
 
     @Test

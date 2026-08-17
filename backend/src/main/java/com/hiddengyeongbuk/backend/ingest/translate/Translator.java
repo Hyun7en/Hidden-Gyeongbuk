@@ -170,7 +170,9 @@ public class Translator {
             texts.add(source.getAddr());
         }
 
-        List<String> out = translateClient.translate(texts);
+        // 원문 언어를 추측하지 않고 실제로 고른 행의 언어를 넘긴다. pickSource가 국문이 없으면
+        // 다른 언어 행을 고르므로(ADR-016), "항상 국문"으로 단정하면 영어를 한국어라고 보내게 된다.
+        List<String> out = translateClient.translate(texts, source.getLang(), targetLang);
         int cursor = 1;
         String overview = hasOverview ? out.get(cursor++) : null;
         String addr = hasAddr ? out.get(cursor) : null;

@@ -66,19 +66,31 @@ class TranslateClient {
         String url = properties.baseUrl() + "?key=" + URLEncoder.encode(properties.apiKey(), StandardCharsets.UTF_8);
         Map<String, Object> body = requestBody(texts, sourceLang, targetLang);
 
-        String responseBody = Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TranslateClient::isTransient, () -> {
-            try {
-                return restClient
-                        .post()
-                        .uri(url)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(body)
-                        .retrieve()
-                        .body(String.class);
-            } catch (RestClientException e) {
-                throw new TranslateException("Google Translate API 호출 실패: " + e.getMessage(), e);
+        String responseBody;
+        try {
+            responseBody = Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TranslateClient::isTransient, () -> {
+                try {
+                    return restClient
+                            .post()
+                            .uri(url)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(body)
+                            .retrieve()
+                            .body(String.class);
+                } catch (RestClientException e) {
+                    throw new TranslateException("Google Translate API 호출 실패: " + e.getMessage(), e);
+                }
+            });
+        } catch (RuntimeException e) {
+            // Retry는 재시도 대상인 오류를 시도 횟수를 다 쓴 뒤에만 다시 던진다. 그래서 여기서
+            // isTransient가 참이면 "3·6·12초를 다 쉬고도 안 풀렸다"는 뜻이고, 남은 후보를 더
+            // 두드릴 근거가 없다 — 호출부가 배치를 멈출 수 있게 타입을 갈아 올린다.
+            if (isTransient(e)) {
+                throw new TranslateExhaustedException(
+                        "재시도 " + MAX_ATTEMPTS + "회를 모두 소진했다(일일 할당량 소진 가능성): " + e.getMessage(), e);
             }
-        });
+            throw e;
+        }
         return extractTranslations(responseBody, texts.size());
     }
 

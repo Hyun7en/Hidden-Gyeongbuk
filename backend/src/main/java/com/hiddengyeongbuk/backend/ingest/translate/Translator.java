@@ -63,13 +63,26 @@ public class Translator {
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * @param remaining 이번 실행에서 손대지 않은 후보 수. 중단됐을 때 "얼마나 남았나"를 바로 보려고
+     *     담는다 — 다음 실행이 여기서 이어진다
+     * @param stoppedBy 중단 사유. 정상 완주면 null이다
+     */
     public record BackfillResult(
-            String lang, int requested, int translated, int skipped, int failed, int charactersUsed) {
+            String lang,
+            int requested,
+            int translated,
+            int skipped,
+            int failed,
+            int charactersUsed,
+            int remaining,
+            String stoppedBy) {
 
         /** 사용 글자 수까지 남긴다 — 무료 한도가 월 50만 자라 누적 소모를 사후에 봐야 한다. */
         String breakdown() {
-            return "translated=%d, skipped=%d, failed=%d, characters=%d"
-                    .formatted(translated, skipped, failed, charactersUsed);
+            String base = "translated=%d, skipped=%d, failed=%d, characters=%d, remaining=%d"
+                    .formatted(translated, skipped, failed, charactersUsed, remaining);
+            return stoppedBy == null ? base : base + ", 중단=" + stoppedBy;
         }
     }
 
@@ -103,10 +116,15 @@ public class Translator {
         int characters = 0;
         int attempts = 0;
 
+        String stoppedBy = null;
+        int handled = 0;
+
         for (Place place : candidates) {
             if (attempts >= limit) {
+                stoppedBy = "limit " + limit + " 도달";
                 break;
             }
+            handled++;
             PlaceTranslation source = pickSource(place.getId(), targetLang);
             if (source == null) {
                 // 번역할 원문 자체가 없다 — 아직 Merge되지 않았거나 제목이 없는 장소.
@@ -117,19 +135,29 @@ public class Translator {
             try {
                 characters += translateInto(place, source, targetLang);
                 translated++;
+                pace();
+            } catch (TranslateExhaustedException e) {
+                // 재시도를 다 쓰고도 실패했다 — 쉬어서 풀릴 문제가 아니므로 남은 후보를 두드리지
+                // 않는다. 이걸 안 하면 후보마다 22초(재시도 21초 + 페이싱 1초)를 태우며 limit까지
+                // 간다. 2026-08-17에 limit=300으로 1시간 45분이 걸릴 상황이 실제로 있었다.
+                failed++;
+                stoppedBy = "일일 할당량 소진 추정 — 재시도 소진";
+                log.warn("장소 {} {} 번역 실패, 배치를 중단한다: {}", place.getId(), targetLang, e.getMessage());
+                break;
             } catch (RuntimeException e) {
+                // 그 장소만의 문제(원문 이상 등)로 본다. 다음 후보로 넘어간다.
                 failed++;
                 log.warn("장소 {} {} 번역 실패: {}", place.getId(), targetLang, e.getMessage());
-            } finally {
                 pace();
             }
         }
+        int remaining = candidates.size() - handled;
 
         if (translated > 0) {
             eventPublisher.publishEvent(new PlaceDataChangedEvent(this));
         }
-        BackfillResult result =
-                new BackfillResult(targetLang, limit, translated, skipped, failed, characters);
+        BackfillResult result = new BackfillResult(
+                targetLang, limit, translated, skipped, failed, characters, remaining, stoppedBy);
         syncLogger.record(
                 SyncPhase.TRANSLATE,
                 targetLang,

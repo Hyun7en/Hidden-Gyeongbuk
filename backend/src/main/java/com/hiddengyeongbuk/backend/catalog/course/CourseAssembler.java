@@ -35,7 +35,19 @@ class CourseAssembler {
         /** 최근접 우선, 사전점수로 동점 처리 — 이동거리를 더 아끼는 변형. */
         NEAREST_FIRST,
         /** 사전점수와 거리를 함께 반영하는 절충 전략. */
-        BALANCED
+        BALANCED,
+        /**
+         * 목표 지역 수에 닿을 때까지 <b>아직 안 간 지역</b>을 우선하는 전략.
+         *
+         * <p>나머지 세 전략은 거리를 전부 <b>비용</b>으로만 다뤄서 거점 반경을 벗어날 이유가
+         * 구조적으로 없다. 그래서 지역분산에 20점을 배정해 놓고도 분산된 후보 자체가 만들어지지
+         * 않았다 — 실측(2026-08-18): 안동 거점 1박2일에 후보 전원이 지역 1곳, 총 13.1km.
+         * 거리 예산을 120km에서 300km로 늘려도 13.1km 그대로였으니 예산 문제가 아니었다.
+         *
+         * <p>여기서 하는 일은 <b>후보를 하나 더 만드는 것뿐</b>이다. 이 전략의 코스가 실제로
+         * 좋은지는 {@link CourseScorer}가 접근성(30)과 지역분산(20)을 함께 재서 정한다.
+         */
+        REGION_SPREAD
     }
 
     Optional<CourseCandidate> assemble(
@@ -53,6 +65,10 @@ class CourseAssembler {
         double dmax = rules.maxDistanceKm(difficulty, totalDays);
 
         Set<Long> used = new HashSet<>();
+        // 지역분산 점수의 목표치와 같은 기준을 쓴다 — 채점기가 재는 것과 다른 목표를 좇으면
+        // 후보를 만들어도 점수에 반영되지 않는다.
+        Set<Long> usedRegions = new HashSet<>();
+        int targetRegions = rules.targetRegionCount(totalDays, distinctRegions(attractionPool));
         List<CourseDay> courseDays = new ArrayList<>();
         double lat = hub.getLat().doubleValue();
         double lng = hub.getLng().doubleValue();
@@ -61,19 +77,20 @@ class CourseAssembler {
         for (int day = 1; day <= totalDays; day++) {
             List<Place> dayPlaces = new ArrayList<>();
 
-            Place food = pickNext(foodPool, used, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
+            Place food = pickNext(foodPool, used, usedRegions, targetRegions, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
             if (food != null) {
                 totalDistance += GeoUtils.haversineKm(lat, lng, food.getLat().doubleValue(), food.getLng().doubleValue());
                 lat = food.getLat().doubleValue();
                 lng = food.getLng().doubleValue();
                 used.add(food.getId());
+                usedRegions.add(food.getRegion().getId());
                 dayPlaces.add(food);
             }
 
             int target = perDayTargets[day - 1];
             while (dayPlaces.size() < target) {
                 Place next =
-                        pickNext(attractionPool, used, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
+                        pickNext(attractionPool, used, usedRegions, targetRegions, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
                 if (next == null) {
                     break;
                 }
@@ -81,6 +98,7 @@ class CourseAssembler {
                 lat = next.getLat().doubleValue();
                 lng = next.getLng().doubleValue();
                 used.add(next.getId());
+                usedRegions.add(next.getRegion().getId());
                 dayPlaces.add(next);
             }
 
@@ -90,13 +108,14 @@ class CourseAssembler {
 
             Place lodging = null;
             if (day < totalDays) {
-                lodging = pickNext(lodgingPool, used, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
+                lodging = pickNext(lodgingPool, used, usedRegions, targetRegions, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
                 if (lodging != null) {
                     totalDistance +=
                             GeoUtils.haversineKm(lat, lng, lodging.getLat().doubleValue(), lodging.getLng().doubleValue());
                     lat = lodging.getLat().doubleValue();
                     lng = lodging.getLng().doubleValue();
                     used.add(lodging.getId());
+                    usedRegions.add(lodging.getRegion().getId());
                 }
             }
 
@@ -112,6 +131,8 @@ class CourseAssembler {
     private Place pickNext(
             List<Place> pool,
             Set<Long> used,
+            Set<Long> usedRegions,
+            int targetRegions,
             double lat,
             double lng,
             Set<PlaceType> interests,
@@ -137,11 +158,16 @@ class CourseAssembler {
                 continue;
             }
             double preScore = preScore(candidate, interests) + (festival != null ? festivalBonus : 0);
+            // 목표 지역 수를 채우기 전까지만 새 지역을 우대한다. 목표를 넘겨서까지 밀면 점수는
+            // 안 오르는데 이동거리만 늘어 접근성(30점)을 깎는다.
+            boolean opensNewRegion = usedRegions.size() < targetRegions
+                    && !usedRegions.contains(candidate.getRegion().getId());
             double key =
                     switch (strategy) {
                         case PRESCORE_FIRST -> preScore * 1000 - distance;
                         case NEAREST_FIRST -> -distance * 1000 + preScore;
                         case BALANCED -> preScore - 2 * distance;
+                        case REGION_SPREAD -> (opensNewRegion ? 1_000_000 : 0) + preScore * 1000 - distance;
                     };
             if (key > bestKey) {
                 bestKey = key;
@@ -149,6 +175,11 @@ class CourseAssembler {
             }
         }
         return best;
+    }
+
+    /** 후보 풀이 실제로 걸쳐 있는 지역 수. 도달 불가능한 목표를 세우지 않기 위한 상한이다. */
+    private static int distinctRegions(List<Place> pool) {
+        return (int) pool.stream().map(p -> p.getRegion().getId()).distinct().count();
     }
 
     /**

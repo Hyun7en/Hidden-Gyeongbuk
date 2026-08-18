@@ -11,6 +11,7 @@ import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -181,6 +182,93 @@ class CourseAssemblerTest {
                 Set.of(),
                 festivals,
                 CourseAssembler.SelectionStrategy.PRESCORE_FIRST);
+    }
+
+    @Test
+    void REGION_SPREAD는_목표_지역수까지_다른_지역을_찾아간다() {
+        // 거점 코앞에 1지역 장소를 목표 장소수(1박2일 = 7곳)보다 넉넉히 깔고, 2지역은 멀리
+        // 하나만 둔다. 근접 장소가 모자라면 어느 전략이든 먼 곳까지 가게 돼 비교가 성립하지
+        // 않는다. 거리를 비용으로만 다루는 전략은 먼 곳을 갈 이유가 없어 전부 1지역에 머문다 —
+        // 실측(2026-08-18)으로 안동 거점 후보 전원이 지역 1곳, 13.1km였고 예산을 300km로
+        // 늘려도 그대로였다.
+        List<Place> attractions = new ArrayList<>(nearPlaces(8, 1L));
+        attractions.add(
+                place(99L, PlaceType.HS, 2L, hub.getLat().doubleValue() + 0.30, hub.getLng().doubleValue() + 0.30));
+
+        assertThat(regionCount(attractions, CourseAssembler.SelectionStrategy.NEAREST_FIRST)).isEqualTo(1);
+        assertThat(regionCount(attractions, CourseAssembler.SelectionStrategy.REGION_SPREAD)).isEqualTo(2);
+    }
+
+    @Test
+    void REGION_SPREAD도_목표_지역수를_넘겨서까지_밀지는_않는다() {
+        // 당일치기는 목표 지역이 1이라 새 지역 우대가 걸리지 않는다. 그때까지 멀리 나가면
+        // 점수는 안 오르는데 이동거리만 늘어 접근성(30점)을 깎는다.
+        List<Place> attractions = List.of(
+                place(1L, PlaceType.HS, 1L, hub.getLat().doubleValue() + 0.01, hub.getLng().doubleValue() + 0.01),
+                place(2L, PlaceType.HS, 1L, hub.getLat().doubleValue() + 0.02, hub.getLng().doubleValue() + 0.02),
+                place(3L, PlaceType.HS, 1L, hub.getLat().doubleValue() + 0.03, hub.getLng().doubleValue() + 0.03),
+                place(4L, PlaceType.HS, 1L, hub.getLat().doubleValue() + 0.04, hub.getLng().doubleValue() + 0.04),
+                place(5L, PlaceType.HS, 2L, hub.getLat().doubleValue() + 0.30, hub.getLng().doubleValue() + 0.30));
+
+        Optional<CourseCandidate> result = assembler.assemble(
+                hub,
+                attractions,
+                List.of(),
+                List.of(),
+                nights(0),
+                Difficulty.LOCAL,
+                Set.of(PlaceType.HS),
+                Map.of(),
+                CourseAssembler.SelectionStrategy.REGION_SPREAD);
+
+        assertThat(result).isPresent();
+        assertThat(distinctRegions(result.get())).isEqualTo(1);
+    }
+
+    /** 거점에서 걸어갈 만한 거리에 같은 지역 장소를 n개 깐다. */
+    private List<Place> nearPlaces(int n, long regionId) {
+        List<Place> places = new ArrayList<>();
+        for (int i = 1; i <= n; i++) {
+            places.add(place(
+                    i,
+                    PlaceType.HS,
+                    regionId,
+                    hub.getLat().doubleValue() + 0.01 * i,
+                    hub.getLng().doubleValue() + 0.01 * i));
+        }
+        return places;
+    }
+
+    private int regionCount(List<Place> attractions, CourseAssembler.SelectionStrategy strategy) {
+        Optional<CourseCandidate> result = assembler.assemble(
+                hub,
+                attractions,
+                List.of(),
+                List.of(),
+                nights(1),
+                Difficulty.LOCAL,
+                Set.of(PlaceType.HS),
+                Map.of(),
+                strategy);
+        assertThat(result).isPresent();
+        return distinctRegions(result.get());
+    }
+
+    private static int distinctRegions(CourseCandidate candidate) {
+        return (int) candidate.allPlaces().stream()
+                .map(p -> p.getRegion().getId())
+                .distinct()
+                .count();
+    }
+
+    private Place place(long id, PlaceType placeType, long regionId, double lat, double lng) {
+        return Place.builder()
+                .id(id)
+                .placeType(placeType)
+                .region(Region.builder().id(regionId).build())
+                .lat(BigDecimal.valueOf(lat))
+                .lng(BigDecimal.valueOf(lng))
+                .build();
     }
 
     private Place nearbyPlace(long id, double offsetDeg) {

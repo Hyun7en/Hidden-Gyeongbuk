@@ -38,6 +38,7 @@
 | [022](ADR-022-no-pwa-no-back-button.md) | PWA 미사용, 자체 뒤로가기 버튼 전면 제거 | Accepted |
 | [023](ADR-023-migration-squash.md) | 마이그레이션 스쿼시 — 배포 전 1회 한정 | Accepted |
 | [024](ADR-024-lcls-systm-place-type.md) | 장소 분류 = 관광공사 대분류 채택 (place_tag 폐기) | Accepted |
+| [025](ADR-025-drop-restaurants.md) | 음식점(FD) 수집·노출 제외 (숙박은 유지) | Accepted |
 
 ## 대체 관계
 

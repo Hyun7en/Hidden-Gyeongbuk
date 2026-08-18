@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.BDDMockito;
 import org.mockito.Mockito;
 
+import static org.mockito.ArgumentMatchers.anyString;
+
 /**
  * 소스가 내린 행(showflag=0)을 판정 대상에서 빼는 규칙.
  *
@@ -26,7 +28,15 @@ class ResolverTest {
 
     private final StagingPlaceRepository repository = Mockito.mock(StagingPlaceRepository.class);
     private final SyncLogger syncLogger = Mockito.mock(SyncLogger.class);
-    private final Resolver resolver = new Resolver(repository, new IdentityGrouper(), syncLogger);
+    // 테스트가 수집 대상 판정에 의존하지 않도록, 쓰는 타입은 모두 수집 대상이라고 둔다.
+    // 수집 대상에서 빠진 타입의 제외는 ContentTypeMappingTest가 따로 본다.
+    private final ContentTypeMapping contentTypes = Mockito.mock(ContentTypeMapping.class);
+    private final Resolver resolver = new Resolver(repository, new IdentityGrouper(), syncLogger, contentTypes);
+
+    ResolverTest() {
+        BDDMockito.given(contentTypes.isCollectable(anyString(), Mockito.any(Integer.class)))
+                .willReturn(true);
+    }
 
     private static StagingPlace staging(String lang, String contentId, Integer showFlag, double lat, double lng) {
         StagingPlace staging = StagingPlace.builder()
@@ -81,6 +91,22 @@ class ResolverTest {
 
         assertThat(shown.getResolutionStatus()).isEqualTo(ResolutionStatus.MATCHED);
         assertThat(result.excluded()).isZero();
+    }
+
+    @Test
+    void 수집_대상에서_빠진_타입은_이미_쌓인_행도_제외된다() {
+        // 음식점 제외(ADR-025)처럼 설정만 고치고 재판정하면 끝나야 한다. staging 행은 지우지
+        // 않으므로, 결정이 바뀌면 설정을 되돌려 재판정하는 것만으로 복구된다 — 외부 API를
+        // 다시 부르지 않는다(ADR-016).
+        StagingPlace dropped = staging("ko", "1", 1, 36.5, 128.6);
+        dropped.setSourceTypeId(39);
+        givenPending(dropped);
+        BDDMockito.given(contentTypes.isCollectable("ko", 39)).willReturn(false);
+
+        Resolver.Result result = resolver.resolve();
+
+        assertThat(dropped.getResolutionStatus()).isEqualTo(ResolutionStatus.EXCLUDED);
+        assertThat(result.excluded()).isEqualTo(1);
     }
 
     @Test

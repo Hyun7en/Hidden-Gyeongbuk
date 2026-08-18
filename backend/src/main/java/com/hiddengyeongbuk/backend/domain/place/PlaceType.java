@@ -1,5 +1,8 @@
 package com.hiddengyeongbuk.backend.domain.place;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * 장소 분류 — 한국관광공사 신분류체계 <b>대분류</b>({@code lclsSystm1}) 코드다(ERD §4.1, ADR-024).
  *
@@ -33,6 +36,17 @@ public enum PlaceType {
     NA("자연관광", "Nature"),
     SH("쇼핑", "Shopping"),
     VE("문화관광", "Culture");
+
+    /**
+     * 서비스가 실제로 다루는 분류. {@link #FD}는 빠진다 — 수집·노출 대상에서 제외했다(ADR-025).
+     *
+     * <p><b>enum에서 지우지 않는 이유</b>는 이 어휘가 우리 것이 아니기 때문이다. 관광공사
+     * 대분류를 원본 그대로 쓰기로 했으므로(ADR-024) 우리가 안 쓴다고 어휘를 고치지 않는다.
+     * 과거에 수집된 FD 행을 읽을 때도 값이 필요하다.
+     */
+    public static List<PlaceType> served() {
+        return Arrays.stream(values()).filter(type -> type != FD).toList();
+    }
 
     private final String labelKo;
     private final String labelEn;

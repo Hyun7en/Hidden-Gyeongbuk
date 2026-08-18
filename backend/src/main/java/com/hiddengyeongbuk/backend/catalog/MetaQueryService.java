@@ -46,7 +46,9 @@ public class MetaQueryService {
     public MetaOptionsResponse options(String lang) {
         // 장소 타입은 필터 칩이자 카드 배지 라벨이다 — 프론트가 코드만 받고 자체 사전으로
         // 번역하면 백엔드와 어긋날 수 있어 여기서 해석해 내려준다.
-        List<Option> placeTypes = Arrays.stream(PlaceType.values())
+        // values()가 아니라 served()다 — 음식점은 place가 하나도 없으므로 칩으로 내보내면
+        // 누르면 빈 결과가 나오는 옵션이 된다(ADR-025).
+        List<Option> placeTypes = PlaceType.served().stream()
                 .map(p -> new Option(p.name(), OptionLabel.of(lang, p.labelKo(), p.labelEn())))
                 .toList();
         List<Option> difficulties = Arrays.stream(Difficulty.values())

@@ -95,6 +95,11 @@ public class ContentTypeMapping {
         return entry(lang, sourceTypeId).isPresent();
     }
 
+    /** staging에 이미 적재된 행을 되짚을 때 쓴다 — 그쪽은 contentTypeId가 정수 컬럼이다. */
+    public boolean isCollectable(String lang, Integer sourceTypeId) {
+        return entry(lang, sourceTypeId).isPresent();
+    }
+
     /**
      * {@code lclsSystm1}이 비어 있을 때 쓸 폴백 대분류. 매핑에 없거나(수집 대상 아님) 폴백이
      * 정의되지 않은 타입(관광지)이면 빈 값이며, 호출부는 place를 만들지 않아야 한다.

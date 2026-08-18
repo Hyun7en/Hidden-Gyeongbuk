@@ -39,7 +39,6 @@ class CourseAssemblerTest {
                 hub,
                 attractions,
                 List.of(),
-                List.of(),
                 nights(0),
                 Difficulty.NORMAL,
                 Set.of(PlaceType.NA),
@@ -58,13 +57,11 @@ class CourseAssemblerTest {
         List<Place> attractions = List.of(
                 nearbyPlace(1L, 0.01), nearbyPlace(2L, 0.02), nearbyPlace(3L, 0.03),
                 nearbyPlace(4L, 0.04), nearbyPlace(5L, 0.05), nearbyPlace(6L, 0.06));
-        List<Place> food = List.of(nearbyPlace(20L, PlaceType.FD, 0.07), nearbyPlace(21L, PlaceType.FD, 0.08));
         List<Place> lodging = List.of(nearbyPlace(30L, PlaceType.AC, 0.09));
 
         Optional<CourseCandidate> result = assembler.assemble(
                 hub,
                 attractions,
-                food,
                 lodging,
                 nights(1),
                 Difficulty.NORMAL,
@@ -89,7 +86,6 @@ class CourseAssemblerTest {
                 hub,
                 farAttractions,
                 List.of(),
-                List.of(),
                 nights(0),
                 Difficulty.EASY,
                 Set.of(),
@@ -106,7 +102,6 @@ class CourseAssemblerTest {
         Optional<CourseCandidate> result = assembler.assemble(
                 hub,
                 attractions,
-                List.of(),
                 List.of(),
                 nights(0),
                 Difficulty.NORMAL,
@@ -177,7 +172,6 @@ class CourseAssemblerTest {
                 hub,
                 attractions,
                 List.of(),
-                List.of(),
                 dates,
                 Difficulty.NORMAL,
                 Set.of(),
@@ -214,7 +208,6 @@ class CourseAssemblerTest {
         Optional<CourseCandidate> result = assembler.assemble(
                 hub,
                 attractions,
-                List.of(),
                 List.of(),
                 nights(0),
                 Difficulty.LOCAL,
@@ -270,7 +263,7 @@ class CourseAssemblerTest {
             CourseAssembler.SelectionStrategy strategy,
             TravelDates dates) {
         return assembler.assemble(
-                hub, attractions, List.of(), List.of(), dates, Difficulty.LOCAL, interests, Map.of(), strategy);
+                hub, attractions, List.of(), dates, Difficulty.LOCAL, interests, Map.of(), strategy);
     }
 
     /** 거점에서 걸어갈 만한 거리에 같은 지역 장소를 n개 깐다. */
@@ -291,7 +284,6 @@ class CourseAssemblerTest {
         Optional<CourseCandidate> result = assembler.assemble(
                 hub,
                 attractions,
-                List.of(),
                 List.of(),
                 nights(1),
                 Difficulty.LOCAL,

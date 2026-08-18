@@ -68,7 +68,6 @@ class CourseAssembler {
     Optional<CourseCandidate> assemble(
             Hub hub,
             List<Place> attractionPool,
-            List<Place> foodPool,
             List<Place> lodgingPool,
             TravelDates dates,
             Difficulty difficulty,
@@ -93,17 +92,6 @@ class CourseAssembler {
 
         for (int day = 1; day <= totalDays; day++) {
             List<Place> dayPlaces = new ArrayList<>();
-
-            Place food = pickNext(foodPool, used, usedRegions, targetRegions, coveredInterests, lat, lng, interests, festivals, dates, strategy, dmax - totalDistance);
-            if (food != null) {
-                totalDistance += GeoUtils.haversineKm(lat, lng, food.getLat().doubleValue(), food.getLng().doubleValue());
-                lat = food.getLat().doubleValue();
-                lng = food.getLng().doubleValue();
-                used.add(food.getId());
-                usedRegions.add(food.getRegion().getId());
-                coveredInterests.add(food.getPlaceType());
-                dayPlaces.add(food);
-            }
 
             int target = perDayTargets[day - 1];
             while (dayPlaces.size() < target) {

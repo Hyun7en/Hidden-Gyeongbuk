@@ -93,7 +93,6 @@ public class CourseRecommendationService {
         List<Place> places = placeRepository.findByRegionIdIn(scope);
 
         List<Place> attractionPool = attractionPool(places, effectiveInterests);
-        List<Place> foodPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.FD).toList();
         List<Place> lodgingPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.AC).toList();
 
         if (attractionPool.isEmpty()) {
@@ -115,7 +114,6 @@ public class CourseRecommendationService {
                     .assemble(
                             hub,
                             attractionPool,
-                            foodPool,
                             lodgingPool,
                             dates,
                             difficulty,
@@ -169,10 +167,14 @@ public class CourseRecommendationService {
      * 1000을 곱하는데 사전점수는 최대 100이라, 1km 차이가 관심사 일치 여부를 10배로 압도했다.
      * 실측(2026-08-18): 안동 거점 · HS+NA 요청에 7곳 중 6곳이 요청 밖(상점 3, 음식 2, 체험 1).
      *
-     * <p>음식(FD)·숙박(AC)은 일자별 끼니·숙박 자리에서 따로 뽑으므로 여기서 항상 뺀다. 코스에서
-     * 빠지는 게 아니라 뽑는 자리가 다를 뿐이다(추천 알고리즘 §5). 그래서 <b>관심사로 FD·AC를
-     * 골라도 관광 후보의 필터로는 쓰지 않는다</b> — 그걸로 거르면 관광 자리가 통째로 빈다.
-     * 필터 기준은 "관심사 − {FD, AC}"이고, 그게 비면(관심사 미지정이거나 FD·AC뿐) 거르지 않는다.
+     * <p>숙박(AC)은 일자별 숙박 자리에서 따로 뽑으므로 여기서 항상 뺀다. 코스에서 빠지는 게
+     * 아니라 뽑는 자리가 다를 뿐이다(추천 알고리즘 §5). 그래서 <b>관심사로 AC를 골라도 관광
+     * 후보의 필터로는 쓰지 않는다</b> — 그걸로 거르면 관광 자리가 통째로 빈다. 필터 기준은
+     * "관심사 − {FD, AC}"이고, 그게 비면(관심사 미지정이거나 AC뿐) 거르지 않는다.
+     *
+     * <p>음식(FD)도 함께 빼는 것은 <b>과거에 수집된 행에 대한 방어</b>다. 음식점은 수집·노출
+     * 대상에서 빠졌고(ADR-025) 관심사 선택지로도 안 나가지만, 정리 전 데이터가 남아 있는
+     * 동안 코스에 섞이지 않게 한다.
      *
      * <p>필터 후 후보가 모자라면 코스가 짧아지거나(조립 루프가 그날치를 덜 채운다) 아예 안
      * 만들어진다. 그게 맞다 — 요청하지 않은 분류로 자리를 채우는 것은 취향의 문제가 아니라

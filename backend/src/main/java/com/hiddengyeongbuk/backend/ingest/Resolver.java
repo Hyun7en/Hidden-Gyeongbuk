@@ -5,6 +5,7 @@ import com.hiddengyeongbuk.backend.domain.place.StagingPlace;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlaceRepository;
 import com.hiddengyeongbuk.backend.domain.sync.SyncPhase;
 import java.util.List;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,12 +28,17 @@ public class Resolver {
     private final StagingPlaceRepository stagingPlaceRepository;
     private final IdentityGrouper grouper;
     private final SyncLogger syncLogger;
+    private final ContentTypeMapping contentTypes;
 
     public Resolver(
-            StagingPlaceRepository stagingPlaceRepository, IdentityGrouper grouper, SyncLogger syncLogger) {
+            StagingPlaceRepository stagingPlaceRepository,
+            IdentityGrouper grouper,
+            SyncLogger syncLogger,
+            ContentTypeMapping contentTypes) {
         this.stagingPlaceRepository = stagingPlaceRepository;
         this.grouper = grouper;
         this.syncLogger = syncLogger;
+        this.contentTypes = contentTypes;
     }
 
     /**
@@ -41,6 +47,18 @@ public class Resolver {
      */
     private static boolean hiddenAtSource(StagingPlace staging) {
         return Integer.valueOf(0).equals(staging.getShowFlag());
+    }
+
+    /**
+     * 더는 수집 대상이 아닌 타입인가. 설정({@code app.content-type.mappings})이 유일한 근거라
+     * 대상을 줄이면 <b>이미 쌓인 staging 행도 자동으로</b> 판정에서 빠진다 — 음식점 제외
+     * (ADR-025)처럼 설정만 고치고 재판정하면 끝나게 하기 위함이다.
+     *
+     * <p>staging 행 자체는 지우지 않는다. 원본 보존이 재매칭의 근거이고(ADR-016), 결정이
+     * 바뀌면 설정을 되돌려 재판정하는 것만으로 복구된다 — 외부 API를 다시 부르지 않는다.
+     */
+    private boolean notCollectedAnymore(StagingPlace staging) {
+        return !contentTypes.isCollectable(staging.getLang(), staging.getSourceTypeId());
     }
 
     public record Result(int matched, int quarantined, int excluded, int groups) {
@@ -66,17 +84,17 @@ public class Resolver {
             return new Result(0, 0, 0, 0);
         }
 
-        // 소스가 내린 행은 판정 대상에서 뺀다. 여기서 빼면 MATCHED가 되지 않고, MATCHED가
-        // 아니면 StalePlaceSweeper가 그 place를 근거 없는 것으로 보고 지운다 — 별도 정리
-        // 로직이 필요 없는 이유다.
-        List<StagingPlace> excluded =
-                pending.stream().filter(Resolver::hiddenAtSource).toList();
+        // 소스가 내린 행(showflag=0)과 더는 수집하지 않는 타입은 판정 대상에서 뺀다. 여기서
+        // 빼면 MATCHED가 되지 않고, MATCHED가 아니면 StalePlaceSweeper가 그 place를 근거 없는
+        // 것으로 보고 지운다 — 별도 정리 로직이 필요 없는 이유다.
+        Predicate<StagingPlace> excludable =
+                staging -> hiddenAtSource(staging) || notCollectedAnymore(staging);
+        List<StagingPlace> excluded = pending.stream().filter(excludable).toList();
         excluded.forEach(staging -> {
             staging.setResolutionStatus(ResolutionStatus.EXCLUDED);
             staging.setQuarantineReason(null);
         });
-        List<StagingPlace> resolvable =
-                pending.stream().filter(staging -> !hiddenAtSource(staging)).toList();
+        List<StagingPlace> resolvable = pending.stream().filter(excludable.negate()).toList();
 
         IdentityGrouper.Grouping grouping = grouper.group(resolvable);
 

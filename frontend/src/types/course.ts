@@ -5,15 +5,15 @@ export type { Interest } from '../api/types'
 import type { Interest } from '../api/types'
 export type Difficulty = 'EASY' | 'NORMAL' | 'LOCAL'
 
-// 9종이며 6종이던 구 자체 태그를 대체한다. 칩이 늘었으니 줄바꿈을 전제한 레이아웃이어야
-// 한다(화면 설계서 S3). 라벨은 meta/options로 옮기는 중이라 이 표는 과도기다.
+// 관광공사 대분류 9종 중 음식(FD)을 뺀 8종이다 — 음식점은 수집·노출 대상에서 제외했다
+// (ADR-025). 칩이 여럿이라 줄바꿈을 전제한 레이아웃이어야 한다(화면 설계서 S3).
+// 라벨은 meta/options로 옮기는 중이라 이 표는 과도기다 — 백엔드도 PlaceType.served()를 쓴다.
 export const INTEREST_OPTIONS: { value: Interest; labelKey: string }[] = [
   { value: 'NA', labelKey: 'options.interest.NA' },
   { value: 'HS', labelKey: 'options.interest.HS' },
   { value: 'VE', labelKey: 'options.interest.VE' },
   { value: 'EX', labelKey: 'options.interest.EX' },
   { value: 'LS', labelKey: 'options.interest.LS' },
-  { value: 'FD', labelKey: 'options.interest.FD' },
   { value: 'SH', labelKey: 'options.interest.SH' },
   { value: 'EV', labelKey: 'options.interest.EV' },
   { value: 'AC', labelKey: 'options.interest.AC' },

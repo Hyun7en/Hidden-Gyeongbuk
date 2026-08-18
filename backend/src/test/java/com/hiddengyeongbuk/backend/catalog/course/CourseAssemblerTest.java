@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 class CourseAssemblerTest {
@@ -223,6 +224,53 @@ class CourseAssemblerTest {
 
         assertThat(result).isPresent();
         assertThat(distinctRegions(result.get())).isEqualTo(1);
+    }
+
+    @Test
+    void INTEREST_SPREAD는_안_담은_관심사를_찾아간다() {
+        // 거점 코앞에 HS만 잔뜩 깔고 NA는 조금 떨어뜨린다. 거리를 비용으로만 다루는 전략은
+        // HS로만 채운다 — 실측(2026-08-18)으로 HS+NA 요청에 관광 자리 5곳이 전부 HS였다.
+        List<Place> attractions = new ArrayList<>(nearPlaces(8, 1L));
+        attractions.add(
+                place(99L, PlaceType.NA, 1L, hub.getLat().doubleValue() + 0.15, hub.getLng().doubleValue() + 0.15));
+        Set<PlaceType> interests = Set.of(PlaceType.HS, PlaceType.NA);
+
+        assertThat(coveredTypes(attractions, interests, CourseAssembler.SelectionStrategy.NEAREST_FIRST))
+                .containsExactly(PlaceType.HS);
+        assertThat(coveredTypes(attractions, interests, CourseAssembler.SelectionStrategy.INTEREST_SPREAD))
+                .containsExactlyInAnyOrder(PlaceType.HS, PlaceType.NA);
+    }
+
+    @Test
+    void INTEREST_SPREAD는_관심사를_다_담고_나면_멀리_나가지_않는다() {
+        // 다 담은 뒤에도 새 분류를 좇으면 요청 밖 장소를 부르게 된다. 우대 대상이 사라지면
+        // 사전점수·거리 순서로 돌아가야 한다.
+        List<Place> attractions = new ArrayList<>(nearPlaces(8, 1L));
+        attractions.add(
+                place(99L, PlaceType.NA, 1L, hub.getLat().doubleValue() + 0.15, hub.getLng().doubleValue() + 0.15));
+
+        Optional<CourseCandidate> result = assemble(
+                attractions, Set.of(PlaceType.HS), CourseAssembler.SelectionStrategy.INTEREST_SPREAD, nights(1));
+
+        assertThat(result).isPresent();
+        assertThat(result.get().allPlaces().stream().map(Place::getPlaceType).distinct())
+                .containsExactly(PlaceType.HS);
+    }
+
+    private Set<PlaceType> coveredTypes(
+            List<Place> attractions, Set<PlaceType> interests, CourseAssembler.SelectionStrategy strategy) {
+        Optional<CourseCandidate> result = assemble(attractions, interests, strategy, nights(1));
+        assertThat(result).isPresent();
+        return result.get().allPlaces().stream().map(Place::getPlaceType).collect(Collectors.toSet());
+    }
+
+    private Optional<CourseCandidate> assemble(
+            List<Place> attractions,
+            Set<PlaceType> interests,
+            CourseAssembler.SelectionStrategy strategy,
+            TravelDates dates) {
+        return assembler.assemble(
+                hub, attractions, List.of(), List.of(), dates, Difficulty.LOCAL, interests, Map.of(), strategy);
     }
 
     /** 거점에서 걸어갈 만한 거리에 같은 지역 장소를 n개 깐다. */

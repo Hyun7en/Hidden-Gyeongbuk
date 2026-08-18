@@ -92,11 +92,7 @@ public class CourseRecommendationService {
         List<Long> scope = resolveScope(hubId, regionIds);
         List<Place> places = placeRepository.findByRegionIdIn(scope);
 
-        // 음식(FD)·숙박(AC)은 일자별로 따로 배치하므로 관광 후보에서 뺀다(추천 알고리즘 §5).
-        // 코스에서 빠지는 게 아니라 뽑는 자리가 다를 뿐이다.
-        List<Place> attractionPool = places.stream()
-                .filter(p -> p.getPlaceType() != PlaceType.FD && p.getPlaceType() != PlaceType.AC)
-                .toList();
+        List<Place> attractionPool = attractionPool(places, effectiveInterests);
         List<Place> foodPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.FD).toList();
         List<Place> lodgingPool = places.stream().filter(p -> p.getPlaceType() == PlaceType.AC).toList();
 
@@ -163,6 +159,36 @@ public class CourseRecommendationService {
      * 일반 장소처럼 다룬다. 결측을 "안 열린다"로 읽어 빼버리면 수집된 콘텐츠를 근거 없이 잃고,
      * "열린다"로 읽으면 닫힌 축제를 넣게 된다. 모르는 것은 판단하지 않는 쪽이 맞다(ADR-021).
      */
+    /**
+     * 관광 후보 풀. 관심사는 <b>정렬 가중치가 아니라 필터</b>다 — 아키텍처 §5.4의 2단계가
+     * "필터: 좌표 있음 + 관심사 해당(수천 건 → 수십 건)"이라고 규정한다.
+     *
+     * <p>2026-08-18까지는 FD·AC만 빼고 관심사는 {@link CourseAssembler}의 사전점수에만
+     * 반영했다. 사전점수는 순서만 바꿀 뿐 <b>후보를 줄이지 않아서</b>, 일치하는 장소가 거리
+     * 예산 안에서 떨어지면 그대로 다른 분류가 뽑혔다. {@code NEAREST_FIRST} 전략에서는 거리에
+     * 1000을 곱하는데 사전점수는 최대 100이라, 1km 차이가 관심사 일치 여부를 10배로 압도했다.
+     * 실측(2026-08-18): 안동 거점 · HS+NA 요청에 7곳 중 6곳이 요청 밖(상점 3, 음식 2, 체험 1).
+     *
+     * <p>음식(FD)·숙박(AC)은 일자별 끼니·숙박 자리에서 따로 뽑으므로 여기서 항상 뺀다. 코스에서
+     * 빠지는 게 아니라 뽑는 자리가 다를 뿐이다(추천 알고리즘 §5). 그래서 <b>관심사로 FD·AC를
+     * 골라도 관광 후보의 필터로는 쓰지 않는다</b> — 그걸로 거르면 관광 자리가 통째로 빈다.
+     * 필터 기준은 "관심사 − {FD, AC}"이고, 그게 비면(관심사 미지정이거나 FD·AC뿐) 거르지 않는다.
+     *
+     * <p>필터 후 후보가 모자라면 코스가 짧아지거나(조립 루프가 그날치를 덜 채운다) 아예 안
+     * 만들어진다. 그게 맞다 — 요청하지 않은 분류로 자리를 채우는 것은 취향의 문제가 아니라
+     * 틀린 결과이고, 짧은 코스는 사용자가 보고 조건을 넓힐 수 있다.
+     */
+    // 서비스 전체를 띄우지 않고 이 규칙만 검증할 수 있도록 패키지 공개로 둔다.
+    static List<Place> attractionPool(List<Place> places, Set<PlaceType> interests) {
+        Set<PlaceType> wanted = interests.stream()
+                .filter(type -> type != PlaceType.FD && type != PlaceType.AC)
+                .collect(Collectors.toUnmodifiableSet());
+        return places.stream()
+                .filter(p -> p.getPlaceType() != PlaceType.FD && p.getPlaceType() != PlaceType.AC)
+                .filter(p -> wanted.isEmpty() || wanted.contains(p.getPlaceType()))
+                .toList();
+    }
+
     private Map<Long, FestivalPeriod> festivalPeriods(List<Place> places) {
         List<Long> placeIds = places.stream().map(Place::getId).toList();
         if (placeIds.isEmpty()) {

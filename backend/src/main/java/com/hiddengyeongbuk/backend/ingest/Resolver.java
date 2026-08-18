@@ -35,11 +35,20 @@ public class Resolver {
         this.syncLogger = syncLogger;
     }
 
-    public record Result(int matched, int quarantined, int groups) {
+    /**
+     * showflag=0. null은 "모름"이라 대상이 아니다 — 이 컬럼이 생기기 전에 수집한 행이 그
+     * 상태이고, 그걸 미표출로 읽으면 확인도 안 한 장소를 지우게 된다.
+     */
+    private static boolean hiddenAtSource(StagingPlace staging) {
+        return Integer.valueOf(0).equals(staging.getShowFlag());
+    }
+
+    public record Result(int matched, int quarantined, int excluded, int groups) {
 
         /** quarantined는 실패가 아니라 정상 판정 결과라 내역에 넣는다 — failMessage가 아니다. */
         String breakdown() {
-            return "matched=%d, quarantined=%d, groups=%d".formatted(matched, quarantined, groups);
+            return "matched=%d, quarantined=%d, excluded=%d, groups=%d"
+                    .formatted(matched, quarantined, excluded, groups);
         }
     }
 
@@ -54,10 +63,22 @@ public class Resolver {
     public Result resolve() {
         List<StagingPlace> pending = stagingPlaceRepository.findByResolutionStatus(ResolutionStatus.PENDING);
         if (pending.isEmpty()) {
-            return new Result(0, 0, 0);
+            return new Result(0, 0, 0, 0);
         }
 
-        IdentityGrouper.Grouping grouping = grouper.group(pending);
+        // 소스가 내린 행은 판정 대상에서 뺀다. 여기서 빼면 MATCHED가 되지 않고, MATCHED가
+        // 아니면 StalePlaceSweeper가 그 place를 근거 없는 것으로 보고 지운다 — 별도 정리
+        // 로직이 필요 없는 이유다.
+        List<StagingPlace> excluded =
+                pending.stream().filter(Resolver::hiddenAtSource).toList();
+        excluded.forEach(staging -> {
+            staging.setResolutionStatus(ResolutionStatus.EXCLUDED);
+            staging.setQuarantineReason(null);
+        });
+        List<StagingPlace> resolvable =
+                pending.stream().filter(staging -> !hiddenAtSource(staging)).toList();
+
+        IdentityGrouper.Grouping grouping = grouper.group(resolvable);
 
         int matched = 0;
         for (List<StagingPlace> group : grouping.groups()) {
@@ -74,11 +95,13 @@ public class Resolver {
 
         stagingPlaceRepository.saveAll(pending);
 
-        Result result = new Result(matched, grouping.quarantined().size(), grouping.groups().size());
+        Result result =
+                new Result(matched, grouping.quarantined().size(), excluded.size(), grouping.groups().size());
         log.info(
-                "Resolve 완료: matched={}, quarantined={}, groups={}",
+                "Resolve 완료: matched={}, quarantined={}, excluded={}, groups={}",
                 result.matched(),
                 result.quarantined(),
+                result.excluded(),
                 result.groups());
         syncLogger.record(SyncPhase.RESOLVE, null, "PENDING 전체", pending.size(), result.breakdown(), null);
         return result;

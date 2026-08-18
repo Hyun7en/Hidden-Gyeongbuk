@@ -61,6 +61,9 @@ public class StagingWriter {
         staging.setLng(GeoUtils.parseCoordinate(item.mapx()));
         staging.setTel(item.tel());
         staging.setFirstImage(item.firstimage());
+        // unchanged 여부와 무관하게 매번 쓴다 — 소스가 장소를 내리는 것은 modifiedtime을 바꾸지
+        // 않을 수 있고, 이 값은 무료 로컬 갱신이라 아낄 이유도 없다.
+        staging.setShowFlag(parseInt(item.showflag()));
         staging.setLclsSystm1(item.lclsSystm1());
         staging.setLclsSystm2(item.lclsSystm2());
         staging.setLclsSystm3(item.lclsSystm3());

@@ -91,7 +91,7 @@ class SyncAdminControllerTest {
 
     @Test
     void 판정은_외부_호출_없이_재실행할_수_있다() throws Exception {
-        BDDMockito.given(resolver.resolve()).willReturn(new Resolver.Result(12, 3, 9));
+        BDDMockito.given(resolver.resolve()).willReturn(new Resolver.Result(12, 3, 0, 9));
 
         mockMvc.perform(post("/internal/sync/resolve"))
                 .andExpect(status().isOk())
@@ -104,7 +104,7 @@ class SyncAdminControllerTest {
 
     @Test
     void resetAll이면_전면_재판정한다() throws Exception {
-        BDDMockito.given(resolver.resolve()).willReturn(new Resolver.Result(20, 0, 20));
+        BDDMockito.given(resolver.resolve()).willReturn(new Resolver.Result(20, 0, 0, 20));
 
         mockMvc.perform(post("/internal/sync/resolve").param("resetAll", "true"))
                 .andExpect(status().isOk());

@@ -100,6 +100,20 @@ public class StagingPlace {
     @Column(name = "first_image", length = 500)
     private String firstImage;
 
+    /**
+     * TourAPI areaBasedSyncList2의 showflag. 1=표출, 0=미표출(소스가 내림), null=아직 안 받음.
+     *
+     * <p>동기화 목록이 일반 목록과 따로 있는 이유가 이 값이다 — 소스에서 내려간 항목도 표시를
+     * 달아 계속 내려보내야, 데이터를 복사해 둔 쪽이 "삭제됨"과 "이번 페이지에 없음"을 구별할 수
+     * 있다. 2026-08-18 실측으로 showflag=0인 항목은 일반 목록(areaBasedList2)에 하나도 없음을
+     * 확인했다(울릉 0/6, 영양 0/9).
+     *
+     * <p><b>null은 "미표출"이 아니라 "모름"이다.</b> 이 컬럼이 생기기 전에 수집한 행이 그 상태이며,
+     * null을 미표출로 읽으면 확인도 안 한 장소를 지우게 된다.
+     */
+    @Column(name = "show_flag")
+    private Integer showFlag;
+
     @Column(name = "lcls_systm1", length = 10)
     private String lclsSystm1;
 

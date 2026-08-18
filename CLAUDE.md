@@ -141,7 +141,7 @@ npm run build      # tsc -b + vite build
 
 ## 함정·제약 (실측으로 확인된 것)
 
-- **Flyway**: `ddl-auto: validate`. 엔티티를 바꾸면 새 V파일부터 작성. **이미 적용된 V파일 수정 금지**(체크섬 실패). 현재 `V1__init_schema.sql`(ERD v0.9 전체) + `V2__seed_hub_region.sql` 둘뿐이며, 다음 변경은 **V3부터**다. 구 V1~V11은 2026-08-12에 스쿼시로 대체됐다(ADR-023) — 배포 전 1회 한정 예외이므로 앞으로는 다시 증분으로 쌓는다.
+- **Flyway**: `ddl-auto: validate`. 엔티티를 바꾸면 새 V파일부터 작성. **이미 적용된 V파일 수정 금지**(체크섬 실패). 현재 `V1__init_schema.sql`(ERD v0.9 전체) · `V2__seed_hub_region.sql` · `V3__adopt_lcls_systm_place_type.sql` · `V4__seed_region_description.sql` · `V5__staging_show_flag.sql`이며, 다음 변경은 **V6부터**다. **다음 번호를 여기 적힌 값으로 믿지 말고 `ls`로 확인할 것** — 이 목록이 뒤처져 V3을 중복 생성한 적이 있다(2026-08-18). 구 V1~V11은 2026-08-12에 스쿼시로 대체됐다(ADR-023) — 배포 전 1회 한정 예외이므로 앞으로는 다시 증분으로 쌓는다.
 - **@MapsId 연관관계(FestivalDetail)**: ID를 직접 세팅하지 말 것 — 연관 엔티티만 세팅하면 자동으로 채워진다. 직접 세팅하면 merge가 update를 시도하다 낙관적 락 예외. (`place_translation`은 이 함정을 피하려 @MapsId 대신 place_id 스칼라 + surrogate PK를 쓴다.)
 - **delete 후 같은 트랜잭션에서 같은 유니크 키 재삽입**(구 태그 재부여에서 겪었고, place_image 재적재 등 자식 컬렉션 갱신에 그대로 적용): delete 직후 `flush()` 필수 — 안 하면 Hibernate가 insert를 먼저 내보내 유니크 위반.
 - **TourAPI**: serviceKey에 `+`가 있으면 UriComponentsBuilder 기본 인코딩이 그대로 통과시켜 401 — `URLEncoder`로 직접 인코딩(TourApiClient.get 참고). detailCommon2(v2)는 v1의 YN 플래그를 안 받는다. contentTypeId는 국문(12/14/15/28/32/38/39)과 영문(76/78/85/75/80/79/82)이 다르다. 여행코스(국문25)는 다중 스팟 루트라 place 모델과 안 맞아 영구 제외(ADR-003/009), 교통(영문77)은 대응 국문 타입이 없어 제외.

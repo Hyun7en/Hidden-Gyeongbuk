@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -110,8 +112,13 @@ public class StagingPlace {
      *
      * <p><b>null은 "미표출"이 아니라 "모름"이다.</b> 이 컬럼이 생기기 전에 수집한 행이 그 상태이며,
      * null을 미표출로 읽으면 확인도 안 한 장소를 지우게 된다.
+     *
+     * <p>담는 값이 0/1뿐이라 컬럼은 {@code TINYINT}인데, Hibernate는 {@code Integer}를 기본으로
+     * {@code INTEGER}에 대응시켜 {@code ddl-auto: validate}가 기동을 막는다. 필드 타입을
+     * {@code Byte}로 낮추면 호출부가 전부 어색해지므로 <b>매핑 쪽을 컬럼에 맞춘다.</b>
      */
     @Column(name = "show_flag")
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private Integer showFlag;
 
     @Column(name = "lcls_systm1", length = 10)

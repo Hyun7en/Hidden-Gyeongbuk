@@ -21,21 +21,35 @@ services:
 
   app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # 컨텍스트가 저장소 루트인 이유: 이미지에 React 번들도 함께 들어간다
+      # (아키텍처 §8 — 정적 번들은 백엔드가 서빙한다).
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        # VITE_* 는 런타임 환경변수가 아니라 빌드 시점에 번들로 구워진다.
+        # 배포 도메인을 카카오 디벨로퍼스 [플랫폼] > Web 에 등록해야 지도가 뜬다.
+        VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY:-}
     container_name: hidden-gyeongbuk-app
     restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
     environment:
+      # prod가 아니면 /internal/* 운영 엔드포인트가 인증 없이 열린다.
+      # spring.profiles.default가 local이라 "미지정 = 공개"다 — 반드시 넘긴다(API 명세서 §8).
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-hidden_gyeongbuk}
       DB_USERNAME: ${DB_USERNAME:-app}
       DB_PASSWORD: ${DB_PASSWORD:-app}
       SERVER_PORT: ${SERVER_PORT:-8080}
+      # 프론트를 같은 인스턴스가 서빙하므로 기본값은 same-origin이라 CORS가 필요 없다.
+      # 프론트를 별도 도메인에 올릴 때만 채운다.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
       TOURAPI_SERVICE_KEY: ${TOURAPI_SERVICE_KEY}
+      # 번역 백필이 이 키 없이는 동작하지 않는다.
+      TRANSLATE_API_KEY: ${TRANSLATE_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     ports:
       - "${SERVER_PORT:-8080}:8080"

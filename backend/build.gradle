@@ -48,6 +48,49 @@ tasks.register('integrationTest', Test) {
 	shouldRunAfter test
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// React 정적 번들을 실행 가능 jar 안에 넣는다(아키텍처 §8, ADR-002).
+//
+// bootJar에만 건다 — test·bootRun은 그대로다. 개발은 Vite dev 서버가 /api를 프록시하므로
+// (vite.config.ts) 번들이 필요 없고, 여기에 걸면 매 테스트마다 npm이 도는 셈이 된다.
+// 번들이 필요한 것은 "배포되는 산출물"뿐이다.
+//
+// Docker 빌드는 node 스테이지에서 이미 만든 dist를 넣어 주므로 -PskipFrontendBuild로
+// npm 단계만 건너뛰고 복사만 한다.
+// ─────────────────────────────────────────────────────────────────────────────
+def frontendDir = file("${rootDir}/../frontend")
+def frontendDist = file("${frontendDir}/dist")
+
+tasks.register('buildFrontend', Exec) {
+	description = 'React 번들을 빌드한다 (frontend/dist)'
+	workingDir = frontendDir
+	// npm ci는 package-lock.json을 정본으로 삼아 재현 가능한 설치를 한다.
+	commandLine 'sh', '-c', 'npm ci && npm run build'
+	onlyIf {
+		if (project.hasProperty('skipFrontendBuild')) {
+			logger.lifecycle('skipFrontendBuild — 이미 만들어진 frontend/dist를 그대로 쓴다')
+			return false
+		}
+		return true
+	}
+}
+
+// build/resources/main 에 복사하지 않고 jar에 직접 넣는다.
+// 그 디렉터리는 processResources의 출력이라, 거기에 끼어들면 test·bootRun까지 이 태스크에
+// 의존하게 되고(resolveMainClassName이 같은 경로를 읽는다) 테스트 한 번 돌릴 때마다 npm이 돈다.
+tasks.named('bootJar') {
+	dependsOn 'buildFrontend'
+	from(frontendDist) { into 'BOOT-INF/classes/static' }
+	// 번들이 없는데 조용히 빈 jar를 만들면 배포한 뒤에야 / 가 404인 것으로 드러난다. 여기서 끊는다.
+	doFirst {
+		if (!frontendDist.exists()) {
+			throw new GradleException(
+					"frontend/dist가 없다 — frontend/ 에서 npm run build 를 먼저 돌릴 것. " +
+					"이대로 만들면 정적 파일 없는 jar가 나오고, 배포 후에야 드러난다.")
+		}
+	}
+}
+
 tasks.withType(Test).configureEach {
 	testLogging {
 		events "passed", "skipped", "failed"

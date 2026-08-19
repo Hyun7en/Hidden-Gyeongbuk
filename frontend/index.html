@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      웹폰트는 CSS의 @import가 아니라 여기서 링크한다.
+
+      index.css에 두면 Tailwind가 `@import 'tailwindcss'`를 규칙으로 전개하면서 폰트 @import가
+      그 뒤로 밀리고, "@import는 모든 규칙보다 앞서야 한다"는 CSS 규칙에 걸려 번들러가 통째로
+      떨어낸다. 실제로 프로덕션 번들의 @import가 0건이었다 — 토큰(--font-serif-display)은 남아
+      있는데 폰트는 로드되지 않아 제목이 시스템 serif로 떨어졌다. dev 서버에서는 정상 동작해서
+      배포해야만 드러나는 종류의 고장이다.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Serif+KR:wght@400;600;700&display=swap"
+    />
     <title>Hidden Gyeongbuk</title>
   </head>
   <body>

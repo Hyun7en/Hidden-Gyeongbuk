@@ -16,7 +16,11 @@
  * 다크 대응은 세 갈래를 모두 정의한다: 기본(light) → prefers-color-scheme → data-theme.
  * 토글로 명시 선택한 값(data-theme)이 OS 설정을 이기도록 마지막에 둔다.
  */
-@import url('https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Serif+KR:wght@400;600;700&display=swap');
+/*
+ * Song Myung · Noto Serif KR은 index.html에서 <link>로 받는다.
+ * 여기 @import로 두면 Tailwind 전개 규칙 뒤로 밀려 번들러가 떨어낸다(index.html 주석 참고) —
+ * dev에서는 멀쩡하고 배포 번들에서만 사라지므로 이 자리로 되돌리지 말 것.
+ */
 
 /* OS에서 해석되는 시스템 폰트 — 웹폰트 파일을 싣지 않는다. */
 @font-face {

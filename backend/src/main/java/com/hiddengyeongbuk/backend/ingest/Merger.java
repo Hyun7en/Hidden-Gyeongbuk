@@ -49,22 +49,33 @@ public class Merger {
 
     /**
      * @param places 새로 만든 place 수. 이미 있던 그룹은 place를 재사용하므로 여기 세지 않는다
+     * @param staleTranslationsRemoved 살아남은 place에서 지운 근거 없는 공식 번역 행 수.
+     *     <b>place 수와 따로 센다</b> — 소스가 한 언어만 내린 경우 place는 남고 그 언어 행만
+     *     사라지는데, 합쳐 세면 "아무것도 안 지웠다"로 보인다(2026-08-19 실제로 81건이
+     *     지워졌는데 로그에는 stalePlacesRemoved=0만 찍혔다)
      * @param stalePlacesRemoved 근거를 잃어 지운 place 수. 재판정으로 그룹 구성이 바뀌면
      *     승자 아닌 place가 남는데, 그게 목록에 중복으로 뜨므로 정리한다(StalePlaceSweeper)
      */
     public record Result(
-            int places, int translations, int failed, int quarantined, int stalePlacesRemoved) {
+            int places,
+            int translations,
+            int failed,
+            int quarantined,
+            int stalePlacesRemoved,
+            int staleTranslationsRemoved) {
 
         String breakdown() {
-            return "places=%d, translations=%d, quarantined=%d, failed=%d, stalePlacesRemoved=%d"
-                    .formatted(places, translations, quarantined, failed, stalePlacesRemoved);
+            return "places=%d, translations=%d, quarantined=%d, failed=%d, "
+                            .formatted(places, translations, quarantined, failed)
+                    + "stalePlacesRemoved=%d, staleTranslationsRemoved=%d"
+                            .formatted(stalePlacesRemoved, staleTranslationsRemoved);
         }
     }
 
     public Result merge() {
         List<StagingPlace> matched = stagingPlaceRepository.findByResolutionStatus(ResolutionStatus.MATCHED);
         if (matched.isEmpty()) {
-            return new Result(0, 0, 0, 0, 0);
+            return new Result(0, 0, 0, 0, 0, 0);
         }
 
         // Resolver와 같은 결정적 판정을 다시 돌려 그룹을 복원한다 — 판정 결과를 담을 컬럼이
@@ -92,10 +103,13 @@ public class Merger {
         // 병합이 끝난 뒤에 쓸어낸다 — 승자 place가 확정되기 전에 지우면 살아 있어야 할 것을 지운다.
         StalePlaceSweeper.Result swept = stalePlaceSweeper.sweep();
 
-        Result result = new Result(places, translations, failed, quarantined, swept.deletedPlaces());
+        Result result = new Result(
+                places, translations, failed, quarantined, swept.deletedPlaces(), swept.deletedTranslations());
         log.info(
-                "Merge 완료: places={}, translations={}, failed={}, quarantined={}, stalePlacesRemoved={}",
-                places, translations, failed, quarantined, swept.deletedPlaces());
+                "Merge 완료: places={}, translations={}, failed={}, quarantined={}, "
+                        + "stalePlacesRemoved={}, staleTranslationsRemoved={}",
+                places, translations, failed, quarantined,
+                swept.deletedPlaces(), swept.deletedTranslations());
         // quarantined는 실패가 아니라 정상 판정 결과다(lclsSystm1 결측 보류, ADR-024 결과 ⑦).
         // 그래서 내역에만 넣고 failMessage로는 올리지 않는다 — 올리면 정상 실행이 PARTIAL로 기록된다.
         syncLogger.record(

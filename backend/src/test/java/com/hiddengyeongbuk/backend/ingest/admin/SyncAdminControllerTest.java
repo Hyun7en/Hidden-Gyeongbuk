@@ -114,11 +114,15 @@ class SyncAdminControllerTest {
 
     @Test
     void 병합_결과를_반환한다() throws Exception {
-        BDDMockito.given(merger.merge()).willReturn(new Merger.Result(9, 15, 0, 0, 0));
+        BDDMockito.given(merger.merge()).willReturn(new Merger.Result(9, 15, 0, 0, 2, 81));
 
         mockMvc.perform(post("/internal/sync/merge"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places").value(9))
-                .andExpect(jsonPath("$.translations").value(15));
+                .andExpect(jsonPath("$.translations").value(15))
+                .andExpect(jsonPath("$.stalePlacesRemoved").value(2))
+                // 언어 하나만 근거를 잃은 경우 place는 안 지워진다 — 이 값을 따로 안 내보내면
+                // 운영자에게는 "아무것도 안 지웠다"로 보인다(2026-08-19에 실제로 그랬다).
+                .andExpect(jsonPath("$.staleTranslationsRemoved").value(81));
     }
 }

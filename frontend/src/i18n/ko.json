@@ -37,7 +37,9 @@
     "endReached": "모든 장소를 봤어요",
     "inRegion": "{{region}}의 장소",
     "clearRegion": "전체 지역 보기",
-    "placeType": "장소 타입"
+    "placeType": "장소 타입",
+    "loadMore": "더 보기",
+    "shownCount": "{{total}}곳 중 {{shown}}곳"
   },
   "placeDetail": {
     "error": "이 장소를 불러오지 못했습니다 — 백엔드가 실행 중인가요? ({{error}})",

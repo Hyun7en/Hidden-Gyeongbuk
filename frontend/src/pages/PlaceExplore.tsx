@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { searchPlaces } from '../api/client'
@@ -90,18 +90,6 @@ function PlaceExplore() {
       .finally(() => setLoadingMore(false))
   }, [hasMore, loadingMore, page, regionId, activeType, keyword, lang])
 
-  // 하단 감지 요소가 보이면 다음 페이지를 붙인다.
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = sentinelRef.current
-    if (!el) return
-    const io = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) loadMore()
-    })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [loadMore])
-
   function clearRegion() {
     const next = new URLSearchParams(searchParams)
     next.delete('regionId')
@@ -135,7 +123,12 @@ function PlaceExplore() {
       )}
 
       <div className="mt-4 flex flex-col items-start gap-5 md:flex-row md:gap-8">
-        <aside className="w-full flex-none md:w-[220px]">
+        {/*
+          데스크톱에서 스크롤을 따라온다. 목록이 길어지면 필터가 위로 사라져 분류를 바꾸려면
+          맨 위까지 올라가야 했다. 부모가 items-start라 aside가 늘어나지 않아 sticky가 먹는다.
+          모바일은 필터가 목록 위에 가로로 놓여 있어 붙이면 화면만 잡아먹으므로 md부터만 건다.
+        */}
+        <aside className="w-full flex-none md:sticky md:top-4 md:w-[220px]">
           <p className="mb-2.5 text-[13px] font-semibold">{t('placeExplore.placeType')}</p>
           <div className="flex flex-wrap items-start gap-2 md:flex-col">
             <Tag active={activeType === null} onClick={() => setActiveType(null)}>
@@ -180,10 +173,29 @@ function PlaceExplore() {
                 {/* 다음 페이지를 기다리는 동안 그리드 안에 자리를 채운다 — 목록이 튀지 않는다 */}
                 {loadingMore ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={`more-${i}`} />) : null}
               </div>
-              <div ref={sentinelRef} className="h-px" />
-              {!hasMore && !loadingMore ? (
+              {/*
+                자동 로드가 아니라 버튼이다. 무한 스크롤이면 1,305건 기준 66페이지를 훑어야
+                푸터에 닿는데, 거기에 이용약관·개인정보처리방침 링크가 있어 사실상 도달
+                불가였다. 버튼이면 목록이 이어지는 느낌은 유지하면서 푸터가 항상 바로 아래다.
+              */}
+              {hasMore ? (
+                <div className="mt-8 flex flex-col items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="border border-line px-5 py-2 text-sm text-text transition-colors hover:border-accent-hover hover:text-accent-text disabled:opacity-50"
+                  >
+                    {loadingMore ? t('common.loading') : t('placeExplore.loadMore')}
+                  </button>
+                  {/* 남은 규모를 숫자로 보여준다 — 페이지네이션을 안 쓰면서 잃는 유일한 정보다 */}
+                  <p className="text-xs text-text-soft">
+                    {t('placeExplore.shownCount', { shown: places.length, total })}
+                  </p>
+                </div>
+              ) : (
                 <p className="mt-8 text-center text-xs text-text-soft">{t('placeExplore.endReached')}</p>
-              ) : null}
+              )}
             </>
           )}
         </div>

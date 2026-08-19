@@ -37,7 +37,9 @@
     "endReached": "You've seen all places",
     "inRegion": "Places in {{region}}",
     "clearRegion": "All regions",
-    "placeType": "Place type"
+    "placeType": "Place type",
+    "loadMore": "Show more",
+    "shownCount": "{{shown}} of {{total}} places"
   },
   "placeDetail": {
     "error": "Couldn't load this place — is the backend running? ({{error}})",

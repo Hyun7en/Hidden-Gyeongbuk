@@ -12,7 +12,14 @@
     "shareInstagramHint": "링크가 복사되었어요 — 인스타그램에 붙여넣어 공유하세요.",
     "mapNoLocation": "이 장소는 아직 위치 정보가 없어요.",
     "mapLoadFailed": "지도를 불러오지 못했어요.",
-    "loading": "불러오는 중…"
+    "loading": "불러오는 중…",
+    "a11yPrev": "이전",
+    "a11yNext": "다음",
+    "a11yClear": "지우기",
+    "a11yPrevPhoto": "이전 사진",
+    "a11yNextPhoto": "다음 사진",
+    "a11yToDark": "다크 모드로 전환",
+    "a11yToLight": "라이트 모드로 전환"
   },
   "home": {
     "heroCopy": "Unhurried. Unspoiled. Gyeongbuk.",
@@ -86,22 +93,6 @@
     "lodging": "숙소: {{title}}"
   },
   "options": {
-    "difficulty": {
-      "EASY": "여유롭게",
-      "NORMAL": "보통",
-      "LOCAL": "로컬 체험"
-    },
-    "interest": {
-      "NA": "자연관광",
-      "HS": "역사관광",
-      "VE": "문화관광",
-      "EX": "체험관광",
-      "LS": "레저스포츠",
-      "FD": "음식",
-      "SH": "쇼핑",
-      "EV": "축제·공연·행사",
-      "AC": "숙박"
-    },
     "difficultyDesc": {
       "EASY": "주요 명소 위주, 도보 이동 짧음",
       "NORMAL": "차량 이동 포함, 적당한 도보",

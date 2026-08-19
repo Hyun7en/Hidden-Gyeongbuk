@@ -12,7 +12,14 @@
     "shareInstagramHint": "Link copied — paste it into Instagram.",
     "mapNoLocation": "No location data for this map yet.",
     "mapLoadFailed": "Couldn't load the map.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "a11yPrev": "Previous",
+    "a11yNext": "Next",
+    "a11yClear": "Clear",
+    "a11yPrevPhoto": "Previous photo",
+    "a11yNextPhoto": "Next photo",
+    "a11yToDark": "Switch to dark mode",
+    "a11yToLight": "Switch to light mode"
   },
   "home": {
     "heroCopy": "Unhurried. Unspoiled. Gyeongbuk.",
@@ -86,22 +93,6 @@
     "lodging": "Lodging: {{title}}"
   },
   "options": {
-    "difficulty": {
-      "EASY": "Easy",
-      "NORMAL": "Normal",
-      "LOCAL": "Local experience"
-    },
-    "interest": {
-      "NA": "Nature",
-      "HS": "History",
-      "VE": "Culture",
-      "EX": "Experiences",
-      "LS": "Leisure & Sports",
-      "FD": "Food",
-      "SH": "Shopping",
-      "EV": "Festivals & Events",
-      "AC": "Stays"
-    },
     "difficultyDesc": {
       "EASY": "Main sights, short walks",
       "NORMAL": "Some driving, moderate walking",

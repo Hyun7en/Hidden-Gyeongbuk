@@ -8,7 +8,8 @@ import { useHubs } from '../hooks/useHubs'
 import { useRegions } from '../hooks/useRegions'
 import { useLanguage } from '../context/LanguageContext'
 import { parseIsoDate, tripLengthLabel } from '../lib/tripDates'
-import { DIFFICULTY_OPTIONS, INTEREST_OPTIONS, type Difficulty, type Interest } from '../types/course'
+import { DIFFICULTY_DESC_KEY, type Difficulty, type Interest } from '../types/course'
+import { useMetaOptions } from '../hooks/useMetaOptions'
 
 /**
  * 거점까지 어떻게 가는지. 프로토타입에는 없지만 <b>지우지 않는다</b> — 서울·부산에서 출발하는
@@ -52,6 +53,8 @@ function RecommendInput() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { hubs, loading: hubsLoading, error: hubsError } = useHubs()
+  // 관심사·난이도 선택지는 백엔드가 요청 언어로 해석해 내려준다(API 명세서 §2.3).
+  const { meta } = useMetaOptions()
   const { lang } = useLanguage()
 
   const [hubId, setHubId] = useState<number | null>(() => {
@@ -159,9 +162,13 @@ function RecommendInput() {
 
         <Field label={t('recommendInput.interests')} hint={t('recommendInput.minOne')}>
           <div className="flex flex-wrap gap-2">
-            {INTEREST_OPTIONS.map((opt) => (
-              <Tag key={opt.value} active={interests.includes(opt.value)} onClick={() => toggleInterest(opt.value)}>
-                {t(opt.labelKey)}
+            {(meta?.interests ?? []).map((opt) => (
+              <Tag
+                key={opt.code}
+                active={interests.includes(opt.code as Interest)}
+                onClick={() => toggleInterest(opt.code as Interest)}
+              >
+                {opt.label}
               </Tag>
             ))}
           </div>
@@ -201,12 +208,15 @@ function RecommendInput() {
 
         <Field label={t('recommendInput.pace')} hint={t('recommendInput.singleSelect')}>
           <div className="flex flex-col gap-2">
-            {DIFFICULTY_OPTIONS.map((opt) => (
-              <div key={opt.value} className="flex items-center gap-3">
-                <Tag active={difficulty === opt.value} onClick={() => setDifficulty(opt.value)}>
-                  {t(opt.labelKey)}
+            {(meta?.difficulties ?? []).map((opt) => (
+              <div key={opt.code} className="flex items-center gap-3">
+                <Tag active={difficulty === opt.code} onClick={() => setDifficulty(opt.code as Difficulty)}>
+                  {opt.label}
                 </Tag>
-                <span className="text-xs text-text-soft">{t(opt.descKey)}</span>
+                {/* 설명은 enum 라벨이 아니라 UI 카피라 i18n에 남는다(types/course.ts 주석). */}
+                {DIFFICULTY_DESC_KEY[opt.code] ? (
+                  <span className="text-xs text-text-soft">{t(DIFFICULTY_DESC_KEY[opt.code])}</span>
+                ) : null}
               </div>
             ))}
           </div>

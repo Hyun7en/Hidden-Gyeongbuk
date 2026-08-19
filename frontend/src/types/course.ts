@@ -2,27 +2,25 @@
 // lib/tripDates.ts에 있다.
 // 관심사 어휘는 장소 분류와 같다(ADR-024). 단일 출처는 API 계층의 PlaceType이다.
 export type { Interest } from '../api/types'
-import type { Interest } from '../api/types'
 export type Difficulty = 'EASY' | 'NORMAL' | 'LOCAL'
 
-// 관광공사 대분류 9종 중 음식(FD)을 뺀 8종이다 — 음식점은 수집·노출 대상에서 제외했다
-// (ADR-025). 칩이 여럿이라 줄바꿈을 전제한 레이아웃이어야 한다(화면 설계서 S3).
-// 라벨은 meta/options로 옮기는 중이라 이 표는 과도기다 — 백엔드도 PlaceType.served()를 쓴다.
-export const INTEREST_OPTIONS: { value: Interest; labelKey: string }[] = [
-  { value: 'NA', labelKey: 'options.interest.NA' },
-  { value: 'HS', labelKey: 'options.interest.HS' },
-  { value: 'VE', labelKey: 'options.interest.VE' },
-  { value: 'EX', labelKey: 'options.interest.EX' },
-  { value: 'LS', labelKey: 'options.interest.LS' },
-  { value: 'SH', labelKey: 'options.interest.SH' },
-  { value: 'EV', labelKey: 'options.interest.EV' },
-  { value: 'AC', labelKey: 'options.interest.AC' },
-]
+// INTEREST_OPTIONS·DIFFICULTY_OPTIONS는 폐기됐다.
+//
+// 선택지 목록과 라벨은 `GET /api/meta/options`가 요청 언어로 해석해 내려준다(API 명세서 §2.3).
+// 여기에 목록을 박아 두면 백엔드와 어긋난다 — 실제로 어긋났다. 백엔드는 ADR-025로 음식(FD)을
+// 뺐는데 이 표와 i18n 사전에는 남아 있었다. useMetaOptions()를 쓸 것.
 
-// 난이도는 라벨만으로 뜻이 안 통한다("로컬"이 무슨 뜻인지 알 수 없다) — 프로토타입처럼
-// 한 줄 설명을 옆에 붙인다.
-export const DIFFICULTY_OPTIONS: { value: Difficulty; labelKey: string; descKey: string }[] = [
-  { value: 'EASY', labelKey: 'options.difficulty.EASY', descKey: 'options.difficultyDesc.EASY' },
-  { value: 'NORMAL', labelKey: 'options.difficulty.NORMAL', descKey: 'options.difficultyDesc.NORMAL' },
-  { value: 'LOCAL', labelKey: 'options.difficulty.LOCAL', descKey: 'options.difficultyDesc.LOCAL' },
-]
+/**
+ * 난이도 한 줄 설명의 i18n 키.
+ *
+ * <p><b>이건 사전이 아니라 UI 카피다.</b> meta/options가 주는 것은 `{code, label}`뿐이고,
+ * "쉬움"이라는 라벨만으로는 뜻이 안 통해서("로컬경험"이 무슨 뜻인지 알 수 없다) 프로토타입이
+ * 옆에 붙여 둔 설명 문구다. enum의 표시명이 아니므로 백엔드가 소유할 이유가 없다.
+ *
+ * <p>키가 없는 코드가 오면 설명 없이 라벨만 나온다 — 난이도가 늘어도 화면이 깨지지 않는다.
+ */
+export const DIFFICULTY_DESC_KEY: Record<string, string> = {
+  EASY: 'options.difficultyDesc.EASY',
+  NORMAL: 'options.difficultyDesc.NORMAL',
+  LOCAL: 'options.difficultyDesc.LOCAL',
+}

@@ -9,6 +9,7 @@ import Container from '../components/Container'
 import Card from '../components/Card'
 import KakaoMap from '../components/KakaoMap'
 import ShareButton from '../components/ShareButton'
+import { useMetaOptions } from '../hooks/useMetaOptions'
 
 /**
  * S6 장소 상세.
@@ -23,6 +24,8 @@ function PlaceDetail() {
   const { t } = useTranslation()
   const { lang } = useLanguage()
   const { placeId } = useParams()
+  // 분류 배지 라벨은 백엔드가 요청 언어로 해석해 준다(API 명세서 §2.3).
+  const { labels } = useMetaOptions()
   const [place, setPlace] = useState<PlaceDetailResponse | null>(null)
   const [nearby, setNearby] = useState<PlaceNearbyResponse[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -135,7 +138,7 @@ function PlaceDetail() {
               <>
                 <button
                   type="button"
-                  aria-label="이전 사진"
+                  aria-label={t('common.a11yPrevPhoto')}
                   onClick={() => setPhoto((i) => (i - 1 + photos.length) % photos.length)}
                   className="absolute left-4 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--glass-bg-strong)] text-base text-text backdrop-blur-[6px] md:flex"
                 >
@@ -143,7 +146,7 @@ function PlaceDetail() {
                 </button>
                 <button
                   type="button"
-                  aria-label="다음 사진"
+                  aria-label={t('common.a11yNextPhoto')}
                   onClick={() => setPhoto((i) => (i + 1) % photos.length)}
                   className="absolute right-4 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--glass-bg-strong)] text-base text-text backdrop-blur-[6px] md:flex"
                 >
@@ -162,7 +165,7 @@ function PlaceDetail() {
 
           {/* 분류 배지는 하나다 — 장소당 place_type이 정확히 하나이고 별도 태그 축은 없다(ADR-024) */}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            <span className="hg-tag hg-tag-desktop hg-tag-unselected">{t(`options.interest.${place.placeType}`)}</span>
+            <span className="hg-tag hg-tag-desktop hg-tag-unselected">{labels.placeType(place.placeType)}</span>
             {place.festival && (
               <span className="text-xs text-text-soft">
                 {t('placeDetail.festival')} · {place.festival.startDate} ~ {place.festival.endDate}

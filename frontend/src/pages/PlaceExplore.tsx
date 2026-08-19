@@ -10,10 +10,8 @@ import Card from '../components/Card'
 import CardSkeleton from '../components/CardSkeleton'
 import Tag from '../components/Tag'
 import SearchInput from '../components/SearchInput'
-import { INTEREST_OPTIONS, type Interest } from '../types/course'
-
-/** 분류 코드 → 표시 라벨. meta/options로 옮기는 중이라 현재는 i18n 사전을 쓴다. */
-const labelKey = (code: string) => `options.interest.${code}`
+import { type Interest } from '../types/course'
+import { useMetaOptions } from '../hooks/useMetaOptions'
 
 const PAGE_SIZE = 20
 
@@ -34,6 +32,8 @@ function PlaceExplore() {
   const regionParam = searchParams.get('regionId')
   const regionId = regionParam ? Number(regionParam) : undefined
   const { regions } = useRegions()
+  // 필터 칩 목록과 카드 배지 라벨의 단일 출처(API 명세서 §2.3).
+  const { meta, labels } = useMetaOptions()
 
   const [activeType, setActiveType] = useState<Interest | null>(null)
   const [keyword, setKeyword] = useState('')
@@ -141,9 +141,13 @@ function PlaceExplore() {
             <Tag active={activeType === null} onClick={() => setActiveType(null)}>
               {t('placeExplore.all')}
             </Tag>
-            {INTEREST_OPTIONS.map((opt) => (
-              <Tag key={opt.value} active={activeType === opt.value} onClick={() => setActiveType(opt.value)}>
-                {t(opt.labelKey)}
+            {(meta?.placeTypes ?? []).map((opt) => (
+              <Tag
+                key={opt.code}
+                active={activeType === opt.code}
+                onClick={() => setActiveType(opt.code as Interest)}
+              >
+                {opt.label}
               </Tag>
             ))}
           </div>
@@ -169,7 +173,7 @@ function PlaceExplore() {
                     to={`/places/${place.placeId}`}
                     title={place.title ?? ''}
                     subtitle={place.addr}
-                    badge={t(labelKey(place.placeType))}
+                    badge={labels.placeType(place.placeType)}
                     imageUrl={place.firstImage}
                   />
                 ))}

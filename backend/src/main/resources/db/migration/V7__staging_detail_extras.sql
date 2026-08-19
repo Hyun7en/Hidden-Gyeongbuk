@@ -15,7 +15,10 @@ ALTER TABLE staging_place
     -- 자식 테이블로 정규화하지 않는 이유: staging은 "원본 그대로"를 담는 계층이고 아무도
     -- 조인해 읽지 않는다. 정규화 결과는 place_image가 이미 갖고 있으므로 같은 구조를 두 번
     -- 만들 이유가 없다. 구분자가 줄바꿈인 것은 URL에 절대 나타나지 않는 문자라서다.
-    ADD COLUMN detail_images TEXT NULL COMMENT 'detailImage2 원본 URL 목록(줄바꿈 구분)' AFTER first_image,
+    -- LONGTEXT인 이유: 이 스키마에서 @Lob + ddl-auto:validate 조합이 통과한 전례가
+    -- overview(LONGTEXT)뿐이다. TEXT로 두면 검증에 걸릴 때 기동 자체가 막히는데,
+    -- URL 목록에 LONGTEXT는 과분할 뿐 해가 없으므로 확실한 쪽을 택한다.
+    ADD COLUMN detail_images LONGTEXT NULL COMMENT 'detailImage2 원본 URL 목록(줄바꿈 구분)' AFTER first_image,
 
     -- 이미지를 "물어봤다"는 표시. 받은 개수와 무관하게 응답이 오면 찍는다.
     --

@@ -113,7 +113,7 @@ public class StagingPlace {
      * 정규화는 Merge가 {@code place_image}로 한다 — staging은 해석하지 않는 계층이다.
      */
     @Lob
-    @Column(name = "detail_images", columnDefinition = "TEXT")
+    @Column(name = "detail_images", columnDefinition = "LONGTEXT")
     private String detailImages;
 
     /**

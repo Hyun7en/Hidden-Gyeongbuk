@@ -54,10 +54,41 @@ public class RegionQueryService {
         Map<Long, RegionTranslation> base =
                 LanguageRegistry.BASE.equals(lang) ? requested : byRegionId(LanguageRegistry.BASE);
 
-        return regionRepository.findByActiveTrue().stream()
+        List<Region> regions = regionRepository.findByActiveTrue();
+        Map<Long, String> images = representativeImages(regions);
+
+        return regions.stream()
                 .sorted(hubPriority(hubId))
-                .map(region -> toResponse(region, requested.get(region.getId()), base.get(region.getId())))
+                .map(region -> toResponse(
+                        region,
+                        requested.get(region.getId()),
+                        base.get(region.getId()),
+                        images.get(region.getId())))
                 .toList();
+    }
+
+    /**
+     * 지역별 대표 이미지 — 그 지역 장소의 이미지를 하나 빌려온다(API 명세서 §2.2가 "정적 에셋
+     * 또는 대표 장소 이미지"를 모두 허용한다). 상세 조회(§2.5)가 이미 같은 방식을 쓰고 있었는데
+     * 목록만 {@code null}로 남아 있어, <b>홈의 지역 카드 15장이 전부 빈 이미지</b>였다.
+     *
+     * <p><b>지역마다 따로 조회하지 않는다</b> — 15번 쿼리가 나가는 N+1이다. 한 번에 읽어
+     * 지역별로 접는다.
+     *
+     * <p>고르는 기준은 <b>PK가 가장 작은 장소</b>다. 임의로 보이지만 요점은 결정적이라는 것이다 —
+     * 이 응답이 캐시되므로 호출마다 다른 사진이 나오면 화면이 이유 없이 깜빡인다. "대표성"을
+     * 판정할 근거 데이터가 없는 상태에서 안정성을 택했다.
+     */
+    private Map<Long, String> representativeImages(List<Region> regions) {
+        List<Long> regionIds = regions.stream().map(Region::getId).toList();
+        if (regionIds.isEmpty()) {
+            return Map.of();
+        }
+        return placeRepository.findByRegionIdIn(regionIds).stream()
+                .filter(p -> p.getFirstImage() != null && !p.getFirstImage().isBlank())
+                .sorted(Comparator.comparing(Place::getId))
+                .collect(Collectors.toMap(
+                        p -> p.getRegion().getId(), Place::getFirstImage, (first, later) -> first));
     }
 
     /**
@@ -115,7 +146,7 @@ public class RegionQueryService {
     }
 
     private static RegionResponse toResponse(
-            Region region, RegionTranslation requested, RegionTranslation base) {
+            Region region, RegionTranslation requested, RegionTranslation base, String firstImage) {
         RegionTranslation chosen = requested != null ? requested : base;
         return new RegionResponse(
                 region.getId(),
@@ -123,9 +154,7 @@ public class RegionQueryService {
                 region.getHub().getId(),
                 region.getLat(),
                 region.getLng(),
-                // 지역 대표 이미지는 아직 소스가 없다 — 정적 에셋 또는 대표 장소 이미지를
-                // 붙이는 것이 후속 과제다(API 명세서 §2.2).
-                null,
+                firstImage,
                 chosen != null ? chosen.getLang() : null);
     }
 }

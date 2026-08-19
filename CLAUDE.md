@@ -57,6 +57,7 @@ npm run build      # tsc -b + vite build
 ```
 
 - 루트 `.env`는 `backend/build.gradle`이 bootRun/test/integrationTest에 자동 주입한다(셸 export 값이 우선). 수동 source 불필요.
+- **단 `java -jar`에는 안 들어간다.** 주입은 Gradle의 `JavaExec`·`Test` 태스크에만 걸려 있어서, jar를 직접 띄우면 환경변수가 하나도 없이 뜨고 `application.yml` 기본값(`root` / 빈 비밀번호)으로 DB에 붙다가 Flyway 단계에서 죽는다(2026-08-19 실측: `Access denied for user 'root'@... (using password: NO)`). 배포 검증할 때는 직접 넣을 것 — `set -a; source ../.env; set +a` 후 실행. 운영 서버도 마찬가지라 docker-compose가 환경변수를 하나씩 명시한다.
 - **DB·외부 API가 필요한 실행(integrationTest, bootRun, 수집/백필 트리거)은 직접 실행하지 말고 명령어를 사용자에게 제시할 것.** TourAPI는 개발계정 일 1,000건 한도라 호출 낭비가 실제 비용이다.
 - 커밋 메시지는 Conventional Commits 형식.
 

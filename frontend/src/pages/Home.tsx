@@ -57,7 +57,7 @@ function Home() {
           <div className="flex items-center gap-3 md:gap-4">
             <button
               type="button"
-              aria-label="이전"
+              aria-label={t('common.a11yPrev')}
               onClick={() => scrollBy(-1)}
               className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--glass-bg-strong)] text-[17px] text-text backdrop-blur-[10px] transition-colors hover:bg-[var(--glass-bg)] md:flex"
             >
@@ -85,7 +85,7 @@ function Home() {
 
             <button
               type="button"
-              aria-label="다음"
+              aria-label={t('common.a11yNext')}
               onClick={() => scrollBy(1)}
               className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--glass-bg-strong)] text-[17px] text-text backdrop-blur-[10px] transition-colors hover:bg-[var(--glass-bg)] md:flex"
             >

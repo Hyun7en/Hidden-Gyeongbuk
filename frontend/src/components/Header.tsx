@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Logo from './Logo'
 import { useLanguage, type Lang } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
@@ -16,6 +17,7 @@ const LANGUAGES: { code: Lang; label: string }[] = [
  * 그래서 브라우저 뒤로가기가 <b>유일한 복귀 경로</b>이며, 라우팅을 건드릴 때마다 확인해야 한다.
  */
 function Header() {
+  const { t } = useTranslation()
   const { lang, setLang } = useLanguage()
   const { theme, toggle } = useTheme()
 
@@ -41,7 +43,7 @@ function Header() {
           <button
             type="button"
             className="hg-theme-toggle"
-            aria-label={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            aria-label={theme === 'dark' ? t('common.a11yToLight') : t('common.a11yToDark')}
             aria-pressed={theme === 'dark'}
             onClick={toggle}
           >

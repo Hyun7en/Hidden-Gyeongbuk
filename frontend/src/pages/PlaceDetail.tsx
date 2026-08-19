@@ -83,7 +83,18 @@ function PlaceDetail() {
     )
   }
 
-  const photos = place.images.length > 0 ? place.images : place.firstImage ? [place.firstImage] : []
+  /*
+   * 대표 사진을 앞세우고 추가 사진을 뒤에 붙인다(중복 제거).
+   *
+   * 예전엔 `images`가 있으면 `firstImage`를 통째로 무시했다. 그런데 목록·카드에 걸리는 것은
+   * `firstImage`이고 갤러리는 detailImage2가 준 `images`라, **두 목록이 다르면 카드에서 본
+   * 사진이 상세에 아예 없다.** detailImage2가 대표 사진을 포함해 주는지는 확인하지 않았으므로
+   * (외부 API 연동 설계서 §9.5) 어느 쪽이든 어긋나지 않게 합쳐 둔다.
+   *
+   * 중복 제거는 URL 문자열 기준이다. 같은 사진이 다른 경로로 오면 못 거르지만, 그건 두 장이
+   * 나란히 보이는 정도라 대표 사진이 사라지는 것보다 훨씬 가볍다.
+   */
+  const photos = [...new Set([place.firstImage, ...place.images].filter((url): url is string => !!url))]
   const hasPhoto = photos.length > 0
   const showArrows = photos.length > 1
 

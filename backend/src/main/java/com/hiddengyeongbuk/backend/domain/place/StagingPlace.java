@@ -96,7 +96,12 @@ public class StagingPlace {
     @Column(precision = 10, scale = 7)
     private BigDecimal lng;
 
-    @Column(length = 50)
+    /**
+     * 원본 그대로. <b>전화번호가 아닌 값이 오기도 한다</b> — 영문 축제는 이 칸에
+     * "• 1330 Travel Hotline: …<br>(Korean, English, …)" 같은 안내문을 넣는다(실측 111~113자).
+     * 그래서 폭을 전화번호 길이로 잡을 수 없다(V6에서 50 → 255).
+     */
+    @Column(length = 255)
     private String tel;
 
     @Column(name = "first_image", length = 500)

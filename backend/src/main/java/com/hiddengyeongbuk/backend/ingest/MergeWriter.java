@@ -50,6 +50,27 @@ public class MergeWriter {
      *
      * @param group 첫 원소가 대표(앵커). 기준 언어가 있으면 그것이 앵커다
      */
+    /**
+     * 화면에 낼 수 있는 형태로 정리한 연락처. <b>소스가 이 칸에 전화번호만 넣지 않는다</b> —
+     * 영문 축제는 "• 1330 Travel Hotline: +82-2-1330&lt;br&gt;(Korean, English, Japanese,
+     * Chinese)" 같은 안내문을 넣는다(2026-08-19 실측 8건, 111~113자).
+     *
+     * <p>원문은 {@code staging_place.tel}에 그대로 남는다(ADR-016 — 수집과 해석의 분리).
+     * 여기서는 <b>태그만 걷어내고 공백을 정리</b>하며, 전화번호를 골라내려 들지는 않는다 —
+     * 무엇이 번호이고 무엇이 설명인지 판정하는 규칙을 우리가 소유하면 근거도 우리가 대야 한다.
+     * 잘라내면 정보를 잃으므로 자르지도 않는다(컬럼이 255자로 충분하다).
+     */
+    static String displayableTel(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String cleaned = raw.replaceAll("(?i)<br\\s*/?>", " ")
+                .replaceAll("<[^>]*>", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return cleaned.isEmpty() ? null : cleaned;
+    }
+
     @Transactional
     public Written write(List<StagingPlace> group) {
         StagingPlace anchor = group.get(0);
@@ -113,7 +134,7 @@ public class MergeWriter {
         place.setPlaceType(placeType);
         place.setLat(first(group, StagingPlace::getLat));
         place.setLng(first(group, StagingPlace::getLng));
-        place.setTel(first(group, StagingPlace::getTel));
+        place.setTel(displayableTel(first(group, StagingPlace::getTel)));
         place.setFirstImage(first(group, StagingPlace::getFirstImage));
         // lcls_systm2/3은 place에 두지 않는다 — 원본이 staging에 남아 있고, 세분 필터가
         // 필요해지면 컬럼을 추가하고 Merge를 재실행하면 된다(ADR-024).

@@ -77,7 +77,11 @@ public class Place {
     @Column(precision = 10, scale = 7)
     private BigDecimal lng;
 
-    @Column(length = 50)
+    /**
+     * 화면에 그대로 표시되는 값이라 Merge에서 HTML 태그를 걷어내고 공백을 정리한 뒤 넣는다.
+     * 원문은 {@code staging_place.tel}에 보존된다(V6에서 폭 50 → 255).
+     */
+    @Column(length = 255)
     private String tel;
 
     @Column(name = "first_image", length = 500)

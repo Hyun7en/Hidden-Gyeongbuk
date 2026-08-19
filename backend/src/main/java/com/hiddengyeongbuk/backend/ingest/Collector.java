@@ -5,7 +5,10 @@ import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import com.hiddengyeongbuk.backend.domain.sync.SyncPhase;
 import com.hiddengyeongbuk.backend.ingest.client.TourApiClient;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.DetailImageItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.DetailIntroItem;
 import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import java.util.List;
 import java.util.Optional;
@@ -58,7 +61,17 @@ public class Collector {
      *     이 값이 오르기 시작하면 그날 예산이 끝났다는 뜻이고, 해당 건은 워터마크가 지워져
      *     다음 수집에서 자동 재시도된다.
      */
-    public record Result(String lang, int upserted, int unchanged, int skipped, int failed, int detailFailed) {
+    public record Result(
+            String lang,
+            int upserted,
+            int unchanged,
+            int skipped,
+            int failed,
+            int detailFailed,
+            int images,
+            int imageFailed,
+            int events,
+            int eventFailed) {
         int total() {
             return upserted + unchanged + skipped + failed;
         }
@@ -69,8 +82,10 @@ public class Collector {
          * 행을 늘리지 않으므로 이 셋을 갈라 놔야 산수가 맞는다.
          */
         String breakdown() {
-            return "upserted=%d, unchanged=%d, skipped=%d, failed=%d, detailFailed=%d"
-                    .formatted(upserted, unchanged, skipped, failed, detailFailed);
+            return "upserted=%d, unchanged=%d, skipped=%d, failed=%d, detailFailed=%d, "
+                            .formatted(upserted, unchanged, skipped, failed, detailFailed)
+                    + "images=%d, imageFailed=%d, events=%d, eventFailed=%d"
+                            .formatted(images, imageFailed, events, eventFailed);
         }
     }
 
@@ -165,15 +180,32 @@ public class Collector {
 
         StagingWriter.UpsertResult upserted =
                 stagingWriter.upsert(lang, region.getLdongRegnCd(), region.getLdongSignguCd(), item);
-        if (!upserted.changed()) {
-            counters.unchanged++;
-            return;
-        }
-        counters.upserted++;
 
-        // 목록 응답에는 overview가 없어 상세를 한 번 더 부른다(2026-08-16 원본 응답으로 확인 —
-        // 목록 26개 필드에 overview가 없다). 바뀐 항목만 부르는 것이 오퍼레이션별 일 1,000건
-        // 한도를 지키는 핵심이다.
+        if (upserted.changed()) {
+            counters.upserted++;
+            fetchOverview(lang, serviceName, item, upserted, counters);
+        } else {
+            counters.unchanged++;
+        }
+
+        // 사진·개최 기간은 changed와 무관하게 "아직 안 물어본 것"을 기준으로 부른다.
+        // overview와 규칙이 다른 이유: overview는 첫 수집부터 받아 왔지만 이 둘은 나중에
+        // 추가돼 기존 행 전부가 미조회 상태다. changed만 보면 소스가 modifiedtime을 바꿀
+        // 때까지 영영 안 채워진다.
+        fetchExtras(lang, serviceName, item, upserted, counters);
+    }
+
+    /**
+     * 목록 응답에는 overview가 없어 상세를 한 번 더 부른다(2026-08-16 원본 응답으로 확인 —
+     * 목록 26개 필드에 overview가 없다). 바뀐 항목만 부르는 것이 오퍼레이션별 일 1,000건
+     * 한도를 지키는 핵심이다.
+     */
+    private void fetchOverview(
+            String lang,
+            String serviceName,
+            AreaBasedSyncItem item,
+            StagingWriter.UpsertResult upserted,
+            Counters counters) {
         try {
             Optional<DetailCommonItem> detail = tourApiClient.fetchDetailCommon(serviceName, item.contentid());
             detail.map(DetailCommonItem::overview)
@@ -181,7 +213,7 @@ public class Collector {
         } catch (RuntimeException e) {
             // 상세를 못 받았으면 워터마크를 지워 다음 수집에서 다시 시도하게 한다. upsert가
             // 이미 커밋된 뒤라 여기서 되돌리지 않으면 "안 바뀐 항목"이 되어 영영 재시도되지
-            // 않는다. 위 catch에 맡기지 않고 여기서 잡는 이유는 stagingId가 여기에만 있어서다.
+            // 않는다. 바깥 catch에 맡기지 않는 이유는 stagingId가 여기에만 있어서다.
             //
             // 응답은 왔는데 overview가 비어 있는 경우는 여기 오지 않는다 — 그건 실패가 아니라
             // "원본에 설명이 없다"는 정상 결과이고, 워터마크를 지우면 매 수집마다 무한 재시도가
@@ -196,15 +228,85 @@ public class Collector {
         }
     }
 
+    /**
+     * 사진(detailImage2)과 축제 개최 기간(detailIntro2). 둘 다 <b>목록 응답에 없어</b> 따로 부른다.
+     *
+     * <p><b>비용이 크다.</b> 목록은 100건당 1회지만 이 둘은 1건당 1회다. 그래서 두 가지로 아낀다.
+     *
+     * <ul>
+     *   <li><b>이미 물어본 것은 다시 안 묻는다.</b> 받은 개수가 아니라 "물어봤는가"로 판단한다 —
+     *       사진이 없는 장소를 매 수집마다 영원히 다시 묻지 않기 위해서다.
+     *   <li><b>소스가 내린 장소(showflag=0)는 건너뛴다.</b> 어차피 Resolver가 EXCLUDED로 보내
+     *       place를 만들지 않으므로, 그 사진을 받아 봐야 쓸 데가 없다. 국문 기준 258건이다.
+     * </ul>
+     *
+     * <p>개최 기간은 <b>축제에만</b> 묻는다. detailIntro2는 타입마다 응답이 달라 축제가 아닌
+     * 곳에 물으면 우리가 쓸 필드가 아예 없다. 축제 판정은 설정의 폴백 대분류가 {@code EV}인지로
+     * 하며, 코드에 15/85를 박지 않는다(ADR-018).
+     *
+     * <p>실패는 카운터로만 남기고 넘어간다 — 표시를 안 남겼으므로 다음 수집이 자동 재시도한다.
+     * 워터마크를 건드리지 않는 이유는 그게 overview 재조회까지 유발해 예산을 두 배로 쓰기 때문이다.
+     */
+    private void fetchExtras(
+            String lang,
+            String serviceName,
+            AreaBasedSyncItem item,
+            StagingWriter.UpsertResult upserted,
+            Counters counters) {
+        if (upserted.hiddenAtSource()) {
+            return;
+        }
+
+        if (!upserted.imageAlreadyFetched()) {
+            try {
+                List<String> urls = tourApiClient.fetchDetailImages(serviceName, item.contentid()).stream()
+                        .map(DetailImageItem::bestUrl)
+                        .filter(url -> url != null && !url.isBlank())
+                        .distinct()
+                        .toList();
+                stagingWriter.applyImages(upserted.stagingId(), urls);
+                counters.images += urls.size();
+            } catch (RuntimeException e) {
+                counters.imageFailed++;
+                log.warn("[{}] 이미지 조회 실패 contentId={}", lang, item.contentid(), e);
+            }
+        }
+
+        boolean festival = contentTypes
+                .fallbackPlaceType(lang, upserted.sourceTypeId())
+                .filter(type -> type == PlaceType.EV)
+                .isPresent();
+        if (festival && !upserted.introAlreadyFetched()) {
+            try {
+                Optional<DetailIntroItem> intro = tourApiClient.fetchDetailIntro(
+                        serviceName, item.contentid(), upserted.sourceTypeId());
+                stagingWriter.applyEventPeriod(
+                        upserted.stagingId(),
+                        intro.map(DetailIntroItem::eventstartdate).orElse(null),
+                        intro.map(DetailIntroItem::eventenddate).orElse(null));
+                counters.events++;
+            } catch (RuntimeException e) {
+                counters.eventFailed++;
+                log.warn("[{}] 축제 기간 조회 실패 contentId={}", lang, item.contentid(), e);
+            }
+        }
+    }
+
     private static final class Counters {
         int upserted;
         int unchanged;
         int skipped;
         int failed;
         int detailFailed;
+        int images;
+        int imageFailed;
+        int events;
+        int eventFailed;
 
         Result toResult(String lang) {
-            return new Result(lang, upserted, unchanged, skipped, failed, detailFailed);
+            return new Result(
+                    lang, upserted, unchanged, skipped, failed, detailFailed,
+                    images, imageFailed, events, eventFailed);
         }
     }
 }

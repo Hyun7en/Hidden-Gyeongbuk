@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
 import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.DetailImageItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.DetailIntroItem;
 import com.hiddengyeongbuk.backend.support.Retry;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -70,6 +72,40 @@ public class TourApiClient {
             // contentId만 넘기면 overview를 포함한 기본 필드가 항상 반환된다 (외부 API 연동 설계서 2.7).
             String body = get(serviceName, "/detailCommon2", Map.of("contentId", contentId));
             return requireSuccess(body, DetailCommonItem.class).stream().findFirst();
+        });
+    }
+
+    /**
+     * 추가 이미지 목록. <b>목록 응답의 firstimage는 대표 한 장뿐</b>이라 갤러리를 만들려면
+     * 이 오퍼레이션이 따로 필요하다(외부 API 연동 설계서 §2.3).
+     *
+     * <p>{@code imageYN=Y}가 사진이고 {@code N}은 음식 메뉴판이다(§2.7). 우리는 사진만 받는다.
+     *
+     * <p><b>결과가 0건인 것은 실패가 아니다.</b> 이미지가 아예 없는 장소가 흔하므로 빈 목록을
+     * 그대로 돌려주고, 호출부가 "물어봤다"는 표시를 남겨 다음 수집에서 다시 묻지 않게 한다.
+     */
+    public List<DetailImageItem> fetchDetailImages(String serviceName, String contentId) {
+        return Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TourApiClient::isTransient, () -> {
+            String body = get(
+                    serviceName, "/detailImage2", Map.of("contentId", contentId, "imageYN", "Y"));
+            return requireSuccess(body, DetailImageItem.class);
+        });
+    }
+
+    /**
+     * 소개 정보. 우리는 축제 개최 기간만 쓴다.
+     *
+     * <p><b>{@code contentTypeId}가 필수다</b> — 이 오퍼레이션은 타입마다 응답 필드가 완전히
+     * 달라서 서버가 무엇을 돌려줄지 알아야 한다(§2.7). 그래서 호출부가 staging에 저장해 둔
+     * 그 언어의 원본 타입 코드를 그대로 넘겨야 한다(ko=15, en=85 …).
+     */
+    public Optional<DetailIntroItem> fetchDetailIntro(String serviceName, String contentId, int contentTypeId) {
+        return Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TourApiClient::isTransient, () -> {
+            String body = get(
+                    serviceName,
+                    "/detailIntro2",
+                    Map.of("contentId", contentId, "contentTypeId", String.valueOf(contentTypeId)));
+            return requireSuccess(body, DetailIntroItem.class).stream().findFirst();
         });
     }
 

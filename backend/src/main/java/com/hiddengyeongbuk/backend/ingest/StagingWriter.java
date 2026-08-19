@@ -5,8 +5,10 @@ import com.hiddengyeongbuk.backend.domain.place.StagingPlace;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlaceRepository;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
 import com.hiddengyeongbuk.backend.support.GeoUtils;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,9 @@ public class StagingWriter {
 
     /** TourAPI modifiedtime 형식: 20260812153000 */
     private static final DateTimeFormatter MODIFIED_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    /** TourAPI eventstartdate/eventenddate 형식: 20260925 */
+    private static final DateTimeFormatter EVENT_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final StagingPlaceRepository stagingPlaceRepository;
 
@@ -76,13 +81,39 @@ public class StagingWriter {
         if (!unchanged) {
             staging.setResolutionStatus(ResolutionStatus.PENDING);
             staging.setQuarantineReason(null);
+            // 원본이 바뀌었으면 사진과 개최 기간도 바뀌었을 수 있다. "물어봤다" 표시를 지워
+            // 다시 묻게 한다 — overview와 같은 규칙이다.
+            staging.setImageFetchedAt(null);
+            staging.setIntroFetchedAt(null);
         }
 
         StagingPlace saved = stagingPlaceRepository.save(staging);
-        return new UpsertResult(saved.getId(), !unchanged);
+        return new UpsertResult(
+                saved.getId(),
+                !unchanged,
+                Integer.valueOf(0).equals(saved.getShowFlag()),
+                saved.getImageFetchedAt() != null,
+                saved.getIntroFetchedAt() != null,
+                saved.getSourceTypeId());
     }
 
-    public record UpsertResult(Long stagingId, boolean changed) {}
+    /**
+     * upsert 결과. <b>여기서 판정하지 않고 사실만 돌려준다</b> — 무엇을 더 부를지는 수집 예산을
+     * 아는 Collector가 정한다(설정으로 축제 타입을 아는 쪽도 거기다).
+     *
+     * @param changed 원본 modifiedtime이 달라졌는가. 상세(overview) 재조회 여부를 가른다
+     * @param hiddenAtSource {@code showflag=0} — 소스가 내린 장소. 추가 호출을 아낄 근거다
+     * @param imageAlreadyFetched detailImage2를 이미 물어봤는가(받은 개수와 무관)
+     * @param introAlreadyFetched detailIntro2를 이미 물어봤는가
+     * @param sourceTypeId 그 언어 서비스의 contentTypeId 원본. detailIntro2가 필수로 요구한다
+     */
+    public record UpsertResult(
+            Long stagingId,
+            boolean changed,
+            boolean hiddenAtSource,
+            boolean imageAlreadyFetched,
+            boolean introAlreadyFetched,
+            Integer sourceTypeId) {}
 
     /**
      * 워터마크를 지워 다음 수집이 이 행을 "바뀐 항목"으로 다시 보게 한다. 상세(detailCommon2)를
@@ -103,6 +134,59 @@ public class StagingWriter {
             staging.setSourceModifiedAt(null);
             stagingPlaceRepository.save(staging);
         });
+    }
+
+    /**
+     * detailImage2 결과를 담고 <b>물어봤다는 표시</b>를 남긴다.
+     *
+     * <p><b>0건이어도 표시를 남기는 것이 요점이다.</b> 개수로 판단하면 이미지가 없는 장소를 매
+     * 수집마다 영원히 다시 묻게 된다 — 응답을 못 받은 것과 응답은 왔는데 비어 있는 것은 다르고,
+     * 후자는 정상 결과다. 이 구분을 놓쳐서 overview에서 이미 한 번 데였다.
+     *
+     * <p>실패했을 때는 <b>아예 호출되지 않는다</b>(호출부가 catch한다). 그래서 표시가 없으면
+     * "못 받았다"가 되어 다음 수집에서 자동 재시도된다.
+     */
+    @Transactional
+    public void applyImages(Long stagingId, List<String> imageUrls) {
+        stagingPlaceRepository.findById(stagingId).ifPresent(staging -> {
+            staging.setDetailImages(imageUrls.isEmpty() ? null : String.join("\n", imageUrls));
+            staging.setImageFetchedAt(LocalDateTime.now());
+            stagingPlaceRepository.save(staging);
+        });
+    }
+
+    /**
+     * detailIntro2로 받은 축제 개최 기간을 담고 물어봤다는 표시를 남긴다.
+     *
+     * <p>날짜가 비어 있어도 표시는 남긴다 — 소스가 기간을 안 준 축제가 실재하고, 그건 정상
+     * 결과다. 추천은 <b>날짜 없는 행사를 판단하지 않고 일반 장소처럼 다룬다</b>(ADR-021) —
+     * 결측을 "안 열린다"로 읽으면 수집된 콘텐츠를 근거 없이 잃는다.
+     */
+    @Transactional
+    public void applyEventPeriod(Long stagingId, String rawStart, String rawEnd) {
+        stagingPlaceRepository.findById(stagingId).ifPresent(staging -> {
+            staging.setEventStartDate(parseEventDate(rawStart));
+            staging.setEventEndDate(parseEventDate(rawEnd));
+            staging.setIntroFetchedAt(LocalDateTime.now());
+            stagingPlaceRepository.save(staging);
+        });
+    }
+
+    /**
+     * {@code yyyyMMdd} → {@code LocalDate}. 못 읽으면 null이다.
+     *
+     * <p>소스가 {@code "0"}이나 빈 값을 주는 경우가 있어 예외로 올리지 않는다 — 그 한 건 때문에
+     * 항목 전체를 실패로 만들면 사진·설명까지 같이 잃는다.
+     */
+    private static LocalDate parseEventDate(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(raw.trim(), EVENT_DATE);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** 상세(detailCommon2)로 받은 overview를 채운다. 목록 응답에는 overview가 없다. */

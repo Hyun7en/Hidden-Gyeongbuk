@@ -1,6 +1,10 @@
 package com.hiddengyeongbuk.backend.ingest;
 
+import com.hiddengyeongbuk.backend.domain.place.FestivalDetail;
+import com.hiddengyeongbuk.backend.domain.place.FestivalDetailRepository;
 import com.hiddengyeongbuk.backend.domain.place.Place;
+import com.hiddengyeongbuk.backend.domain.place.PlaceImage;
+import com.hiddengyeongbuk.backend.domain.place.PlaceImageRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
@@ -11,6 +15,7 @@ import com.hiddengyeongbuk.backend.domain.place.StagingPlaceRepository;
 import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -29,18 +34,24 @@ public class MergeWriter {
     private final StagingPlaceRepository stagingPlaceRepository;
     private final RegionRepository regionRepository;
     private final ContentTypeMapping contentTypes;
+    private final PlaceImageRepository placeImageRepository;
+    private final FestivalDetailRepository festivalDetailRepository;
 
     public MergeWriter(
             PlaceRepository placeRepository,
             PlaceTranslationRepository placeTranslationRepository,
             StagingPlaceRepository stagingPlaceRepository,
             RegionRepository regionRepository,
-            ContentTypeMapping contentTypes) {
+            ContentTypeMapping contentTypes,
+            PlaceImageRepository placeImageRepository,
+            FestivalDetailRepository festivalDetailRepository) {
         this.placeRepository = placeRepository;
         this.placeTranslationRepository = placeTranslationRepository;
         this.stagingPlaceRepository = stagingPlaceRepository;
         this.regionRepository = regionRepository;
         this.contentTypes = contentTypes;
+        this.placeImageRepository = placeImageRepository;
+        this.festivalDetailRepository = festivalDetailRepository;
     }
 
     public record Written(boolean placeCreated, int translations, boolean quarantined) {}
@@ -136,6 +147,9 @@ public class MergeWriter {
         applyNeutralFields(place, anchor, group, resolvedType.get());
         Place saved = placeRepository.save(place);
 
+        applyImages(saved, group);
+        applyFestivalPeriod(saved, group);
+
         int translations = 0;
         for (StagingPlace member : group) {
             upsertTranslation(saved, member);
@@ -170,6 +184,77 @@ public class MergeWriter {
         place.setFirstImage(httpsImageUrl(first(group, StagingPlace::getFirstImage)));
         // lcls_systm2/3은 place에 두지 않는다 — 원본이 staging에 남아 있고, 세분 필터가
         // 필요해지면 컬럼을 추가하고 Merge를 재실행하면 된다(ADR-024).
+    }
+
+    /**
+     * 추가 사진을 {@code place_image}로 정규화한다. 소스가 준 순서를 그대로 {@code sort_order}에 넣는다 —
+     * 무엇이 대표 사진인지 판정할 근거가 우리에게 없으므로 순서를 재정의하지 않는다.
+     *
+     * <p><b>매번 지우고 다시 넣는다.</b> 목록이 줄었을 때(소스가 사진을 내렸을 때) 남은 행을
+     * 지울 다른 경로가 없기 때문이다. 무료 로컬 연산이라 아낄 이유도 없다.
+     *
+     * <p><b>delete 직후 flush()가 필수다.</b> 안 하면 Hibernate가 insert를 먼저 내보내
+     * {@code UNIQUE(place_id, image_url)} 위반이 난다 — 같은 URL이 그대로 다시 들어오는 것이
+     * 정상 경로라 반드시 걸린다. (구 태그 재부여에서 이미 겪은 함정이다.)
+     *
+     * <p>URL은 {@link #httpsImageUrl}로 https에 맞춘다 — first_image와 같은 이유다.
+     */
+    private void applyImages(Place place, List<StagingPlace> group) {
+        String raw = first(group, StagingPlace::getDetailImages);
+        List<String> urls = raw == null || raw.isBlank()
+                ? List.of()
+                : java.util.Arrays.stream(raw.split("\n"))
+                        .map(MergeWriter::httpsImageUrl)
+                        .filter(url -> url != null && !url.isBlank())
+                        .distinct()
+                        .toList();
+
+        List<PlaceImage> existing = placeImageRepository.findByPlaceIdOrderBySortOrder(place.getId());
+        if (existing.isEmpty() && urls.isEmpty()) {
+            return;
+        }
+        placeImageRepository.deleteAll(existing);
+        placeImageRepository.flush();
+
+        int order = 0;
+        for (String url : urls) {
+            placeImageRepository.save(PlaceImage.builder()
+                    .place(place)
+                    .imageUrl(url)
+                    .sortOrder(order++)
+                    .build());
+        }
+    }
+
+    /**
+     * 축제 개최 기간을 {@code festival_detail}로 옮긴다. 추천의 <b>유일한 계절 반영 근거</b>다
+     * (추천 알고리즘 §4.7) — 여행 기간에 안 열리는 축제를 후보에서 빼고, 겹치면 사전점수에 가산한다.
+     *
+     * <p><b>날짜가 없으면 행을 만들지 않는다.</b> 결측을 "안 열린다"로 읽으면 수집된 콘텐츠를
+     * 근거 없이 잃고, "열린다"로 읽으면 닫힌 축제를 일정에 넣는다. 모르는 것은 판단하지 않는
+     * 쪽이 맞고, 행이 없으면 추천이 일반 장소처럼 다룬다(ADR-021).
+     *
+     * <p>축제가 아니게 됐거나 날짜가 사라지면 기존 행을 지운다 — 안 지우면 낡은 기간이 남는다.
+     *
+     * <p><b>{@code @MapsId}라 ID를 직접 세팅하지 않는다.</b> 연관 엔티티만 넣으면 자동으로
+     * 채워지며, 직접 넣으면 merge가 update를 시도하다 낙관적 락 예외가 난다(CLAUDE.md 함정).
+     */
+    private void applyFestivalPeriod(Place place, List<StagingPlace> group) {
+        boolean festival = place.getPlaceType() == PlaceType.EV;
+        LocalDate start = festival ? first(group, StagingPlace::getEventStartDate) : null;
+        LocalDate end = festival ? first(group, StagingPlace::getEventEndDate) : null;
+
+        Optional<FestivalDetail> existing = festivalDetailRepository.findById(place.getId());
+        if (start == null || end == null) {
+            existing.ifPresent(festivalDetailRepository::delete);
+            return;
+        }
+
+        FestivalDetail detail = existing.orElseGet(
+                () -> FestivalDetail.builder().place(place).build());
+        detail.setStartDate(start);
+        detail.setEndDate(end);
+        festivalDetailRepository.save(detail);
     }
 
     private Region resolveRegion(StagingPlace anchor, List<StagingPlace> group) {

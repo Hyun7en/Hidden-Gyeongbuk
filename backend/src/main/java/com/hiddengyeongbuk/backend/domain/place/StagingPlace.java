@@ -13,6 +13,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -106,6 +107,39 @@ public class StagingPlace {
 
     @Column(name = "first_image", length = 500)
     private String firstImage;
+
+    /**
+     * detailImage2가 준 이미지 URL 목록을 줄바꿈으로 이어 원본 순서 그대로 담는다.
+     * 정규화는 Merge가 {@code place_image}로 한다 — staging은 해석하지 않는 계층이다.
+     */
+    @Lob
+    @Column(name = "detail_images", columnDefinition = "TEXT")
+    private String detailImages;
+
+    /**
+     * detailImage2에 <b>물어봤다</b>는 표시. 받은 개수와 무관하게 응답이 오면 찍는다.
+     *
+     * <p>개수로 판단하면 이미지가 없는 장소를 매 수집마다 영원히 다시 묻는다 — overview에서
+     * 이미 겪은 함정과 같다("응답은 왔는데 비어 있다"와 "응답을 못 받았다"는 다르다).
+     * 원본이 바뀌면 {@code StagingWriter}가 null로 되돌려 다시 묻게 한다.
+     */
+    @Column(name = "image_fetched_at")
+    private LocalDateTime imageFetchedAt;
+
+    /** detailIntro2의 eventstartdate. 언어 무관한 값이라 어느 언어 행에서 와도 같아야 한다. */
+    @Column(name = "event_start_date")
+    private LocalDate eventStartDate;
+
+    /** detailIntro2의 eventenddate. */
+    @Column(name = "event_end_date")
+    private LocalDate eventEndDate;
+
+    /**
+     * detailIntro2에 물어봤다는 표시. {@code imageFetchedAt}과 따로 두는 이유는 두 오퍼레이션이
+     * <b>서로 다른 호출 예산</b>을 쓰고 독립적으로 실패하기 때문이다.
+     */
+    @Column(name = "intro_fetched_at")
+    private LocalDateTime introFetchedAt;
 
     /**
      * TourAPI areaBasedSyncList2의 showflag. 1=표출, 0=미표출(소스가 내림), null=아직 안 받음.

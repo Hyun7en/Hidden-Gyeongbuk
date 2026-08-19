@@ -10,7 +10,10 @@ import com.hiddengyeongbuk.backend.domain.region.Region;
 import com.hiddengyeongbuk.backend.domain.region.RegionRepository;
 import com.hiddengyeongbuk.backend.ingest.client.TourApiClient;
 import com.hiddengyeongbuk.backend.ingest.client.dto.AreaBasedSyncItem;
+import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.ingest.client.dto.DetailCommonItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.DetailImageItem;
+import com.hiddengyeongbuk.backend.ingest.client.dto.DetailIntroItem;
 import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import java.util.List;
 import java.util.Optional;
@@ -60,7 +63,7 @@ class CollectorTest {
         BDDMockito.given(tourApiClient.fetchAreaBasedSyncList(anyString(), anyString(), anyString(), anyInt(), anyInt()))
                 .willReturn(List.of(item()));
         BDDMockito.given(stagingWriter.upsert(anyString(), anyString(), anyString(), any(AreaBasedSyncItem.class)))
-                .willReturn(new StagingWriter.UpsertResult(STAGING_ID, true));
+                .willReturn(new StagingWriter.UpsertResult(STAGING_ID, true, false, true, true, 32));
 
         return collector.collectRegion(LANG, 1L, 100);
     }
@@ -121,12 +124,116 @@ class CollectorTest {
         BDDMockito.given(tourApiClient.fetchAreaBasedSyncList(anyString(), anyString(), anyString(), anyInt(), anyInt()))
                 .willReturn(List.of(item()));
         BDDMockito.given(stagingWriter.upsert(anyString(), anyString(), anyString(), any(AreaBasedSyncItem.class)))
-                .willReturn(new StagingWriter.UpsertResult(STAGING_ID, false));
+                .willReturn(new StagingWriter.UpsertResult(STAGING_ID, false, false, true, true, 32));
 
         Collector.Result result = collector.collectRegion(LANG, 1L, 100);
 
         BDDMockito.then(tourApiClient).should(Mockito.never()).fetchDetailCommon(anyString(), anyString());
         assertThat(result.unchanged()).isEqualTo(1);
         assertThat(result.upserted()).isZero();
+    }
+
+    // ── 사진·축제 기간 추가 조회 ──────────────────────────────────────────────
+    // 둘 다 1건당 1회라 목록(100건당 1회)과 비용 차원이 다르다. 아끼는 규칙을 회귀로 묶는다.
+
+    /** 사진·축제 조회 경로를 타도록 준비한다. {@code sourceTypeId}가 축제인지까지 정한다. */
+    private Collector.Result collectWithExtras(
+            boolean hidden, boolean imageFetched, boolean introFetched, PlaceType fallback) {
+        Region region = Region.builder().ldongRegnCd("47").ldongSignguCd("170").build();
+        BDDMockito.given(regionRepository.findById(1L)).willReturn(Optional.of(region));
+        BDDMockito.given(languages.serviceNameOf(LANG)).willReturn(SERVICE);
+        BDDMockito.given(contentTypes.isCollectable(eq(LANG), anyString())).willReturn(true);
+        BDDMockito.given(contentTypes.fallbackPlaceType(eq(LANG), any()))
+                .willReturn(Optional.ofNullable(fallback));
+        BDDMockito.given(tourApiClient.fetchAreaBasedSyncList(anyString(), anyString(), anyString(), anyInt(), anyInt()))
+                .willReturn(List.of(item()));
+        // changed=false로 둔다 — 기존 행 전부가 그 상태이고, 그래도 사진은 받아야 한다.
+        BDDMockito.given(stagingWriter.upsert(anyString(), anyString(), anyString(), any(AreaBasedSyncItem.class)))
+                .willReturn(new StagingWriter.UpsertResult(STAGING_ID, false, hidden, imageFetched, introFetched, 15));
+        return collector.collectRegion(LANG, 1L, 100);
+    }
+
+    @Test
+    void 안_바뀐_항목이어도_사진은_받는다() {
+        // 사진·축제 기간은 나중에 추가돼 기존 행 전부가 미조회 상태다. changed만 보면 소스가
+        // modifiedtime을 바꿀 때까지 영영 안 채워진다 — overview와 규칙이 다른 이유다.
+        BDDMockito.given(tourApiClient.fetchDetailImages(anyString(), anyString()))
+                .willReturn(List.of(new DetailImageItem("1", "http://a/1.jpg", null, "1", null)));
+
+        Collector.Result r = collectWithExtras(false, false, true, null);
+
+        BDDMockito.then(stagingWriter).should().applyImages(STAGING_ID, List.of("http://a/1.jpg"));
+        assertThat(r.unchanged()).isEqualTo(1);
+        assertThat(r.images()).isEqualTo(1);
+    }
+
+    @Test
+    void 이미_물어본_사진은_다시_묻지_않는다() {
+        collectWithExtras(false, true, true, null);
+        BDDMockito.then(tourApiClient).should(Mockito.never()).fetchDetailImages(anyString(), anyString());
+    }
+
+    @Test
+    void 사진이_0건이어도_물어봤다는_표시를_남긴다() {
+        // 표시를 안 남기면 사진 없는 장소를 매 수집마다 영원히 다시 묻는다.
+        BDDMockito.given(tourApiClient.fetchDetailImages(anyString(), anyString())).willReturn(List.of());
+
+        Collector.Result r = collectWithExtras(false, false, true, null);
+
+        BDDMockito.then(stagingWriter).should().applyImages(STAGING_ID, List.of());
+        assertThat(r.images()).isZero();
+        assertThat(r.imageFailed()).isZero();
+    }
+
+    @Test
+    void 사진_조회가_실패하면_표시를_안_남겨_다음_수집이_재시도한다() {
+        BDDMockito.given(tourApiClient.fetchDetailImages(anyString(), anyString()))
+                .willThrow(new IllegalStateException("22 요청 제한 초과"));
+
+        Collector.Result r = collectWithExtras(false, false, true, null);
+
+        BDDMockito.then(stagingWriter).should(Mockito.never()).applyImages(any(), any());
+        // 워터마크는 건드리지 않는다 — 지우면 overview 재조회까지 유발해 예산을 두 배로 쓴다.
+        BDDMockito.then(stagingWriter).should(Mockito.never()).clearWatermark(any());
+        assertThat(r.imageFailed()).isEqualTo(1);
+    }
+
+    @Test
+    void 소스가_내린_장소는_사진도_기간도_묻지_않는다() {
+        // showflag=0은 Resolver가 EXCLUDED로 보내 place를 만들지 않는다. 사진을 받아도 쓸 데가
+        // 없으므로 호출을 아낀다(국문 기준 258건).
+        collectWithExtras(true, false, false, PlaceType.EV);
+
+        BDDMockito.then(tourApiClient).should(Mockito.never()).fetchDetailImages(anyString(), anyString());
+        BDDMockito.then(tourApiClient).should(Mockito.never()).fetchDetailIntro(anyString(), anyString(), anyInt());
+    }
+
+    @Test
+    void 축제가_아니면_개최_기간을_묻지_않는다() {
+        // detailIntro2는 타입마다 응답이 달라 축제가 아니면 우리가 쓸 필드가 아예 없다.
+        collectWithExtras(false, true, false, PlaceType.AC);
+        BDDMockito.then(tourApiClient).should(Mockito.never()).fetchDetailIntro(anyString(), anyString(), anyInt());
+    }
+
+    @Test
+    void 축제면_개최_기간을_받아_담는다() {
+        BDDMockito.given(tourApiClient.fetchDetailIntro(anyString(), anyString(), anyInt()))
+                .willReturn(Optional.of(new DetailIntroItem("1", "20260925", "20260927")));
+
+        Collector.Result r = collectWithExtras(false, true, false, PlaceType.EV);
+
+        BDDMockito.then(stagingWriter).should().applyEventPeriod(STAGING_ID, "20260925", "20260927");
+        assertThat(r.events()).isEqualTo(1);
+    }
+
+    @Test
+    void 축제인데_기간이_비어_있어도_물어봤다는_표시를_남긴다() {
+        // 소스가 기간을 안 준 축제가 실재한다. 표시를 안 남기면 매번 다시 묻는다.
+        BDDMockito.given(tourApiClient.fetchDetailIntro(anyString(), anyString(), anyInt()))
+                .willReturn(Optional.of(new DetailIntroItem("1", null, null)));
+
+        collectWithExtras(false, true, false, PlaceType.EV);
+
+        BDDMockito.then(stagingWriter).should().applyEventPeriod(STAGING_ID, null, null);
     }
 }

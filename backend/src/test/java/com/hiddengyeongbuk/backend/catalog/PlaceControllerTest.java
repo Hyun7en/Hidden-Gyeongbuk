@@ -14,6 +14,7 @@ import com.hiddengyeongbuk.backend.catalog.dto.PlaceSummaryResponse;
 import com.hiddengyeongbuk.backend.domain.place.PlaceType;
 import com.hiddengyeongbuk.backend.support.LanguageRegistry;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +40,7 @@ class PlaceControllerTest {
         PlaceSummaryResponse summary =
                 new PlaceSummaryResponse(1024L, "HS", "Hahoe Folk Village", "Andong-si", null, null, null);
         BDDMockito.given(placeQueryService.search(
-                        isNull(), eq(PlaceType.HS), isNull(), anyString(), anyInt(), anyInt()))
+                        isNull(), eq(Set.of(PlaceType.HS)), isNull(), anyString(), anyInt(), anyInt()))
                 .willReturn(new PageResponse<>(List.of(summary), 0, 20, 1, "en"));
 
         mockMvc.perform(get("/api/places").param("placeType", "HS").param("lang", "en"))
@@ -98,10 +99,43 @@ class PlaceControllerTest {
     }
 
     @Test
+    void placeType은_콤마로_복수_지정할_수_있다() throws Exception {
+        // API 명세서 §3.1. 단일 값만 받던 것을 맞춘 것이라 기존 단일 지정도 그대로 동작해야 한다.
+        BDDMockito.given(placeQueryService.search(
+                        isNull(),
+                        eq(Set.of(PlaceType.HS, PlaceType.NA)),
+                        isNull(),
+                        anyString(),
+                        anyInt(),
+                        anyInt()))
+                .willReturn(new PageResponse<>(List.of(), 0, 20, 0, "en"));
+
+        mockMvc.perform(get("/api/places").param("placeType", "HS, NA").param("lang", "en"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void 잘못된_placeType_메시지에_패키지_이름을_흘리지_않는다() throws Exception {
+        // PlaceType.valueOf()를 그대로 쓰면 "No enum constant com.hiddengyeongbuk...PlaceType.BOGUS"가
+        // 그대로 나간다. 알려줄 것은 가능한 값이지 우리 패키지 구조가 아니다.
+        mockMvc.perform(get("/api/places").param("placeType", "BOGUS"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_PARAM"))
+                .andExpect(jsonPath("$.error.message").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("com.hiddengyeongbuk"))))
+                // 서비스하지 않는 FD는 안내 목록에도 없다(ADR-025) — 눌러 봐야 0건이다.
+                .andExpect(jsonPath("$.error.message").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("HS"),
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("FD")))));
+    }
+
+    @Test
     void 지원하지_않는_언어는_에러가_아니라_기준_언어로_폴백한다() throws Exception {
         // API 명세서 §1.1 — 지원하지 않는 언어도 에러가 아니다. resolvedLang으로 실제 언어를 알린다.
+        // placeType 미지정은 null이 아니라 빈 집합이다 — 서비스가 "요청 없음"을
+        // "서비스 대상 전체(FD 제외)"로 해석한다.
         BDDMockito.given(placeQueryService.search(
-                        isNull(), isNull(), isNull(), eq(LanguageRegistry.BASE), anyInt(), anyInt()))
+                        isNull(), eq(Set.of()), isNull(), eq(LanguageRegistry.BASE), anyInt(), anyInt()))
                 .willReturn(new PageResponse<>(List.of(), 0, 20, 0, LanguageRegistry.BASE));
 
         mockMvc.perform(get("/api/places").param("lang", "xx"))

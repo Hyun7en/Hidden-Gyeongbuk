@@ -17,9 +17,11 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -61,8 +63,8 @@ public class PlaceQueryService {
     // 검색어 없는 목록 조회(지역/타입/태그 필터, 키 공간 유한·재사용 빈도 높음)만 캐싱한다.
     @Cacheable(value = "placeSearch", condition = "#keyword == null || #keyword.isBlank()")
     public PageResponse<PlaceSummaryResponse> search(
-            Long regionId, PlaceType placeType, String keyword, String lang, int page, int size) {
-        Specification<Place> spec = buildSpecification(regionId, placeType, keyword, lang);
+            Long regionId, Set<PlaceType> placeTypes, String keyword, String lang, int page, int size) {
+        Specification<Place> spec = buildSpecification(regionId, placeTypes, keyword, lang);
         // 정렬 없는 페이지네이션은 페이지 간 순서가 비결정적이라(같은 장소 중복/누락) 항상 PK로 고정한다.
         Page<Place> result =
                 placeRepository.findAll(spec, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")));
@@ -83,7 +85,7 @@ public class PlaceQueryService {
     // 캐시 적중률이 거의 0이고 엔트리만 계속 쌓인다. 대신 캐시가 없는 만큼 호출 비용 자체에
     // 상한을 건다: 반경 바운딩 박스로 DB에서 선필터하고, 결과 개수도 잘라서 돌려준다.
     public List<PlaceNearbyResponse> nearby(
-            double lat, double lng, double radiusKm, PlaceType placeType, String lang) {
+            double lat, double lng, double radiusKm, Set<PlaceType> placeTypes, String lang) {
         // 위도 1도 ≈ 111km 근사 사각형으로 DB에서 선필터 → Haversine으로 정밀 필터.
         double latDelta = radiusKm / 111.0;
         double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
@@ -93,9 +95,7 @@ public class PlaceQueryService {
                     root.get("lat"), BigDecimal.valueOf(lat - latDelta), BigDecimal.valueOf(lat + latDelta)));
             predicates.add(cb.between(
                     root.get("lng"), BigDecimal.valueOf(lng - lngDelta), BigDecimal.valueOf(lng + lngDelta)));
-            if (placeType != null) {
-                predicates.add(cb.equal(root.get("placeType"), placeType));
-            }
+            predicates.add(placeTypeFilter(root, placeTypes));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
@@ -114,17 +114,30 @@ public class PlaceQueryService {
                 .toList();
     }
 
+    /**
+     * 분류 필터. <b>요청이 없으면 서비스 대상 전체</b>({@link PlaceType#served()})로 좁힌다 —
+     * 음식점은 수집·노출 대상이 아니므로(ADR-025) 정리 전 데이터가 남아 있는 동안에도 목록에
+     * 섞이지 않게 한다. 요청이 있으면 그 목록으로 거르며, {@code IN}이라 복수 지정이 그대로 된다.
+     *
+     * <p>추천 엔진이 {@code attractionPool()}에서 같은 방어를 이미 하고 있었는데 조회 쪽만
+     * 빠져 있었다 — 같은 규칙이 두 경로에 다르게 적용되던 것을 맞춘다.
+     */
+    private static Predicate placeTypeFilter(Root<Place> root, Set<PlaceType> placeTypes) {
+        Collection<PlaceType> wanted = placeTypes == null || placeTypes.isEmpty()
+                ? PlaceType.served()
+                : placeTypes;
+        return root.get("placeType").in(wanted);
+    }
+
     private Specification<Place> buildSpecification(
-            Long regionId, PlaceType placeType, String keyword, String lang) {
+            Long regionId, Set<PlaceType> placeTypes, String keyword, String lang) {
         return (root, query, cb) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             if (regionId != null) {
                 predicates.add(cb.equal(root.get("region").get("id"), regionId));
             }
-            if (placeType != null) {
-                predicates.add(cb.equal(root.get("placeType"), placeType));
-            }
+            predicates.add(placeTypeFilter(root, placeTypes));
             if (keyword != null && !keyword.isBlank()) {
                 // 명칭 검색은 요청 언어의 title을 대상으로 한다(API 명세서 §3.1). 국문 제목이
                 // place 컬럼에서 사라졌으므로 place_translation만 보면 되고, 언어 조건이 붙어

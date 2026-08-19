@@ -63,4 +63,39 @@ class MergeWriterTelTest {
         assertThat(MergeWriter.displayableTel("   ")).isNull();
         assertThat(MergeWriter.displayableTel(null)).isNull();
     }
+
+    // ── 이미지 URL 스킴 ────────────────────────────────────────────────────────
+    // 소스가 같은 호스트를 http와 https로 섞어 준다(실측 685 : 486). http를 그대로 두면
+    // HTTPS로 배포했을 때만 mixed content로 막혀 카드 절반이 빈 이미지가 된다 —
+    // 로컬 개발에서는 구조적으로 드러나지 않는 고장이라 수집 단계에서 맞춰 둔다.
+
+    @Test
+    void http_이미지는_https로_올린다() {
+        assertThat(MergeWriter.httpsImageUrl("http://tong.visitkorea.or.kr/cms/resource/48/2993048_image2_1.jpg"))
+                .isEqualTo("https://tong.visitkorea.or.kr/cms/resource/48/2993048_image2_1.jpg");
+    }
+
+    @Test
+    void 이미_https면_건드리지_않는다() {
+        String url = "https://tong.visitkorea.or.kr/cms/resource/76/3516376_image2_1.jpg";
+        assertThat(MergeWriter.httpsImageUrl(url)).isEqualTo(url);
+    }
+
+    @Test
+    void 스킴_대소문자를_가리지_않는다() {
+        assertThat(MergeWriter.httpsImageUrl("HTTP://example.com/a.jpg")).isEqualTo("https://example.com/a.jpg");
+    }
+
+    @Test
+    void 빈_값은_null이다() {
+        // 이미지 없음은 정상 상태다(실측 134건). 빈 문자열을 그대로 두면 화면이 "있다"로 오해한다.
+        assertThat(MergeWriter.httpsImageUrl(null)).isNull();
+        assertThat(MergeWriter.httpsImageUrl("   ")).isNull();
+    }
+
+    @Test
+    void http로_시작하지_않는_값은_그대로_둔다() {
+        // 프로토콜 상대 경로나 예상 밖의 값을 임의로 고치지 않는다 — 우리가 모르는 형식이다.
+        assertThat(MergeWriter.httpsImageUrl("//cdn.example.com/a.jpg")).isEqualTo("//cdn.example.com/a.jpg");
+    }
 }

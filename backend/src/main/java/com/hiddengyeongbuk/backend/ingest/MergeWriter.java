@@ -79,6 +79,30 @@ public class MergeWriter {
         return cleaned.isEmpty() ? null : cleaned;
     }
 
+    /**
+     * 이미지 URL을 https로 맞춘다. <b>소스가 같은 호스트를 http와 https로 섞어 준다</b> —
+     * 2026-08-19 실측으로 place 1,305건 중 685건(52.5%)이 {@code http://tong.visitkorea.or.kr}이고
+     * 486건이 같은 호스트의 https였다.
+     *
+     * <p><b>이걸 그대로 두면 배포에서만 깨진다.</b> 로컬 개발은 http로 뜨니 이미지가 보이지만,
+     * 배포는 https라 브라우저가 mixed content로 막아 카드 절반이 빈 이미지가 된다. 개발 중에는
+     * 구조적으로 드러나지 않는 종류의 고장이라 수집 단계에서 미리 맞춰 둔다.
+     *
+     * <p>바꿔도 안전한 근거는 <b>같은 URL이 https에서도 동일하게 응답한다</b>는 것이다(실측:
+     * 양쪽 200, {@code Content-Length} 481,259로 바이트까지 동일). 원문은 {@code staging_place}에
+     * 그대로 남으므로 판단이 틀렸다면 이 메서드만 되돌리고 Merge를 다시 돌리면 된다.
+     *
+     * <p>호스트를 가리지 않고 http 전체를 올린다 — 지금 소스가 tong.visitkorea.or.kr 하나뿐이고,
+     * 허용 목록을 두면 소스가 호스트를 바꿀 때 조용히 http로 되돌아간다.
+     */
+    static String httpsImageUrl(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        return trimmed.regionMatches(true, 0, "http://", 0, 7) ? "https://" + trimmed.substring(7) : trimmed;
+    }
+
     @Transactional
     public Written write(List<StagingPlace> group) {
         StagingPlace anchor = group.get(0);
@@ -143,7 +167,7 @@ public class MergeWriter {
         place.setLat(first(group, StagingPlace::getLat));
         place.setLng(first(group, StagingPlace::getLng));
         place.setTel(displayableTel(first(group, StagingPlace::getTel)));
-        place.setFirstImage(first(group, StagingPlace::getFirstImage));
+        place.setFirstImage(httpsImageUrl(first(group, StagingPlace::getFirstImage)));
         // lcls_systm2/3은 place에 두지 않는다 — 원본이 staging에 남아 있고, 세분 필터가
         // 필요해지면 컬럼을 추가하고 Merge를 재실행하면 된다(ADR-024).
     }

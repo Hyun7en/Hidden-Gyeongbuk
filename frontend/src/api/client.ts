@@ -57,12 +57,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export function fetchHubs(): Promise<HubResponse[]> {
-  return request('/api/hubs')
+/**
+ * 거점 목록. **`lang`을 반드시 넘긴다** — 거점명·설명이 요청 언어로 해석되어 오는 값이라
+ * 생략하면 백엔드가 기준 언어(ko)로 떨어뜨려, 영문 사용자에게 "안동 / 전통·자연·사찰"이
+ * 그대로 나간다. 이 값이 거점 선택 칩·지역 배지·추천 결과 헤더에 직접 렌더링된다.
+ */
+export function fetchHubs(lang = 'en'): Promise<HubResponse[]> {
+  return request(`/api/hubs?lang=${lang}`)
 }
 
-export function fetchMetaOptions(): Promise<MetaOptionsResponse> {
-  return request('/api/meta/options')
+/**
+ * 셀렉터 옵션(API 명세서 §2.3). 코드와 **요청 언어로 해석된 라벨**이 함께 온다 —
+ * 프론트가 자체 라벨 사전을 갖지 않게 해서 언어를 늘릴 때 백엔드 한 곳만 고치면 되게 한다.
+ */
+export function fetchMetaOptions(lang = 'en'): Promise<MetaOptionsResponse> {
+  return request(`/api/meta/options?lang=${lang}`)
 }
 
 /** 지원 언어 목록(API 명세서 §2.4). 언어 선택기와 소개 화면 커버리지가 쓴다. */

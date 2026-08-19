@@ -4,10 +4,12 @@ import com.hiddengyeongbuk.backend.domain.place.FestivalDetailRepository;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImageRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
 import com.hiddengyeongbuk.backend.domain.place.ResolutionStatus;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlace;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlaceRepository;
+import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -61,10 +63,11 @@ public class StalePlaceSweeper {
     /**
      * @param unlinked place 링크를 끊은 보류 행 수
      * @param deletedPlaces 지운 place 수
+     * @param deletedTranslations 살아남은 place에서 지운 근거 없는 공식 번역 행 수
      */
-    public record Result(int unlinked, int deletedPlaces) {
+    public record Result(int unlinked, int deletedPlaces, int deletedTranslations) {
         boolean isEmpty() {
-            return unlinked == 0 && deletedPlaces == 0;
+            return unlinked == 0 && deletedPlaces == 0 && deletedTranslations == 0;
         }
     }
 
@@ -74,7 +77,7 @@ public class StalePlaceSweeper {
                 stagingPlaceRepository.findPlaceIdsReferencedByMatched(ResolutionStatus.MATCHED);
         if (referenced.isEmpty()) {
             log.warn("MATCHED staging이 없어 place 정리를 건너뜁니다 — 판정이 돌지 않은 상태로 보입니다");
-            return new Result(0, 0);
+            return new Result(0, 0, 0);
         }
 
         // 1) 보류 행이 붙들고 있는 링크를 끊는다. FK가 RESTRICT라 이걸 먼저 해야 place를 지울 수 있다.
@@ -102,10 +105,56 @@ public class StalePlaceSweeper {
             placeRepository.deleteAll(doomed);
         }
 
-        Result result = new Result(linkedButNotMatched.size(), doomed.size());
+        // 3) 살아남은 place에서 근거를 잃은 언어 행을 지운다.
+        int deletedTranslations = sweepStaleTranslations(keep);
+
+        Result result = new Result(linkedButNotMatched.size(), doomed.size(), deletedTranslations);
         if (!result.isEmpty()) {
-            log.info("근거 없는 place 정리: 링크 해제 {}건, place 삭제 {}건", result.unlinked(), result.deletedPlaces());
+            log.info(
+                    "근거 없는 place 정리: 링크 해제 {}건, place 삭제 {}건, 공식 번역 삭제 {}건",
+                    result.unlinked(),
+                    result.deletedPlaces(),
+                    result.deletedTranslations());
         }
         return result;
+    }
+
+    /**
+     * 살아남은 place에서 <b>근거를 잃은 공식 번역 행</b>을 지운다.
+     *
+     * <p><b>왜 place 정리만으로 부족한가.</b> 한 place의 국문은 소스에 살아 있고 영문만 내려간
+     * 경우(showflag=0), place 자체는 근거가 있으므로 위 단계가 지우지 않는다. 그런데 그 영문
+     * {@code place_translation} 행은 <b>소스가 내린 목록에서 온 텍스트</b>이고 아무도 갱신하지
+     * 않는다 — {@code MergeWriter}는 MATCHED 그룹만 다시 쓰므로 EXCLUDED가 된 언어는 영원히
+     * 손대지 않는다. 2026-08-19 실측으로 이 상태의 영문 행이 81건 있었다(안동댐·안동호 등).
+     *
+     * <p><b>OFFICIAL만 지운다.</b> TRANSLATE 행은 우리가 국문에서 만든 것이라 소스 목록과
+     * 무관하며, 지우면 다음 백필이 같은 것을 다시 번역해 무료 한도만 태운다.
+     *
+     * <p>지운 자리는 비는 것이 아니라 <b>기계 번역으로 다시 채워진다</b>(Translator가 행 없는
+     * 조합을 대상으로 삼는다). 내려간 목록의 옛 영문보다 현재 국문의 번역이 맞다 — 국문 쪽은
+     * 갱신이 살아 있기 때문이다. 나중에 소스가 다시 올리면 Merge가 같은 행을 OFFICIAL로
+     * 덮으므로(단방향) 되돌아오는 경로도 있다.
+     *
+     * <p>모든 언어가 근거를 잃은 place는 여기 오지 않는다 — 그런 place는 MATCHED가 하나도
+     * 가리키지 않아 위 2)에서 통째로 지워진다. 즉 이 단계가 place를 무제목으로 만들 수 없다.
+     */
+    private int sweepStaleTranslations(Set<Long> keep) {
+        Set<String> backed = new HashSet<>();
+        for (Object[] pair : stagingPlaceRepository.findPlaceLangPairsReferencedByMatched(
+                ResolutionStatus.MATCHED)) {
+            backed.add(pair[0] + " " + pair[1]);
+        }
+
+        List<PlaceTranslation> stale = placeTranslationRepository.findByPlaceIdIn(keep).stream()
+                .filter(t -> t.getSource() == TranslationSource.OFFICIAL)
+                .filter(t -> !backed.contains(t.getPlaceId() + " " + t.getLang()))
+                .toList();
+
+        if (stale.isEmpty()) {
+            return 0;
+        }
+        placeTranslationRepository.deleteAll(stale);
+        return stale.size();
     }
 }

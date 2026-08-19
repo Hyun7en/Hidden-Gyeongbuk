@@ -44,4 +44,15 @@ public interface StagingPlaceRepository extends JpaRepository<StagingPlace, Long
     @Query("select distinct s.resolvedPlaceId from StagingPlace s "
             + "where s.resolvedPlaceId is not null and s.resolutionStatus = :matched")
     List<Long> findPlaceIdsReferencedByMatched(ResolutionStatus matched);
+
+    /**
+     * MATCHED가 뒷받침하는 (place, 언어) 조합 전체.
+     *
+     * <p>place 단위가 아니라 <b>언어 단위</b>로 보는 것이 요점이다. 한 place의 국문은 살아 있고
+     * 영문만 소스에서 내려간 경우, place는 남아야 하지만 그 영문 행은 근거를 잃는다 —
+     * place 단위 정리로는 잡히지 않는 자리다.
+     */
+    @Query("select distinct s.resolvedPlaceId, s.lang from StagingPlace s "
+            + "where s.resolvedPlaceId is not null and s.resolutionStatus = :matched")
+    List<Object[]> findPlaceLangPairsReferencedByMatched(ResolutionStatus matched);
 }

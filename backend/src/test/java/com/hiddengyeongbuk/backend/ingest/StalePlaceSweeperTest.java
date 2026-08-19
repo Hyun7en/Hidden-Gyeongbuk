@@ -8,11 +8,14 @@ import com.hiddengyeongbuk.backend.domain.place.FestivalDetailRepository;
 import com.hiddengyeongbuk.backend.domain.place.Place;
 import com.hiddengyeongbuk.backend.domain.place.PlaceImageRepository;
 import com.hiddengyeongbuk.backend.domain.place.PlaceRepository;
+import com.hiddengyeongbuk.backend.domain.place.PlaceTranslation;
 import com.hiddengyeongbuk.backend.domain.place.PlaceTranslationRepository;
 import com.hiddengyeongbuk.backend.domain.place.ResolutionStatus;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlace;
 import com.hiddengyeongbuk.backend.domain.place.StagingPlaceRepository;
+import com.hiddengyeongbuk.backend.domain.place.TranslationSource;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.BDDMockito;
@@ -58,6 +61,18 @@ class StalePlaceSweeperTest {
         BDDMockito.given(translations.findByPlaceIdIn(anyCollection())).willReturn(List.of());
         BDDMockito.given(images.findByPlaceIdIn(anyCollection())).willReturn(List.of());
         BDDMockito.given(festivals.findByPlaceIdIn(anyCollection())).willReturn(List.of());
+        // 언어 단위 근거는 기본값 없음 — 필요한 테스트가 직접 채운다.
+        BDDMockito.given(staging.findPlaceLangPairsReferencedByMatched(ResolutionStatus.MATCHED))
+                .willReturn(List.<Object[]>of());
+    }
+
+    private static PlaceTranslation translation(long placeId, String lang, TranslationSource source) {
+        return PlaceTranslation.builder()
+                .placeId(placeId)
+                .lang(lang)
+                .title("t")
+                .source(source)
+                .build();
     }
 
     @Test
@@ -107,5 +122,61 @@ class StalePlaceSweeperTest {
 
         assertThat(r.deletedPlaces()).isZero();
         BDDMockito.then(places).should(Mockito.never()).deleteAll(any());
+    }
+
+    // ── 언어 단위 정리 ────────────────────────────────────────────────────────
+    // place는 살아 있는데 한 언어만 소스에서 내려간 경우(showflag=0). place 단위 정리로는
+    // 안 잡히고, MergeWriter는 MATCHED 그룹만 다시 쓰므로 그 행은 영원히 갱신되지 않는다.
+    // 2026-08-19 실측 81건(안동댐·안동호 등).
+
+    @Test
+    void 근거를_잃은_공식_번역_행을_지운다() {
+        stub(List.of(1L), List.of(), List.of(place(1)));
+        // 국문만 살아 있고 영문은 EXCLUDED가 됐다.
+        BDDMockito.given(staging.findPlaceLangPairsReferencedByMatched(ResolutionStatus.MATCHED))
+                .willReturn(List.<Object[]>of(new Object[] {1L, "ko"}));
+        BDDMockito.given(translations.findByPlaceIdIn(Set.of(1L)))
+                .willReturn(List.of(
+                        translation(1L, "ko", TranslationSource.OFFICIAL),
+                        translation(1L, "en", TranslationSource.OFFICIAL)));
+
+        StalePlaceSweeper.Result r = sweeper.sweep();
+
+        assertThat(r.deletedPlaces()).isZero();
+        assertThat(r.deletedTranslations()).isEqualTo(1);
+        ArgumentCaptor<Iterable<PlaceTranslation>> captor = ArgumentCaptor.forClass(Iterable.class);
+        BDDMockito.then(translations).should().deleteAll(captor.capture());
+        assertThat(captor.getValue()).extracting("lang").containsExactly("en");
+    }
+
+    @Test
+    void 기계_번역은_지우지_않는다() {
+        // TRANSLATE 행은 우리가 국문에서 만든 것이라 소스 목록과 무관하다. 지우면 다음 백필이
+        // 같은 것을 다시 번역해 무료 한도만 태운다.
+        stub(List.of(1L), List.of(), List.of(place(1)));
+        BDDMockito.given(staging.findPlaceLangPairsReferencedByMatched(ResolutionStatus.MATCHED))
+                .willReturn(List.<Object[]>of(new Object[] {1L, "ko"}));
+        BDDMockito.given(translations.findByPlaceIdIn(Set.of(1L)))
+                .willReturn(List.of(
+                        translation(1L, "ko", TranslationSource.OFFICIAL),
+                        translation(1L, "en", TranslationSource.TRANSLATE)));
+
+        StalePlaceSweeper.Result r = sweeper.sweep();
+
+        assertThat(r.deletedTranslations()).isZero();
+        BDDMockito.then(translations).should(Mockito.never()).deleteAll(any());
+    }
+
+    @Test
+    void 근거가_있는_행은_남긴다() {
+        stub(List.of(1L), List.of(), List.of(place(1)));
+        BDDMockito.given(staging.findPlaceLangPairsReferencedByMatched(ResolutionStatus.MATCHED))
+                .willReturn(List.<Object[]>of(new Object[] {1L, "ko"}, new Object[] {1L, "en"}));
+        BDDMockito.given(translations.findByPlaceIdIn(Set.of(1L)))
+                .willReturn(List.of(
+                        translation(1L, "ko", TranslationSource.OFFICIAL),
+                        translation(1L, "en", TranslationSource.OFFICIAL)));
+
+        assertThat(sweeper.sweep().deletedTranslations()).isZero();
     }
 }

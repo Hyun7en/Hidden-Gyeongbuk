@@ -225,6 +225,16 @@ function PlaceDetail() {
                 {copied && <span className="text-[11px] text-accent-text">{t('placeDetail.copied')}</span>}
               </div>
             )}
+            {/*
+              연락처(화면 설계서 S6 ③). 타입에만 있고 렌더링이 빠져 있던 것을 채웠다.
+              whitespace-pre-line인 이유 — 소스가 연락처를 여러 개 줄 때 <br>로 끊어 보내고
+              백엔드가 그 자리를 줄바꿈으로 남긴다(MergeWriter.displayableTel). 실측 예:
+              1330 관광통역안내 + 축제사무국 번호가 한 칸에 들어온다. 한 줄로 이으면 100자가
+              넘어 읽을 수 없다.
+            */}
+            {place.tel && (
+              <p className="mt-3 whitespace-pre-line text-[13px] text-text-soft">{place.tel}</p>
+            )}
             {place.lat != null && place.lng != null && (
               // 지도 앱은 둘 다 둔다 — 국내는 카카오가 정확하고, 해외 이용자는 구글만 쓰는 경우가 많다.
               <div className="mt-3 flex flex-wrap items-center gap-2">

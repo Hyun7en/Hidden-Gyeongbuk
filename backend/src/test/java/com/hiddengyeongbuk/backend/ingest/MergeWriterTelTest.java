@@ -14,18 +14,22 @@ import org.junit.jupiter.api.Test;
 class MergeWriterTelTest {
 
     @Test
-    void br_태그를_공백으로_바꾼다() {
-        String raw = "• 1330 Travel Hotline: +82-2-1330<br>(Korean, English, Japanese, Chinese)";
+    void 실측_원문은_연락처_두_개다() {
+        // 봉화은어축제 실제 응답(112자). 1330 관광통역안내 + 축제사무국 번호를 <br>로 이었다.
+        String raw = "• 1330 Travel Hotline: +82-2-1330 <br>(Korean, English, Japanese, Chinese)"
+                + " <br> • For more info: +82-54-674-3053";
 
         assertThat(MergeWriter.displayableTel(raw))
-                .isEqualTo("• 1330 Travel Hotline: +82-2-1330 (Korean, English, Japanese, Chinese)");
+                .isEqualTo("• 1330 Travel Hotline: +82-2-1330\n(Korean, English, Japanese, Chinese)\n"
+                        + "• For more info: +82-54-674-3053");
     }
 
     @Test
-    void 대문자와_자기닫는_형태도_처리한다() {
-        // 실측 8건 안에서도 <br>, <BR>, <br> 앞뒤 공백이 섞여 있었다.
-        assertThat(MergeWriter.displayableTel("054-000-0000<BR>안내")).isEqualTo("054-000-0000 안내");
-        assertThat(MergeWriter.displayableTel("054-000-0000<br />안내")).isEqualTo("054-000-0000 안내");
+    void br은_줄바꿈으로_남긴다() {
+        // 소스가 "여기서 끊어라"를 알려준 자리다. 공백으로 이으면 103자 한 줄이 된다.
+        assertThat(MergeWriter.displayableTel("054-000-0000<BR>안내")).isEqualTo("054-000-0000\n안내");
+        assertThat(MergeWriter.displayableTel("054-000-0000<br />안내")).isEqualTo("054-000-0000\n안내");
+        assertThat(MergeWriter.displayableTel("054-000-0000 <br> 안내")).isEqualTo("054-000-0000\n안내");
     }
 
     @Test
@@ -39,15 +43,18 @@ class MergeWriterTelTest {
         // 태그만 걷어내고 나머지는 원문 순서를 지킨다.
         String raw = "축제사무국 054-000-0000<br>관광안내 1330";
 
-        assertThat(MergeWriter.displayableTel(raw)).isEqualTo("축제사무국 054-000-0000 관광안내 1330");
+        assertThat(MergeWriter.displayableTel(raw)).isEqualTo("축제사무국 054-000-0000\n관광안내 1330");
     }
 
     @Test
     void 자르지_않는다() {
-        // 컬럼이 255자로 충분하다. 잘라내면 정보를 잃는다.
-        String raw = "• 1330 Travel Hotline: +82-2-1330<br>(Korean, English, Japanese, Chinese)";
+        // 컬럼이 255자로 충분하다. 잘라내면 축제사무국 번호를 잃는다.
+        String raw = "• 1330 Travel Hotline: +82-2-1330 <br>(Korean, English, Japanese, Chinese)"
+                + " <br> • For more info: +82-54-674-3053";
 
-        assertThat(MergeWriter.displayableTel(raw).length()).isGreaterThan(50);
+        String cleaned = MergeWriter.displayableTel(raw);
+        assertThat(cleaned.length()).isGreaterThan(50);
+        assertThat(cleaned).contains("+82-54-674-3053");
     }
 
     @Test

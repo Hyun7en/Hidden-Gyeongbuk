@@ -55,18 +55,26 @@ public class MergeWriter {
      * 영문 축제는 "• 1330 Travel Hotline: +82-2-1330&lt;br&gt;(Korean, English, Japanese,
      * Chinese)" 같은 안내문을 넣는다(2026-08-19 실측 8건, 111~113자).
      *
+     * <p>실측한 원문(봉화은어축제, 112자)은 <b>연락처 두 개</b>였다 — 1330 관광통역안내와
+     * 축제사무국 번호를 {@code <br>}로 이어 붙였다. 같은 응답의 일반 항목은 15자
+     * ({@code +82-54-683-9282})이니, 긴 값은 전화번호가 아니라 안내 블록이다.
+     *
+     * <p><b>{@code <br>}은 줄바꿈으로 남긴다.</b> 소스가 "여기서 끊어라"를 이미 알려준
+     * 자리이므로 그 구분을 버리지 않는다 — 공백으로 이어 붙이면 103자 한 줄이 되어 읽을 수 없다.
+     *
      * <p>원문은 {@code staging_place.tel}에 그대로 남는다(ADR-016 — 수집과 해석의 분리).
-     * 여기서는 <b>태그만 걷어내고 공백을 정리</b>하며, 전화번호를 골라내려 들지는 않는다 —
-     * 무엇이 번호이고 무엇이 설명인지 판정하는 규칙을 우리가 소유하면 근거도 우리가 대야 한다.
-     * 잘라내면 정보를 잃으므로 자르지도 않는다(컬럼이 255자로 충분하다).
+     * <b>전화번호를 골라내려 들지는 않는다</b> — 무엇이 번호이고 무엇이 설명인지 판정하는
+     * 규칙을 우리가 소유하면 근거도 우리가 대야 한다. 잘라내지도 않는다(컬럼이 255자로 충분하다).
      */
     static String displayableTel(String raw) {
         if (raw == null) {
             return null;
         }
-        String cleaned = raw.replaceAll("(?i)<br\\s*/?>", " ")
-                .replaceAll("<[^>]*>", " ")
-                .replaceAll("\\s+", " ")
+        String cleaned = raw.replaceAll("(?i)<br\\s*/?>", "\n")   // 소스가 끊으라고 한 자리
+                .replaceAll("<[^>]*>", " ")                      // 나머지 태그는 지운다
+                .replaceAll("[ \\t]+", " ")                       // 줄 안의 공백만 정리
+                .replaceAll(" *\n *", "\n")                      // 줄 경계의 공백 제거
+                .replaceAll("\n{2,}", "\n")                      // 빈 줄 접기
                 .trim();
         return cleaned.isEmpty() ? null : cleaned;
     }

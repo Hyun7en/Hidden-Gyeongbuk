@@ -29,6 +29,8 @@ public class TourApiClient {
     // TourAPI 문서상 05=타임아웃만 일시적 오류다. 22(요청 제한 초과)는 짧게 재시도해도 안 풀리고,
     // 30/31/32(키·기간·IP 오류)는 재시도로 절대 해결되지 않으므로 재시도 대상에서 뺀다.
     private static final String RESULT_CODE_TIMEOUT = "05";
+    /** 결과 없음. 사진·소개정보에서는 실패가 아니라 정상 결과다(아래 requireSuccessOrEmpty). */
+    private static final String RESULT_CODE_NO_DATA = "03";
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -88,7 +90,7 @@ public class TourApiClient {
         return Retry.withBackoff(MAX_ATTEMPTS, INITIAL_BACKOFF_MS, TourApiClient::isTransient, () -> {
             String body = get(
                     serviceName, "/detailImage2", Map.of("contentId", contentId, "imageYN", "Y"));
-            return requireSuccess(body, DetailImageItem.class);
+            return requireSuccessOrEmpty(body, DetailImageItem.class);
         });
     }
 
@@ -105,7 +107,7 @@ public class TourApiClient {
                     serviceName,
                     "/detailIntro2",
                     Map.of("contentId", contentId, "contentTypeId", String.valueOf(contentTypeId)));
-            return requireSuccess(body, DetailIntroItem.class).stream().findFirst();
+            return requireSuccessOrEmpty(body, DetailIntroItem.class).stream().findFirst();
         });
     }
 
@@ -115,6 +117,42 @@ public class TourApiClient {
         }
         return e instanceof TourApiException tourApiException
                 && RESULT_CODE_TIMEOUT.equals(tourApiException.resultCode());
+    }
+
+    /**
+     * "데이터가 없다"를 <b>실패가 아니라 빈 결과</b>로 다룬다.
+     *
+     * <p>{@link #requireSuccess}는 {@code 0000}이 아닌 모든 코드를 예외로 올린다. 목록·상세에는
+     * 그게 맞지만 <b>사진·소개정보에는 치명적</b>이다 — 사진이 없는 장소가 흔한데 그때 NODATA가
+     * 오면 호출부가 "못 받았다"로 보고 "물어봤다" 표시를 남기지 않는다. 그러면 <b>매 수집마다
+     * 영원히 다시 묻게 되고</b>, 1건당 1회짜리 호출이라 그날 예산을 그것만으로 태운다.
+     * overview에서 이미 겪은 함정과 같은 모양이며, 여기서는 예외 경로로 다시 들어온다.
+     *
+     * <p>0건이 {@code 0000} + 빈 items로 오는지 NODATA 코드로 오는지 <b>실측하지 않았다.</b>
+     * 둘 다 같은 결과가 되게 해서 어느 쪽이든 안전하게 만든다 — 정답을 모를 때는 양쪽을
+     * 같은 곳으로 보내는 편이 낫다.
+     *
+     * <p>다른 오류(22 한도 초과, 30/31/32 키 문제, 05 타임아웃)는 그대로 예외로 올린다. 그건
+     * 진짜 실패라 재시도돼야 한다.
+     */
+    private <T> List<T> requireSuccessOrEmpty(String body, Class<T> itemType) {
+        try {
+            return requireSuccess(body, itemType);
+        } catch (TourApiException e) {
+            if (isNoData(e)) {
+                return List.of();
+            }
+            throw e;
+        }
+    }
+
+    /** TourAPI의 NODATA 신호. 코드가 서비스마다 흔들려 메시지도 함께 본다. (테스트 위해 package-private) */
+    static boolean isNoData(TourApiException e) {
+        if (RESULT_CODE_NO_DATA.equals(e.resultCode())) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && message.toUpperCase(java.util.Locale.ROOT).contains("NODATA");
     }
 
     private <T> List<T> requireSuccess(String body, Class<T> itemType) {

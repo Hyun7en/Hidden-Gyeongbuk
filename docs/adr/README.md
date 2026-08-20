@@ -39,13 +39,14 @@
 | [023](ADR-023-migration-squash.md) | 마이그레이션 스쿼시 — 배포 전 1회 한정 | Accepted |
 | [024](ADR-024-lcls-systm-place-type.md) | 장소 분류 = 관광공사 대분류 채택 (place_tag 폐기) | Accepted |
 | [025](ADR-025-drop-restaurants.md) | 음식점(FD) 수집·노출 제외 (숙박은 유지) | Accepted |
+| [026](ADR-026-llm-title-translation.md) | 제목 번역만 LLM으로 분리 (설명글·주소는 Google 유지) | Accepted |
 
 ## 대체 관계
 
 인용 전에 이 사슬을 확인할 것.
 
 ```
-006 ──→ 013            LLM 요약 → 전용 번역 API
+006 ──→ 013 ──(제목만)──→ 026   LLM 요약 → 전용 번역 API → 제목만 다시 LLM
 014 ──→ 016            국문 기준 순회 → 언어별 독립 staging
 015 ──(has_en 부분)──→ 017
 012 ──(1회 예외)────→ 023

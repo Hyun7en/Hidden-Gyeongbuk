@@ -1,6 +1,6 @@
 # ADR-013 · 영문 콘텐츠 = Google Cloud Translation 전문 번역
 
-**상태** Accepted (ADR-006을 대체)  
+**상태** Accepted (ADR-006을 대체) · 제목 부분은 ADR-026이 대체 — 설명글·주소는 그대로 유효  
 **작성일자** 2026-07-17
 
 ## 컨텍스트

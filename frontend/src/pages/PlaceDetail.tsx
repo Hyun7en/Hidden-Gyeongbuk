@@ -185,6 +185,23 @@ function PlaceDetail() {
           </div>
 
           {/*
+            요청 언어 행이 없어 다른 언어로 폴백된 경우를 밝힌다(API 명세서 §1.1이 resolvedLang을
+            내려주는 이유가 이것이다).
+
+            <b>기계 번역 배지로는 이 경우가 안 잡힌다.</b> 폴백된 행의 source는 그 행 기준이라
+            보통 OFFICIAL이고, 그러면 아래 조건에 안 걸려 영문 사용자가 한국어를 보면서 아무
+            설명도 못 받는다. 2026-08-19 기준 1,305곳 중 1,030곳(79%)이 그 상태였다.
+
+            제목까지 폴백되므로 overview 유무와 무관하게 띄운다 — 설명이 없어도 제목은 있다.
+            번역 백필이 끝나면 저절로 사라지는 문구다.
+          */}
+          {place.resolvedLang && place.resolvedLang !== lang && (
+            <p className="mt-3 inline-block border border-line px-2 py-1 text-[11px] text-text-soft">
+              {t('placeDetail.languageFallback')}
+            </p>
+          )}
+
+          {/*
             설명이 없는 장소가 적지 않다 — 관광공사 원본이 음식점에는 overview를 거의 주지
             않는다(실측: FD 8%, 전체 43%). 자리를 그냥 비워두면 화면이 고장 난 것처럼 보이므로
             없다는 사실을 밝힌다. 추천 점수에서는 데이터 완성도로 이미 감점된다(PlaceCompleteness).

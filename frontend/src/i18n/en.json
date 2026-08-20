@@ -50,7 +50,8 @@
     "nearby": "Nearby",
     "festival": "Festival dates",
     "machineTranslation": "Machine translation",
-    "noOverview": "The source tourism data has no description for this place. Address and location are below."
+    "noOverview": "The source tourism data has no description for this place. Address and location are below.",
+    "languageFallback": "Not available in English yet — showing the original text."
   },
   "recommendInput": {
     "title": "Plan a course",

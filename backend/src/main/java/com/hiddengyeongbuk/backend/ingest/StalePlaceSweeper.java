@@ -71,18 +71,36 @@ public class StalePlaceSweeper {
         }
     }
 
+    /**
+     * place를 살려 두는 근거가 되는 판정 상태.
+     *
+     * <p><b>PENDING이 여기 있는 것이 핵심이다.</b> PENDING은 "버려진 것"이 아니라 "원본이 바뀌어
+     * 다시 판정해야 하는 것"이다. Collector가 변경된 행을 PENDING으로 되돌리므로,
+     * <b>collect 직후 resolve 없이 merge를 돌리면</b> 그 행들이 잠깐 MATCHED가 아닌 상태가 된다.
+     * PENDING을 고아로 보면 그 순간 멀쩡한 place가 지워진다 — 2026-08-20에 실제로 7곳을 잃었다
+     * (백석탄계곡·최치원문학관·청송백자축제 등. resolve+merge로 복구했다).
+     *
+     * <p>진짜 고아는 QUARANTINED(우리가 판정 못 함)와 EXCLUDED(소스가 내렸거나 수집 대상 아님)뿐이다.
+     * 둘 다 재판정으로 풀릴 여지가 없어 place를 남길 근거가 되지 않는다.
+     */
+    private static final Set<ResolutionStatus> KEEPS_PLACE_ALIVE =
+            Set.of(ResolutionStatus.MATCHED, ResolutionStatus.PENDING);
+
     @Transactional
     public Result sweep() {
-        List<Long> referenced =
-                stagingPlaceRepository.findPlaceIdsReferencedByMatched(ResolutionStatus.MATCHED);
-        if (referenced.isEmpty()) {
+        // 안전장치는 MATCHED 기준 그대로다 — MATCHED가 하나도 없으면 판정이 안 돌았다는 뜻이고,
+        // 그때 쓸어내면 전량을 잃는다. PENDING만 잔뜩 있는 상태가 정확히 그 경우다.
+        if (stagingPlaceRepository.findPlaceIdsReferencedBy(Set.of(ResolutionStatus.MATCHED)).isEmpty()) {
             log.warn("MATCHED staging이 없어 place 정리를 건너뜁니다 — 판정이 돌지 않은 상태로 보입니다");
             return new Result(0, 0, 0);
         }
+        List<Long> referenced = stagingPlaceRepository.findPlaceIdsReferencedBy(KEEPS_PLACE_ALIVE);
 
         // 1) 보류 행이 붙들고 있는 링크를 끊는다. FK가 RESTRICT라 이걸 먼저 해야 place를 지울 수 있다.
+        //    PENDING 행의 링크는 끊지 않는다 — 유지해야 재판정 후 Merge가 같은 place를 재사용해
+        //    place_id가 바뀌지 않는다.
         List<StagingPlace> linkedButNotMatched =
-                stagingPlaceRepository.findLinkedButNotMatched(ResolutionStatus.MATCHED);
+                stagingPlaceRepository.findLinkedButNotIn(KEEPS_PLACE_ALIVE);
         linkedButNotMatched.forEach(s -> s.setResolvedPlaceId(null));
         if (!linkedButNotMatched.isEmpty()) {
             stagingPlaceRepository.saveAll(linkedButNotMatched);
@@ -141,8 +159,7 @@ public class StalePlaceSweeper {
      */
     private int sweepStaleTranslations(Set<Long> keep) {
         Set<String> backed = new HashSet<>();
-        for (Object[] pair : stagingPlaceRepository.findPlaceLangPairsReferencedByMatched(
-                ResolutionStatus.MATCHED)) {
+        for (Object[] pair : stagingPlaceRepository.findPlaceLangPairsReferencedBy(KEEPS_PLACE_ALIVE)) {
             backed.add(pair[0] + " " + pair[1]);
         }
 

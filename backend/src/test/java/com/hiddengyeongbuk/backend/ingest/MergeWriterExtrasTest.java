@@ -156,4 +156,41 @@ class MergeWriterExtrasTest {
         BDDMockito.then(festivals).should().delete(stale);
         BDDMockito.then(festivals).should(Mockito.never()).save(any());
     }
+
+    @Test
+    void 언어별_사진을_합치고_중복은_거른다() {
+        // 국문·영문은 contentId가 다른 별개 레코드라 사진 목록도 다르다 —
+        // 2026-08-20 실측: 두 언어 다 사진이 있는 82곳 중 49곳(60%)이 개수부터 달랐다.
+        // 한쪽만 쓰면 그만큼 버린다.
+        stubCommon();
+        StagingPlace ko = row("EV", "https://a/1.jpg\nhttps://a/2.jpg", null, null);
+        StagingPlace en = row("EV", "https://a/2.jpg\nhttps://a/3.jpg", null, null);
+        ReflectionTestUtils.setField(en, "lang", "en");
+        ReflectionTestUtils.setField(en, "sourceContentId", "c2");
+
+        writer.write(List.of(ko, en));
+
+        ArgumentCaptor<PlaceImage> captor = ArgumentCaptor.forClass(PlaceImage.class);
+        BDDMockito.then(images).should(Mockito.times(3)).save(captor.capture());
+        // 앵커(국문)가 앞, 영문 추가분이 뒤. 겹치는 2.jpg는 한 번만.
+        assertThat(captor.getAllValues())
+                .extracting(PlaceImage::getImageUrl)
+                .containsExactly("https://a/1.jpg", "https://a/2.jpg", "https://a/3.jpg");
+    }
+
+    @Test
+    void 국문에_사진이_없어도_영문_사진을_쓴다() {
+        // 영문에만 있는 장소(실측 7곳)와, 국문 사진만 비어 있는 경우 둘 다 이 경로다.
+        stubCommon();
+        StagingPlace ko = row("EV", null, null, null);
+        StagingPlace en = row("EV", "https://a/only-en.jpg", null, null);
+        ReflectionTestUtils.setField(en, "lang", "en");
+        ReflectionTestUtils.setField(en, "sourceContentId", "c2");
+
+        writer.write(List.of(ko, en));
+
+        ArgumentCaptor<PlaceImage> captor = ArgumentCaptor.forClass(PlaceImage.class);
+        BDDMockito.then(images).should().save(captor.capture());
+        assertThat(captor.getValue().getImageUrl()).isEqualTo("https://a/only-en.jpg");
+    }
 }

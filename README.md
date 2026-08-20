@@ -10,7 +10,7 @@
 - DB: MySQL 8.0 (Docker)
 - 프론트: React SPA (Vite + TypeScript)
 - 외부 API: 한국관광공사 TourAPI(KorService2/EngService2), Google Cloud Translation, Kakao Maps
-  - Gemini는 **현재 미사용**이다. 번역 엔진이 전용 API로 교체됐고(ADR-013), 설정만 향후 LLM 기능용 예비로 남아 있다.
+  - Gemini는 **영문 제목 localization에만** 쓴다(ADR-026). 설명글·주소 번역은 Google Cloud Translation이 맡는다(ADR-013).
 
 ## 저장소 구조
 
@@ -68,8 +68,9 @@ SPRING_PROFILES_ACTIVE=prod java -jar build/libs/*.jar
 배포 전 카카오 디벨로퍼스에 **배포 도메인**을 등록할 것 — 지도는 [플랫폼] > Web,
 공유는 [제품 링크 관리] > [웹 도메인]으로 **목록이 서로 다르다**.
 
-## 개발 참고
+## 더 읽을 것
 
-- 데이터 수집은 배치(일 1회) 적재이며, 사용자 요청 시 TourAPI를 실시간 호출하지 않는다.
-- 추천 점수는 캐시된 데이터 위에서 요청 시 실시간 계산한다.
-- 시크릿은 `.env`로만 관리하며 커밋하지 않는다.
+- [`docs/adr/`](docs/adr/) — 기술·설계 결정과 그 근거. [`README`](docs/adr/README.md)에 결정
+  요약표와 대체 관계 사슬이 있다. **번호가 큰 쪽이 최신**이다.
+- [`CLAUDE.md`](CLAUDE.md) — Claude Code 작업 규칙(패키지 구조, 코드 관행, 실측 함정).
+- 설계 문서(SRS·아키텍처·ERD·API 명세·화면 설계 등)는 Notion "Hidden Gyeongbuk Wiki"가 정본이다.

@@ -68,7 +68,7 @@ npm run build      # tsc -b + vite build
 - `domain.{hub,region,place,sync}` — JPA 엔티티+레포지토리
 - `ingest` — TourAPI 수집 파이프라인 4단(Collector·Resolver·Merger). `ingest.client`(TourAPI 통신), `ingest.translate`(Translator·TranslateClient), `ingest.admin`(수동 트리거)
 - `catalog` — 프론트향 조회·추천 API. `catalog.course`(추천 엔진), `catalog.dto`
-- `support` — 도메인 무관 공용(Retry, GeoUtils, WebConfig, PlaceDataChangedEvent, LanguageRegistry). `support.llm`(Gemini — 미사용 예비, ADR-006)
+- `support` — 도메인 무관 공용(Retry, GeoUtils, WebConfig, PlaceDataChangedEvent, LanguageRegistry). `support.llm`(Gemini — 제목 localization 전용, ADR-026)
 
 새 기능도 이 분류를 따른다: 외부 API 통신은 `client`(또는 기능 전용 서브패키지), 운영자용 HTTP는 `admin`, 프론트향 조회는 `catalog`. ingest→catalog 직접 의존은 금지 — `PlaceDataChangedEvent`(Spring 이벤트)로만 통신한다.
 
@@ -114,19 +114,21 @@ npm run build      # tsc -b + vite build
 
 ### 번역 (ADR-013)
 
-- 국문 제목·설명·주소를 Google Cloud Translation v2로 **한 번의 호출에 함께** 번역해 `place_translation`(source=TRANSLATE)에 (장소, 언어)별 1회 캐싱. **Gemini는 향후 챗봇 등 LLM이 실제로 필요한 기능용 예비다 — 번역에 쓰지 말고, 코드·설정도 지우지 말 것**(ADR-006 후속 주석).
+- 국문 제목·설명·주소를 Google Cloud Translation v2로 **한 번의 호출에 함께** 번역해 `place_translation`(source=TRANSLATE)에 (장소, 언어)별 1회 캐싱한다.
+- **제목만 Gemini로 만든다 — 설명글·주소는 Google 그대로다**(ADR-026). 제목은 평균 7.8자라 문맥이 없어 번역 API가 고유명사를 뜻으로 풀어버린다(`숫골 → Male bone`, `아늑 → Cozy`). 숙박 12%·레포츠 26%가 그렇게 깨졌고 역사 유적은 2%뿐이었다 — 기관명은 뜻으로 푸는 게 맞는 번역이라서다. **설명글을 Gemini로 번역하지 말 것**: ADR-013이 "요약은 정보 손실"로 물린 결정이 그대로 유효하고, ADR-026은 그걸 뒤집은 게 아니라 제목만 떼어낸 것이다.
+- **제목 작업은 상시 파이프라인이 아니라 일회성 백필이다**(`POST /internal/titles/{localize,review,overrides}`, local 프로파일 전용). 스케줄러·큐를 만들지 말 것 — 출품 후 데이터가 고정되므로 안 쓸 기계가 된다. **재실행 안전성이 전제다**: 입력이 언제나 국문이라 반복 실행이 번역을 누적 열화시키지 않고, 처리한 행은 **`place_translation.title_localized_at`(V8)** 이 찍혀 건너뛴다 — `source`에 엔진을 더하지 않고 `generated_at`은 모든 행에 이미 차 있어 쓸 수 없다. **실패는 전부 기존 Google 제목 유지로 떨어지고 표시를 안 찍는다** — 그래야 다음 실행이 다시 시도한다. 교정은 `data/title-overrides-{lang}.yml`에 **국문 `source_content_id` 키로** 쌓는다(`place_id`는 재판정 때 바뀐다).
+- **Gemini 무료 티어의 한도는 둘이고, 결정적인 것은 하루 20회다**(2026-08-20 429 실측). `GenerateRequestsPerMinutePerProjectPerModel-FreeTier=5`(분당)와 **`GenerateRequestsPerDayPerProjectPerModel-FreeTier=20`(하루)** — 후자가 작업 일수를 정한다. 문자 수 과금인 Google 번역과 성격이 완전히 달라 **그쪽 감각으로 설계하면 안 된다**. 그래서 **호출당 담는 양이 전부다**: 1건씩이면 1,105건에 55일, 20건씩이면 3일, **100건씩이면 12회로 하루**다(`app.title.batch-size`, 기본 100). **503 재시도도 쿼터를 먹는다** — 하루 20회에서 재시도 하나가 장소 100곳이다. **응답은 순서가 아니라 `id`로 되짚을 것** — 모델이 순서를 바꾸거나 일부를 빠뜨려도 엉뚱한 장소에 이름이 붙으면 안 된다.
 - `place_translation.source`는 `OFFICIAL`(해당 언어 서비스 원본)/`TRANSLATE`(기계 번역) 둘뿐. 공식이 확보되면 같은 행을 OFFICIAL로 덮어쓴다 — **TRANSLATE → OFFICIAL은 단방향이고 역방향은 없다.**
 - **순서: 수집·매칭 먼저 → 남은 조합만 번역.** 매칭 전에 번역부터 돌리면 곧 대체될 번역에 무료 글자수를 낭비한다.
 - 중간 언어를 경유하지 않는다(국문 → 영어 → 일본어 금지). 오역이 누적된다.
 - 속도 제한: 연속 호출 시 403 `userRateLimitExceeded`(429 아님, 레거시 v2 특성). 1초 페이싱 + 이 에러만 재시도. 무료 한도는 **월** 50만 자.
 - **`userRateLimitExceeded`는 두 원인에 공용이다**(실측 2건) — 2026-07-17은 초당 제한, 2026-08-17은 **일일 문자 수 할당량 소진**인데 응답이 같다. 구글 문서에 `dailyLimitExceeded`가 따로 있지만 오지 않는다. **응답으로는 원인을 가릴 수 없으니 기다려 보고 판정할 것** — 재시도(3·6·12초)를 다 소진하면 60초 쉬고 한 번 재확인하고, 그래도 실패하면 일일 소진으로 보고 배치를 중단한다. 중단이 안전한 것은 백필이 이미 번역된 장소를 건너뛰어 재실행이 이어지기 때문이다.
-- **할당량은 한국 자정이 아니라 태평양 시간 자정에 리셋된다 = KST 16:00**(PDT 기준). 밤 11시에 돌리고 새벽 1시에 또 돌리면 **같은 날 몫**을 쓴다(2026-08-17 실측 — 한국 날짜가 바뀌었는데도 첫 요청부터 막혔다). 콘솔 항목 이름은 `v2 and v3 general model characters per day`이며 16,000자로 설정해 하루 페이스를 플랫폼이 강제한다.
+- **할당량은 한국 자정이 아니라 태평양 시간 자정에 리셋된다 = KST 16:00**(PDT 기준). 밤 11시에 돌리고 새벽 1시에 또 돌리면 **같은 날 몫**을 쓴다(2026-08-17 실측 — 한국 날짜가 바뀌었는데도 첫 요청부터 막혔다). 콘솔 항목 이름은 `v2 and v3 general model characters per day`다. 2026-08-20에 16,000자 → 410,000자로 올려 백필을 하루에 끝냈다.
 - **거부된 요청은 할당량을 소모하지 않는다** — 소진 후 계속 두드려도 초과 과금은 없다(사용량이 99.8%에서 안 오르는 것이 그 증거). 버리는 것은 시간뿐이니, 조기 중단은 비용 문제가 아니라 시간 문제다.
-- 번역 대상 실측(**2026-08-19 merge 이후 DB 직접 집계**): 영문 행이 없는 장소 **1,058곳 / 420,805자**. 하루 16,000자면 **약 26일**이고 마감(9/21)까지 33일이라 **여유가 7일뿐이다** — 하루라도 거르면 그만큼 밀린다. (근거 없는 영문 행 81건을 지우면서 977곳 → 1,058곳으로 늘었다. 소스가 내린 목록의 옛 영문 대신 현재 국문의 번역을 쓰기로 한 대가다.) (구 수치 "1,639곳 / 504,425자"는 음식점·미표출 제외 이전 값이라 더는 재현되지 않는다.)
-- **일정상 가장 큰 리스크가 이것이다.** 하루 한도를 다 쓰는 것이 한계이며 `data_sync_log`에 남아 있다 — 8/18 56곳/15,409자, 8/19 28곳/15,288자. **"하루 N곳"으로 세지 말 것**: 같은 문자수에 장소 수가 2배 차이 났다(장소당 275자 vs 546자). 남은 일수는 문자수로만 계산한다.
+- 번역 백필은 **2026-08-20에 사실상 끝났다**. 하루에 1,003곳 / 395,203자를 번역해 영문 커버리지가 **25.1% → 98.2%**(1,278 / 1,302)가 됐다. 남은 것은 **24곳 / 9,721자**뿐이다. (그 전 실측은 2026-08-19 merge 직후 1,058곳 / 420,805자였고, 일 16,000자 기준으로 9/14 완료 예정이라 마감까지 여유가 7일뿐이었다. 일 한도를 올린 결정이 이 리스크를 없앴다.)
+- **번역량을 "하루 N곳"으로 세지 말 것** — 같은 문자수에 장소 수가 2배 차이 났다(8/18 56곳/15,409자 vs 8/19 28곳/15,288자, 장소당 275자 vs 546자). 남은 작업은 문자수로만 계산한다. 8/20 백필도 1,003곳에 395,203자로 장소당 394자였다.
 - **일 16,000자는 무료 한도가 아니라 우리가 콘솔에 건 제한이다.** 무료 티어는 **월 50만 자**다. **8월 사용량은 반드시 콘솔에서 확인할 것** — `data_sync_log`는 로그 이전 실행을 놓친다. 2026-08-20 실측: 로그는 30,697자였는데 **콘솔은 46,694자**로 15,997자 차이가 났다(8/17 할당량 소진 건이 로그에 없다). 콘솔 → Cloud Translation API → 할당량 → `v2 and v3 general model characters per day`. **반드시 KST 16:00 이후에 돌릴 것** — 그 전에 돌리면 전날 몫을 쓰려다 첫 요청부터 막힌다(2026-08-19 13:25 실행이 translated=0이었다).
-- 현재 영문 커버리지는 **328 / 1,305 = 25.1%**다. 분류별로 LS 12.5% · HS 19.0%로 낮아, 영문 코스 추천 결과가 대부분 한글 제목으로 나간다.
-- 언어를 늘리면 문자량을 재산정할 것.
+- **월 무료 한도(50만 자)가 이제 유일한 제약이다.** 2026-08-20 기준 8월 누적 441,897자(콘솔 46,694 + 당일 395,203)라 **잔여는 약 58,000자**다. 남은 24곳(9,721자)은 충분히 덮지만, 언어를 추가하려면 9월을 기다리거나 유료로 넘어간다. 언어를 늘리면 문자량을 재산정할 것.
 - 외부 API 재시도는 `support.Retry.withBackoff` + transient 오류(타임아웃·5xx·TourAPI 05)만 대상. 실패 루프의 상한은 "성공 횟수"가 아니라 **"시도 횟수"**에 걸 것.
 
 ### 조회·추천 (catalog)
@@ -157,7 +159,7 @@ npm run build      # tsc -b + vite build
 
 ## 함정·제약 (실측으로 확인된 것)
 
-- **Flyway**: `ddl-auto: validate`. 엔티티를 바꾸면 새 V파일부터 작성. **이미 적용된 V파일 수정 금지**(체크섬 실패). 현재 `V1__init_schema.sql`(ERD v0.9 전체) · `V2__seed_hub_region.sql` · `V3__adopt_lcls_systm_place_type.sql` · `V4__seed_region_description.sql` · `V5__staging_show_flag.sql` · `V6__widen_tel.sql` · `V7__staging_detail_extras.sql`이며, 다음 변경은 **V8부터**다. **다음 번호를 여기 적힌 값으로 믿지 말고 `ls`로 확인할 것** — 이 목록이 뒤처져 V3을 중복 생성한 적이 있다(2026-08-18). 구 V1~V11은 2026-08-12에 스쿼시로 대체됐다(ADR-023) — 배포 전 1회 한정 예외이므로 앞으로는 다시 증분으로 쌓는다.
+- **Flyway**: `ddl-auto: validate`. 엔티티를 바꾸면 새 V파일부터 작성. **이미 적용된 V파일 수정 금지**(체크섬 실패). 현재 `V1__init_schema.sql`(ERD v0.9 전체) · `V2__seed_hub_region.sql` · `V3__adopt_lcls_systm_place_type.sql` · `V4__seed_region_description.sql` · `V5__staging_show_flag.sql` · `V6__widen_tel.sql` · `V7__staging_detail_extras.sql` · `V8__place_translation_title_localized_at.sql`이며, 다음 변경은 **V9부터**다. **다음 번호를 여기 적힌 값으로 믿지 말고 `ls`로 확인할 것** — 이 목록이 뒤처져 V3을 중복 생성한 적이 있다(2026-08-18). 구 V1~V11은 2026-08-12에 스쿼시로 대체됐다(ADR-023) — 배포 전 1회 한정 예외이므로 앞으로는 다시 증분으로 쌓는다.
 - **@MapsId 연관관계(FestivalDetail)**: ID를 직접 세팅하지 말 것 — 연관 엔티티만 세팅하면 자동으로 채워진다. 직접 세팅하면 merge가 update를 시도하다 낙관적 락 예외. (`place_translation`은 이 함정을 피하려 @MapsId 대신 place_id 스칼라 + surrogate PK를 쓴다.)
 - **delete 후 같은 트랜잭션에서 같은 유니크 키 재삽입**(구 태그 재부여에서 겪었고, place_image 재적재 등 자식 컬렉션 갱신에 그대로 적용): delete 직후 `flush()` 필수 — 안 하면 Hibernate가 insert를 먼저 내보내 유니크 위반.
 - **TourAPI**: serviceKey에 `+`가 있으면 UriComponentsBuilder 기본 인코딩이 그대로 통과시켜 401 — `URLEncoder`로 직접 인코딩(TourApiClient.get 참고). detailCommon2(v2)는 v1의 YN 플래그를 안 받는다. contentTypeId는 국문(12/14/15/28/32/38/39)과 영문(76/78/85/75/80/79/82)이 다르다. 여행코스(국문25)는 다중 스팟 루트라 place 모델과 안 맞아 영구 제외(ADR-003/009), 교통(영문77)은 대응 국문 타입이 없어 제외.

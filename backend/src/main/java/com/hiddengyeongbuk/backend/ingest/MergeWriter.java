@@ -198,16 +198,26 @@ public class MergeWriter {
      * 정상 경로라 반드시 걸린다. (구 태그 재부여에서 이미 겪은 함정이다.)
      *
      * <p>URL은 {@link #httpsImageUrl}로 https에 맞춘다 — first_image와 같은 이유다.
+     *
+     * <p><b>한 언어만 쓰지 않고 그룹 전체를 합친다.</b> 좌표·전화번호 같은 단일 값은 "앵커에
+     * 없으면 다른 언어에서 가져온다"(결측 보완)로 충분하지만, 사진은 <b>목록</b>이라 같은 규칙을
+     * 쓰면 한쪽을 통째로 버리게 된다. 국문·영문은 contentId가 다른 별개 레코드라 사진 목록도
+     * 다르다 — 2026-08-20 실측: 두 언어 다 사진이 있는 82곳 중 <b>49곳(60%)이 개수부터 달랐다.</b>
+     *
+     * <p>중복은 URL 문자열로 거른다. 같은 사진이 다른 경로로 오면 못 거르지만, 그건 비슷한 장이
+     * 둘 보이는 정도라 사진을 통째로 잃는 것보다 가볍다.
      */
     private void applyImages(Place place, List<StagingPlace> group) {
-        String raw = first(group, StagingPlace::getDetailImages);
-        List<String> urls = raw == null || raw.isBlank()
-                ? List.of()
-                : java.util.Arrays.stream(raw.split("\n"))
-                        .map(MergeWriter::httpsImageUrl)
-                        .filter(url -> url != null && !url.isBlank())
-                        .distinct()
-                        .toList();
+        // 언어별 목록을 합친다. 앵커(기준 언어)가 앞이라 국문 사진이 먼저 오고 다른 언어의
+        // 추가분이 뒤에 붙는다.
+        List<String> urls = group.stream()
+                .map(StagingPlace::getDetailImages)
+                .filter(raw -> raw != null && !raw.isBlank())
+                .flatMap(raw -> java.util.Arrays.stream(raw.split("\n")))
+                .map(MergeWriter::httpsImageUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .distinct()
+                .toList();
 
         List<PlaceImage> existing = placeImageRepository.findByPlaceIdOrderBySortOrder(place.getId());
         if (existing.isEmpty() && urls.isEmpty()) {

@@ -1,5 +1,6 @@
 package com.hiddengyeongbuk.backend.domain.place;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,13 +38,20 @@ public interface StagingPlaceRepository extends JpaRepository<StagingPlace, Long
      * (V1 스키마 주석 — SET NULL로 두면 MATCHED인데 링크가 끊긴 모순 상태가 생긴다) 링크를
      * 먼저 끊어야 정리가 가능하다.
      */
-    @Query("select s from StagingPlace s where s.resolvedPlaceId is not null and s.resolutionStatus <> :matched")
-    List<StagingPlace> findLinkedButNotMatched(ResolutionStatus matched);
+    @Query("select s from StagingPlace s "
+            + "where s.resolvedPlaceId is not null and s.resolutionStatus not in :statuses")
+    List<StagingPlace> findLinkedButNotIn(Collection<ResolutionStatus> statuses);
 
-    /** MATCHED 행이 실제로 가리키는 place id 전체. 이 집합 밖의 place는 살아 있을 근거가 없다. */
+    /**
+     * 주어진 상태의 행이 가리키는 place id 전체. 이 집합 밖의 place는 살아 있을 근거가 없다.
+     *
+     * <p><b>PENDING을 함께 넘겨야 한다.</b> PENDING은 "버려진 것"이 아니라 "다시 판정해야 하는 것"
+     * 이라, 곧 MATCHED로 돌아올 행 때문에 place를 지우면 안 된다 — 2026-08-20에 실제로
+     * collect 직후 resolve를 건너뛰고 merge를 돌려 place 7곳이 지워졌다.
+     */
     @Query("select distinct s.resolvedPlaceId from StagingPlace s "
-            + "where s.resolvedPlaceId is not null and s.resolutionStatus = :matched")
-    List<Long> findPlaceIdsReferencedByMatched(ResolutionStatus matched);
+            + "where s.resolvedPlaceId is not null and s.resolutionStatus in :statuses")
+    List<Long> findPlaceIdsReferencedBy(Collection<ResolutionStatus> statuses);
 
     /**
      * MATCHED가 뒷받침하는 (place, 언어) 조합 전체.
@@ -53,6 +61,6 @@ public interface StagingPlaceRepository extends JpaRepository<StagingPlace, Long
      * place 단위 정리로는 잡히지 않는 자리다.
      */
     @Query("select distinct s.resolvedPlaceId, s.lang from StagingPlace s "
-            + "where s.resolvedPlaceId is not null and s.resolutionStatus = :matched")
-    List<Object[]> findPlaceLangPairsReferencedByMatched(ResolutionStatus matched);
+            + "where s.resolvedPlaceId is not null and s.resolutionStatus in :statuses")
+    List<Object[]> findPlaceLangPairsReferencedBy(Collection<ResolutionStatus> statuses);
 }

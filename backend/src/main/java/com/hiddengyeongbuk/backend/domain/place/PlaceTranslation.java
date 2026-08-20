@@ -75,4 +75,12 @@ public class PlaceTranslation {
 
     @Column(name = "generated_at")
     private LocalDateTime generatedAt;
+
+    /**
+     * 제목 LLM localization을 마친 시각(ADR-026). NULL이면 아직 안 했다는 뜻이고, 그것이
+     * 재실행 시 건너뛸지를 정하는 유일한 근거다 — {@code source}에는 엔진을 기록하지 않고
+     * {@code generated_at}은 모든 행에 이미 채워져 있어 구별에 쓸 수 없다.
+     */
+    @Column(name = "title_localized_at")
+    private LocalDateTime titleLocalizedAt;
 }

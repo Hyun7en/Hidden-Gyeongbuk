@@ -16,8 +16,12 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /**
- * Gemini Flash generateContent REST 호출(외부 API 연동 설계서 4장). has_en=false인 장소의
- * 국문 제목·overview를 영어로 전문 번역하는 용도로만 쓴다(2026-07-17부터 요약이 아니라 번역).
+ * Gemini Flash generateContent REST 호출(외부 API 연동 설계서 4장).
+ *
+ * <p><b>쓰는 곳은 제목 localization 하나뿐이다</b>(ADR-026). 설명글·주소 번역은 Google Cloud
+ * Translation이 담당하며 여기로 오지 않는다 — ADR-013이 "요약은 정보 손실"을 이유로 물린 결정이
+ * 그대로 유효하다. ADR-026은 그 결정을 뒤집은 것이 아니라 <b>제목만 떼어낸 것</b>이다:
+ * 제목은 평균 7.8자라 문맥이 없어 번역 API가 고유명사를 뜻으로 풀어버린다(숫골 → "Male bone").
  *
  * gemini.model 기본값은 gemini-flash-latest다 — 구글이 "현재 권장 Flash 모델"을 계속
  * 가리켜주는 별칭이라, 특정 버전을 박아두면 몇 달 뒤 또 단종/차단으로 깨지는 문제를 피한다
@@ -25,7 +29,7 @@ import org.springframework.web.client.RestClientException;
  * 않는 gemini-3-flash 404를 차례로 겪은 뒤 이 별칭으로 정착). application.yml 참고.
  */
 @Component
-class GeminiClient {
+public class GeminiClient {
 
     private static final int MAX_ATTEMPTS = 3;
     private static final long INITIAL_BACKOFF_MS = 1_000;
@@ -34,7 +38,7 @@ class GeminiClient {
     private final ObjectMapper objectMapper;
     private final GeminiProperties properties;
 
-    GeminiClient(RestClient.Builder builder, ObjectMapper objectMapper, GeminiProperties properties) {
+    public GeminiClient(RestClient.Builder builder, ObjectMapper objectMapper, GeminiProperties properties) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(5_000);
         // Gemini flash-latest는 thinking 모델이라 응답에 시간이 좀 걸릴 수 있어 여유를 둔다.
@@ -44,7 +48,7 @@ class GeminiClient {
         this.properties = properties;
     }
 
-    String generateSummary(String prompt) {
+    public String generate(String prompt) {
         String url = properties.baseUrl() + "/models/" + properties.model() + ":generateContent?key="
                 + URLEncoder.encode(properties.apiKey(), StandardCharsets.UTF_8);
         Map<String, Object> body =

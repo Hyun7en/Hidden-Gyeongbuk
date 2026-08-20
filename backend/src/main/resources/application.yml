@@ -107,6 +107,20 @@ app:
       SHOPPING:
         source-type-ids: { ko: 38, en: 79 }
         fallback: SH
+  # 제목 localization 일회성 백필(ADR-026). 산출물이 DB가 아니라 파일인 것은 사람이 검토해야
+  # 하는 작업이기 때문이다 — 교정을 DB에 두면 한 건 추가할 때마다 마이그레이션이 붙는다.
+  title:
+    # bootRun의 작업 디렉터리가 backend/라 ../data는 저장소 루트의 data/를 가리킨다.
+    work-dir: ${TITLE_WORK_DIR:../data}
+    # place_translation.title이 VARCHAR(200)이다. 넘으면 적재가 실패하므로 그 전에 버린다.
+    max-length: 200
+    # 무료 티어 한도가 둘인데 묶는 크기를 정하는 것은 일일 한도다(2026-08-20 429 실측):
+    #   분당 5회  GenerateRequestsPerMinutePerProjectPerModel-FreeTier
+    #   하루 20회 GenerateRequestsPerDayPerProjectPerModel-FreeTier  ← 이쪽이 결정적
+    # 하루 20회뿐이라 호출당 담는 양이 전부다 — 20건씩이면 하루 400곳(3일),
+    # 100건씩이면 1,105건이 12회로 하루에 끝난다. 100건 프롬프트도 약 3만 자라 여유가 크다.
+    batch-size: ${TITLE_BATCH_SIZE:100}
+    pacing-millis: ${TITLE_PACING_MILLIS:13000}
 
 tourapi:
   service-key: ${TOURAPI_SERVICE_KEY:}

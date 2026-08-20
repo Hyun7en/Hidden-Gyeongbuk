@@ -22,7 +22,14 @@ titles:
     reason: "proper_name"
 ```
 
-## `title-localization-en.jsonl`
+## `title-backup-en-before-localize.tsv`
 
-2026-08-20 1차 시도(대장 파일 방식)의 기록이다. 코드는 더 이상 이 파일을 읽지도 쓰지도 않는다.
-**지우지 말 것** — 그때 바뀐 7건의 구글 원본 제목이 여기에만 남아 있다.
+제목 localization을 돌리기 전 영문 제목 스냅샷(`place_id`\t`title`). 되돌리기는 기능이 아니라
+운영 절차다 — 결과가 나쁘면 이 파일로 복구한다. 돌리기 전에 다시 받으려면:
+
+```bash
+set -a && source .env && set +a && docker exec -e MYSQL_PWD="$DB_PASSWORD" \
+  hidden-gyeongbuk-mysql mysql -N --default-character-set=utf8mb4 -u"$DB_USERNAME" hidden_gyeongbuk \
+  -e "SELECT place_id, title FROM place_translation WHERE lang='en' AND source='TRANSLATE';" \
+  > data/title-backup-en-before-localize.tsv
+```

@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import PatternDefs from './components/PatternDefs'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import RecommendInput from './pages/RecommendInput'
@@ -18,7 +17,6 @@ import LegalPage from './pages/LegalPage'
 function App() {
   return (
     <BrowserRouter>
-      <PatternDefs />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />

@@ -21,7 +21,6 @@ public interface PlaceTranslationRepository extends JpaRepository<PlaceTranslati
 
     Optional<PlaceTranslation> findByPlaceIdAndLang(Long placeId, String lang);
 
-    boolean existsByPlaceIdAndLang(Long placeId, String lang);
 
     /** 번역 백필 대상 — 해당 언어 행이 아직 없는 장소를 찾기 위해 존재하는 조합을 읽는다. */
     List<PlaceTranslation> findByLang(String lang);

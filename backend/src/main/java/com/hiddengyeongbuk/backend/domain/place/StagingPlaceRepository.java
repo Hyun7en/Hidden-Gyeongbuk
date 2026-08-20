@@ -16,8 +16,6 @@ public interface StagingPlaceRepository extends JpaRepository<StagingPlace, Long
 
     List<StagingPlace> findByResolutionStatus(ResolutionStatus status);
 
-    /** QUARANTINED 누적 건수 — 데이터 품질 지표로 관측한다(NFR-10). */
-    long countByResolutionStatus(ResolutionStatus status);
 
     /**
      * 판정 상태별 건수 — 운영 상태 조회(GET /internal/sync/status)가 쓴다.

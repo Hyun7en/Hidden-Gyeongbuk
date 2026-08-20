@@ -4,6 +4,9 @@ import Logo from './Logo'
 import { useLanguage, type Lang } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
 
+// 새 언어를 추가하려면 여기에 항목만 더하면 된다 — 단 화면만 바뀔 뿐이라, 실제 콘텐츠가
+// 그 언어로 나오려면 백엔드 작업이 먼저다: LanguageRegistry에 언어를 등록하고 수집·번역까지
+// 끝나 있어야 한다. 등록되지 않은 값을 보내면 기준 언어(ko)로 떨어진다.
 const LANGUAGES: { code: Lang; label: string }[] = [
   { code: 'ko', label: '한국어' },
   { code: 'en', label: 'English' },

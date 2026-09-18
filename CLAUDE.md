@@ -49,26 +49,32 @@ Claude Code가 이 저장소에서 작업할 때의 **행동 규칙**. *무엇�
 
 ## 명령어 · 실행 제한
 
+- 읽기·수정과 일반적인 로컬 검증 명령은 **별도 승인 없이 실행한다.**
+- 테스트·lint·typecheck·build 등 코드 검증 명령은 **적극적으로 실행한다.**
+- **외부효과가 있는 명령**(DB 변경·사용, 서버 실행, Docker 기동, 외부 API 호출, 수집·백필)은
+  실행 전에 ① 실행할 명령 ② 무엇을 하는지 ③ DB 변경 여부 ④ 외부 API 호출·quota 사용 여부를
+  간단히 설명하고 **승인을 받은 뒤 실행한다**(API 한도는 실제 비용).
+- 승인을 받은 뒤에는 **같은 작업 범위 안에서 매 명령마다 다시 승인받지 않는다.**
+- 실행 여부가 불명확하거나 **외부효과를 판단할 수 없는 명령은 임의로 실행하지 않고 확인한다.**
+- **Git**: `commit`은 작업 결과를 정리하기 위해 수행할 수 있다(메시지는 Conventional Commits).
+  **`push`는 항상 사용자가 직접 한다 — Claude Code는 push하지 않는다.** `reset --hard`·대량 삭제
+  등 되돌리기 어려운 destructive 명령은 사용자 확인 없이 실행하지 않고, 작업과 무관한 기존 변경은
+  고치거나 되돌리지 않는다.
+
+승인 없이 실행하는 검증 명령:
+
 ```bash
-# 백엔드 (backend/)
-./gradlew test                              # 단위·슬라이스 (*IT 제외, DB 불필요)
-./gradlew test --tests "*CourseScorerTest"  # 단일 클래스
-./gradlew integrationTest                   # *IT — MySQL(+일부 TourAPI) 필요. 직접 실행 금지
-./gradlew bootRun                           # 서버 실행 (MySQL 필요). 직접 실행 금지
-sudo service docker start && docker compose up -d mysql   # 루트에서 (WSL이라 데몬 수동 기동)
-# 프론트 (frontend/)
-npm run lint      # 코드 변경 후          npx tsc --noEmit  # TypeScript 변경 후
-npm run build     # 작업 완료 전 검증      npm run dev       # 브라우저 수동 검증이 필요할 때만
+# backend/
+./gradlew test
+./gradlew test --tests "*CourseScorerTest"
+# frontend/
+npm run lint
+npx tsc --noEmit
+npm run build
 ```
 
-- **직접 실행 금지**: `integrationTest`, `bootRun`, DB가 필요한 수집·백필 트리거, 외부 API 쿼터를
-  쓰는 명령. 사용자에게 제시하되 **무엇을 하는 명령인지 먼저 설명한다**(API 한도는 실제 비용).
-- **명령의 외부효과(DB 변경·외부 API 호출·서버 실행·대량 파일 생성 등)를 확인할 수 없으면 직접
-  실행하지 말고 사용자에게 확인한다.**
-- **Git**: 요청하지 않은 commit·push 금지, 작업과 무관한 기존 변경의 수정·되돌리기 금지,
-  `reset --hard` 등 destructive 명령은 명시적 요청 없이 실행 금지. 커밋 메시지는 Conventional Commits.
-- 루트 `.env`는 `build.gradle`이 bootRun/test/integrationTest에만 주입한다 — `java -jar`로 띄울
-  때는 `set -a; source ../.env; set +a` 후 실행.
+외부효과가 있는 명령의 예 — `./gradlew integrationTest`, `./gradlew bootRun`, DB가 필요한
+수집·백필 명령, 외부 API quota를 쓰는 명령. 환경 준비·실행 방법은 [README.md](README.md).
 
 ## 백엔드 패키지 (`com.hiddengyeongbuk.backend`)
 

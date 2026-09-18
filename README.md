@@ -37,7 +37,8 @@ cp frontend/.env.example frontend/.env
 ### 2. 개발 실행 (프론트는 Vite dev 서버)
 
 ```bash
-docker compose up -d mysql
+sudo service docker start           # WSL은 도커 데몬을 수동 기동해야 한다
+docker compose up -d mysql          # 저장소 루트에서
 cd backend && ./gradlew bootRun     # :8080
 cd frontend && npm run dev          # :5173, /api를 8080으로 프록시
 ```

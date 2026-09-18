@@ -235,7 +235,7 @@
           ]
         }
       ],
-      "effectiveDate": "",
+      "effectiveDate": "2026-09-19",
       "versions": []
     },
     "privacyDoc": {
@@ -252,7 +252,7 @@
           "b": [
             "The Service has no registration process and does not ask users to enter personal data such as names or contact details.",
             "Enquiries are sent directly from your own mail client (mailto); the Service neither relays nor stores their contents. Information contained in an email you send does remain in the operator's mailbox for the purpose of replying.",
-            "Access records such as IP address, access time and browser type may be generated automatically by the server during use. 【To confirm: whether access logs are retained in the deployment environment, and for how long】"
+            "Access records such as IP address, access time and browser type are generated automatically by the server during use. These records are stored solely for troubleshooting and security purposes, and are not separately collected or processed to identify users or analyse their behaviour."
           ]
         },
         {
@@ -265,7 +265,7 @@
         {
           "t": "3. Retention period",
           "b": [
-            "Access records are destroyed without delay once their purpose is fulfilled. 【To confirm: the specific retention period】",
+            "Access records are retained for up to three months from the date of creation and are then destroyed; they are destroyed without delay, together with the server, when the Service ceases operation.",
             "Enquiry emails are deleted once there is no further need to retain them after a reply.",
             "Where applicable law prescribes a separate retention period, that period applies."
           ]
@@ -280,7 +280,7 @@
         {
           "t": "5. Outsourced processing",
           "b": [
-            "External hosting is used to operate the Service. 【To confirm: hosting provider and the scope of the outsourced work】"
+            "The Service uses cloud infrastructure provided by Amazon Web Services, Inc. (scope of processing: provision of server infrastructure and data storage). It also uses network services from Cloudflare, Inc. for domain routing and transport encryption, in the course of which access IP addresses pass through that network."
           ]
         },
         {
@@ -316,7 +316,7 @@
         {
           "t": "10. Data protection officer",
           "b": [
-            "【To confirm: name or role of the data protection officer, and a contactable email address】",
+            "Data protection officer: Development and Operations (hidden.gyeongbuk@gmail.com)",
             "Please direct enquiries about the handling of personal data to the contact above."
           ]
         },
@@ -327,7 +327,7 @@
           ]
         }
       ],
-      "effectiveDate": "",
+      "effectiveDate": "2026-09-19",
       "versions": []
     },
     "authoritative": "The Korean version of this document prevails; other language versions are provided as a courtesy translation.",

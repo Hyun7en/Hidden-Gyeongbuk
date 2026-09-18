@@ -21,6 +21,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    logging: &log-rotate
+      # 도커 기본값은 로그가 무한히 쌓인다 — 소형 인스턴스에서는 디스크를 채우고,
+      # 접속 기록을 "보관 후 파기"한다고 적은 개인정보처리방침(S10)과도 어긋난다.
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   app:
     build:
@@ -56,6 +63,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     ports:
       - "${SERVER_PORT:-8080}:8080"
+    logging: *log-rotate
 
 volumes:
   mysql_data:

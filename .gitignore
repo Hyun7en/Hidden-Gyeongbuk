@@ -1,5 +1,9 @@
 # 환경 변수 / 시크릿
+# .env.* 까지 막는 이유: .env.bak-*, .env.local 같은 파생 파일이 `.env` 규칙에 안 걸려
+# 실제 비밀값이 든 채로 커밋될 수 있다. 예시 파일만 추적한다.
 .env
+.env.*
+!.env.example
 
 ### Gradle / Java (backend) ###
 backend/.gradle/

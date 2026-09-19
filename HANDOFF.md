@@ -6,72 +6,63 @@
 (기록이 아니라 인수인계다). 검증하지 않은 것을 검증한 것처럼 적지 않는다.
 결정의 근거는 `docs/adr/`, 설계는 Notion, 미해결 이슈는 Notion 이슈 로그 — **여기 옮겨 적지 않는다.**
 
-**갱신** 2026-09-19 · **마감** 2026-09-21 (D-2) · 단독 개발
+**갱신** 2026-09-20 · **마감** 2026-09-21 (D-1) · 단독 개발
 
-## 현재 수치 (2026-09-19 실측)
+## 배포됨 — https://hiddengyeongbuk.com
 
-place 1,302 · `place_image` **7,418** · `festival_detail` **38**(오늘 이후 유효 13건) ·
-**영문 커버리지 1,302/1,302 = 100%** · 제목 localize 잔여 1,129건(미실행)
+P0~P4 ✅ · **P5 마감 제출만 남음**
 
-P0 ✅ · P1 데이터 ✅(제목 제외) · P2 백엔드 ✅ · P3 프론트 ✅ · P4 배포 🔄 · P5 마감 ⬜
+place 1,302 · `place_image` 7,418 · `festival_detail` 38 · 영문 커버리지 100% ·
+제목 localize 잔여 1,129건(미실행, **배포를 막지 않음**)
 
-**로컬 prod 리허설 통과** — `docker compose up --build`로 실제 배포 경로를 검증했다. 카카오 키
-번들 반영, `/internal/*` 404, SPA 폴백, 웹폰트 `<link>`, CSS `@import` 0, 이미지 https 100%,
-코스 추천까지 전부. 남은 건 실도메인이 있어야만 되는 것뿐이다.
+**운영 구성** — AWS Lightsail(서울, Ubuntu 22.04, RAM 2GB + 스왑 2GB, 정적 IP 13.124.54.154).
+`~/app`에서 `docker compose`로 app + mysql. HTTPS는 **Cloudflare Tunnel**(`cloudflared`
+systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인은 Cloudflare Registrar.
+**인바운드로 열린 포트는 SSH 22 하나** — 8080·3306은 루프백 바인딩. 자동 스냅샷 켜짐.
+
+**09-20 실도메인 검증 통과** — `prod` 프로파일 활성 / `/internal/sync/status` **404** /
+`/api/bogus` 404 / `/`·`/privacy`·`/places/1` 200(SPA 딥링크) / `/api/meta/options`·`/api/places`
+200 / 이미지 http 0·https 45 / 번들에 카카오 키 구워짐 / 웹폰트 `<link>` 2건 /
+Flyway V8 validate 통과(덤프 이관 무결성 증거).
 
 ## 지금 이어서 할 것
 
-**병목은 하나다 — 서버와 도메인이 아직 없다.** 그전까지 진행할 수 있는 항목이 거의 없다.
-상세 절차는 `~/.claude/plans/nifty-drifting-crescent.md`.
+1. **브라우저 실물 확인(미완)** — curl로는 확인할 수 없는 것들:
+   **지도 표시**(카카오 [플랫폼]▸Web 등록 증거) · **카카오 공유**([제품 링크 관리] 쪽) ·
+   영문 전환 · 코스 추천 완주 · Console 에러 0 · **모바일 브라우저**
+2. **공모전 제출** — 서비스 화면·카피에 "한국관광공사"/"KTO" 명칭·로고 금지(규정)
+3. 선택 — 제목 localization 1,129건. **우선순위 최하.** 실패해도 구글 제목 유지라 손실 경로 없음
 
-1. **AWS Lightsail 인스턴스** (사용자·09-19 결정) — 서울, **RAM 2GB 이상**(1GB는 이미지 빌드
-   중 OOM). Docker + compose 설치. **3306은 어떤 경우에도 열지 않는다**
-2. **Cloudflare Registrar 도메인 등록** (사용자·09-19 결정) → 네임서버 Cloudflare, VM 연결
-3. **HTTPS 경로 선택** — ① **Cloudflare Tunnel**(포트 0개·인증서 작업 없음, 권장)
-   또는 ② Caddy + Let's Encrypt(80/443 개방)
-4. **카카오 디벨로퍼스에 배포 도메인 등록** — 목록이 **둘**이고 서로 다르다:
-   지도 [플랫폼]>Web, 공유 [제품 링크 관리]>[웹 도메인]. **도메인 확정 후에 할 것**
-5. **운영 서버 `.env`** — 카카오 키 + DB 비밀번호만. `TOURAPI_/TRANSLATE_/GEMINI_`는 **빈 값으로
-   둔다**(prod엔 쓰는 코드가 없다). `chmod 600`. `SPRING_PROFILES_ACTIVE=prod` 필수
-6. **DB 이관** — `mysqldump --single-transaction --default-character-set=utf8mb4`.
-   `flyway_schema_history`를 **빼지 않는다**. **app을 내린 상태에서 복원하고 그다음 app을 올린다**
-7. **실서버 스모크** — 로컬에서 재현 안 되는 두 가지가 핵심:
-   `/internal/sync/status`가 **404**인가, **지도가 실제로 뜨는가**
-8. **제목 localization** — 아래 참조. **배포를 막지 않는다.** 우선순위 최하
-9. **지역 전용 사진 15장** — 보류 확정(사용자 결정 08-20). 임시방편 금지
+## 운영 메모
 
-## 로컬 상태 (2026-09-19 세션 종료 시점)
+- 서버 접속 `ssh -i ~/.ssh/lightsail.pem ubuntu@13.124.54.154`
+- 코드 갱신은 `git archive`로 tar 전송(저장소가 비공개라 서버에서 clone 불가) 후
+  `docker compose up --build -d app`. **`VITE_KAKAO_MAP_KEY`를 바꾸면 재시작이 아니라 재빌드다**
+- 운영 `.env`(chmod 600)의 진짜 비밀은 **DB 비밀번호뿐**. `TOURAPI_/TRANSLATE_/GEMINI_`는 빈 값
+  (prod엔 쓰는 코드가 없다). DB 비밀번호는 로컬과 다른 새 값이다
+- DB 백업 정본은 **덤프**다 — 로컬 `~/hg-dump.sql`, 서버 `~/hg-dump.sql`(09-19 시점).
+  디스크 스냅샷은 crash-consistent라 덤프를 대신하지 못한다
+- **`docker compose down -v`를 치지 않는다** — `mysql_data` 볼륨이 날아간다
+- 로컬 `mysql` 컨테이너는 원본 데이터라 유지 중
 
-- `bootRun` 종료됨, 8080 비어 있음. `app` 컨테이너 정지, **`mysql` 컨테이너는 실행 중**
-  (데이터가 여기 있다 — 내리지 말 것)
-- 루트 `.env`에 `VITE_KAKAO_MAP_KEY` 추가됨(`chmod 600`). compose가 `frontend/.env`를 읽지
-  않아 필요하다 — 없으면 배포본 지도가 죽는다
-- **커밋 4개가 push 안 된 상태다** (`b53d9b9`·`0201b09`·`a2c39a6`·`dc5453d`)
+## 절대 하지 말 것
+
+- **`collect` 뒤에 `resolve` → `merge`를 건너뛰지 않는다.** 08-20에 7곳을 잃었다
+- **번역 사용량을 로그로 판단하지 않는다** — 구글 콘솔이 정본
+- **`SPRING_PROFILES_ACTIVE=prod`를 빠뜨리지 않는다.** `/internal/sync/status`가 404인지로 확인
+- **운영 서버에 TourAPI·Translate·Gemini 키를 두지 않는다**
 
 ## 제목 localization이 막힌 이유 (2026-09-19 실측)
 
 Gemini가 **503 UNAVAILABLE "high demand"**를 간헐적으로 돌려준다. 성공률 약 40~50%.
 **쿼터가 아니다** — 쿼터면 429이고, 같은 키로 ListModels는 정상이다.
 
-- ⚠ **`stoppedBy`의 "쿼터 소진 추정"을 믿지 말 것.** 3연속 실패를 보고 넘겨짚는 문구다 —
-  실제 원인은 **로그를 봐야** 안다
+- ⚠ **`stoppedBy`의 "쿼터 소진 추정"을 믿지 말 것.** 실제 원인은 **로그를 봐야** 안다
 - ⚠ **크기 때문도, 특정 모델 때문도 아니다.** 5건·15건 실패, 30건 성공, 50건 실패로 단조롭지
-  않고 같은 모델이 번갈아 되고 안 된다. **표본 몇 개로 인과를 단정하지 말 것**(09-19에 두 번 틀렸다)
-- 모델은 `GEMINI_MODEL`로 코드 변경 없이 바꾼다(`application.yml:153`). `3.5`·`3.6`이 상대적으로
-  잘 받고 `latest`·`3.8`은 타임아웃이 잦다 — 어디까지나 경향이다
-- 일일 한도 **20회 / 모델별**(`PerProjectPerModel`). 12회 성공이 필요한데 성공률이 절반이라
-  **한 모델로는 하루에 못 끝낸다**
-- 재시도가 3회·1초·2초뿐이라(`GeminiClient.java:34-35`) 이 환경엔 짧다.
-  `TranslateClient.java:35-36`은 4회·3초·6초·12초다 — **고칠 값어치는 있으나 마감 후에**
-- **손실 경로가 없다** — 실패하면 기존 구글 제목을 유지한다(ADR-026). 표시도 안 남아 재실행이 이어받는다
-
-## 절대 하지 말 것
-
-- **`collect` 뒤에 `resolve` → `merge`를 건너뛰지 않는다.** 08-20에 7곳을 잃었다
-- **번역 사용량을 로그로 판단하지 않는다** — 구글 콘솔이 정본
-- **`SPRING_PROFILES_ACTIVE=prod`를 빠뜨리지 않는다.** 배포 후 **`/internal/sync/status`가
-  404인지로 확인**한다
-- **운영 서버에 TourAPI·Translate·Gemini 키를 두지 않는다**
+  않다. **표본 몇 개로 인과를 단정하지 말 것**(09-19에 두 번 틀렸다)
+- 모델은 `GEMINI_MODEL`로 코드 변경 없이 바꾼다(`application.yml:153`). 일일 한도 20회/모델별
+- 재시도가 3회·1초·2초뿐이라(`GeminiClient.java:34-35`) 짧다. `TranslateClient.java:35-36`은
+  4회·3초·6초·12초 — **고칠 값어치는 있으나 마감 후에**
 
 ## 참고 경로 · 링크
 

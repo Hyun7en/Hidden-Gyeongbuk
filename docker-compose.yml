@@ -62,7 +62,11 @@ services:
       TRANSLATE_API_KEY: ${TRANSLATE_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     ports:
-      - "${SERVER_PORT:-8080}:8080"
+      # mysql과 같은 이유로 루프백에만 바인딩한다 — 공인 IP가 붙는 서버에서 "8080:8080"은
+      # 앱을 인터넷에 직접 여는 것과 같아 방화벽 한 겹에만 의존하게 된다. 외부 노출은
+      # 리버스 프록시(Cloudflare Tunnel·Caddy)가 맡고, 그쪽은 호스트에서 localhost:8080으로
+      # 붙으므로 영향이 없다. 로컬 개발도 그대로다.
+      - "127.0.0.1:${SERVER_PORT:-8080}:8080"
     logging: *log-rotate
 
 volumes:

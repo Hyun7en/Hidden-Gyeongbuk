@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 /**
@@ -22,16 +23,26 @@ function Card({
   imageUrl?: string | null
   size?: 'mobile' | 'desktop'
 }) {
+  /**
+   * 원본 CDN이 사진을 내리면 URL은 남고 로딩만 실패한다. 배경 이미지는 실패를 알려주지
+   * 않으므로 같은 URL을 `<img>`로 한 번 더 걸어 `onError`를 받는다 — 브라우저 캐시를
+   * 공유하니 요청은 늘지 않는다. 실패하면 사진이 아예 없는 것과 같은 자리로 떨어뜨린다.
+   */
+  const [failed, setFailed] = useState(false)
+  const showImage = !!imageUrl && !failed
+
   return (
     <Link to={to} className={`hg-card hg-card-${size}`}>
       <div className="hg-inner">
         <div
-          className={`hg-img${imageUrl ? '' : ' hg-img-empty'}`}
-          style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
-          role={imageUrl ? 'img' : undefined}
-          aria-label={imageUrl ? title : undefined}
+          className={`hg-img${showImage ? '' : ' hg-img-empty'}`}
+          style={showImage ? { backgroundImage: `url(${imageUrl})` } : undefined}
+          role={showImage ? 'img' : undefined}
+          aria-label={showImage ? title : undefined}
         >
-          {!imageUrl && (
+          {showImage ? (
+            <img src={imageUrl} alt="" aria-hidden="true" className="hg-img-probe" onError={() => setFailed(true)} />
+          ) : (
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
               <rect x="3" y="5" width="18" height="14" rx="1" />
               <path d="M3 16l5-5 4 4 3-3 6 6" strokeLinejoin="round" />

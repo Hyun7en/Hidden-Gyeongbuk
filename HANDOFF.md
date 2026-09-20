@@ -20,7 +20,7 @@ place 1,302 · `place_image` 7,418 · `festival_detail` 38 · 영문 커버리�
 systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인은 Cloudflare Registrar.
 **인바운드로 열린 포트는 SSH 22 하나** — 8080·3306은 루프백 바인딩. 자동 스냅샷 켜짐.
 
-**표어** — "Gyeongbuk, Where Time Takes Its Time" / "시간도 자기 시간을 갖는 곳, 경북"
+**표어** — "Gyeongbuk, Where Time Takes Its Time" / "시간이 잠시 머무는 곳, 경북"
 (홈 히어로 + `/about` 태그라인). 파비콘은 로고 마크로 교체됨.
 
 **09-20 실도메인 검증 통과** — `prod` 프로파일 활성 / `/internal/sync/status` **404** /

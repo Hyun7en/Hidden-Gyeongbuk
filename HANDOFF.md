@@ -22,7 +22,9 @@ systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인�
 
 **표어** — "Gyeongbuk, Where Time Takes Its Time" / "시간이 잠시 머무는 곳, 경북"
 (홈 히어로 + `/about` 태그라인). 파비콘은 로고 마크로 교체됨.
-**09-20 한글 표어 교체 후 재배포·실도메인 확인 완료** — 배포 번들에 새 표어 1건·옛 표어 0건.
+**09-21 재배포·검증 완료** — 한글 표어 교체, 약관 요약 문구 방향 수정, 사진 없는 카드의
+빈 상태(면+점선+아이콘)와 이미지 로딩 실패 폴백. `/`·`/privacy`·`/terms`·`/places/1` 200 /
+`/internal/sync/status` 404 / 번들에 세 변경 모두 확인.
 
 **09-20 실도메인 검증 통과** — `prod` 프로파일 활성 / `/internal/sync/status` **404** /
 `/api/bogus` 404 / `/`·`/privacy`·`/places/1` 200(SPA 딥링크) / `/api/meta/options`·`/api/places`
@@ -33,9 +35,9 @@ Flyway V8 validate 통과(덤프 이관 무결성 증거).
 
 개발·배포·검증은 끝났다. **남은 것은 제출 자료뿐이다.**
 
-**미배포 커밋 있음** — 카피 수정은 모아서 한 번에 배포한다. 배포는
-`git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'` → `docker compose up --build -d app`
-(운영 서버 ssh는 Claude가 실행할 수 없다 — 사용자가 직접 친다).
+**배포 절차** — `git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'` →
+`docker compose up --build -d app`. 기동에 1~2분 걸려 그동안 502가 난다(장애 아님).
+**운영 서버 ssh는 Claude가 실행할 수 없다 — 사용자가 직접 친다.**
 
 1. **기능설명서 이미지 삽입** — `C:\Users\rhqud\Downloads\기능설명서_Hidden Gyeongbuk.pptx`
    (13장, 글은 다 채워져 있고 **이미지 자리만 비어 있다**). 4장에 대표 이미지 1 + 주요 화면 3~5,

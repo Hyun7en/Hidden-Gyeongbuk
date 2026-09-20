@@ -33,6 +33,10 @@ Flyway V8 validate 통과(덤프 이관 무결성 증거).
 
 개발·배포·검증은 끝났다. **남은 것은 제출 자료뿐이다.**
 
+**미배포 커밋 있음** — 카피 수정은 모아서 한 번에 배포한다. 배포는
+`git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'` → `docker compose up --build -d app`
+(운영 서버 ssh는 Claude가 실행할 수 없다 — 사용자가 직접 친다).
+
 1. **기능설명서 이미지 삽입** — `C:\Users\rhqud\Downloads\기능설명서_Hidden Gyeongbuk.pptx`
    (13장, 글은 다 채워져 있고 **이미지 자리만 비어 있다**). 4장에 대표 이미지 1 + 주요 화면 3~5,
    6~10장에 기능별 화면 1장씩. 캡처를 주면 Claude가 넣는다(헤드리스 크로미움 설치 시 캡처도 자동)

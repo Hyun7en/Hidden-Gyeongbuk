@@ -22,6 +22,7 @@ systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인�
 
 **표어** — "Gyeongbuk, Where Time Takes Its Time" / "시간이 잠시 머무는 곳, 경북"
 (홈 히어로 + `/about` 태그라인). 파비콘은 로고 마크로 교체됨.
+**09-20 한글 표어 교체 후 재배포·실도메인 확인 완료** — 배포 번들에 새 표어 1건·옛 표어 0건.
 
 **09-20 실도메인 검증 통과** — `prod` 프로파일 활성 / `/internal/sync/status` **404** /
 `/api/bogus` 404 / `/`·`/privacy`·`/places/1` 200(SPA 딥링크) / `/api/meta/options`·`/api/places`

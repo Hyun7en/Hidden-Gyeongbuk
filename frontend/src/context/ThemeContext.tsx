@@ -1,56 +1,37 @@
-import { useCallback, useEffect, useState } from 'react'
+import { createContext, useContext } from 'react'
 
 export type Theme = 'light' | 'dark'
 
-const STORAGE_KEY = 'hg-theme'
+export const STORAGE_KEY = 'hg-theme'
 
-/**
- * 다크모드. **초기값은 OS 설정을 따르고, 사용자가 토글하면 그 선택이 우선한다**(Wireframe §1).
- *
- * 저장된 선택이 있으면 `documentElement.dataset.theme`에 박고, 없으면 속성을 비워
- * `prefers-color-scheme`이 그대로 먹게 둔다 — index.css가 두 경로를 모두 정의하고 있으므로
- * 여기서 OS 값을 읽어 되쓸 필요가 없다.
- */
-function storedTheme(): Theme | null {
+export function storedTheme(): Theme | null {
   if (typeof localStorage === 'undefined') return null
   const v = localStorage.getItem(STORAGE_KEY)
   return v === 'dark' || v === 'light' ? v : null
 }
 
-function systemTheme(): Theme {
+export function systemTheme(): Theme {
   if (typeof matchMedia !== 'function') return 'light'
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export function useTheme() {
-  const [pinned, setPinned] = useState<Theme | null>(storedTheme)
-  const [system, setSystem] = useState<Theme>(systemTheme)
+export interface ThemeValue {
+  theme: Theme
+  toggle: () => void
+}
 
-  // 사용자가 고르지 않은 동안에는 OS 변경을 따라간다.
-  useEffect(() => {
-    if (typeof matchMedia !== 'function') return
-    const mq = matchMedia('(prefers-color-scheme: dark)')
-    const sync = () => setSystem(mq.matches ? 'dark' : 'light')
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [])
+export const ThemeCtx = createContext<ThemeValue | null>(null)
 
-  const resolved: Theme = pinned ?? system
-
-  useEffect(() => {
-    const root = document.documentElement
-    if (pinned) {
-      root.dataset.theme = pinned
-      localStorage.setItem(STORAGE_KEY, pinned)
-    } else {
-      delete root.dataset.theme
-      localStorage.removeItem(STORAGE_KEY)
-    }
-  }, [pinned])
-
-  const toggle = useCallback(() => {
-    setPinned((prev) => ((prev ?? systemTheme()) === 'dark' ? 'light' : 'dark'))
-  }, [])
-
-  return { theme: resolved, toggle }
+/**
+ * 다크모드. **초기값은 OS 설정을 따르고, 사용자가 토글하면 그 선택이 우선한다**(Wireframe §1).
+ *
+ * **상태는 {@link ThemeProvider} 하나에만 둔다.** 소비자마다 useState를 따로 잡으면 토글한
+ * 컴포넌트의 state만 바뀌고 나머지는 옛 값에 머문다 — CSS는 `dataset.theme`을 보고 전부 넘어가는데
+ * 테마 값을 읽어 에셋을 고르는 쪽(`Logo`)만 뒤처져, 어느 방향으로 토글하든 로고 워드마크가
+ * 배경에 묻혔다(2026-09-21 실측).
+ */
+export function useTheme(): ThemeValue {
+  const v = useContext(ThemeCtx)
+  if (!v) throw new Error('useTheme는 ThemeProvider 안에서만 쓴다')
+  return v
 }

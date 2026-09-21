@@ -22,26 +22,20 @@ systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인�
 
 **표어** — "Gyeongbuk, Where Time Takes Its Time" / "시간이 잠시 머무는 곳, 경북"
 (홈 히어로 + `/about` 태그라인). 파비콘은 로고 마크로 교체됨.
-**09-21 재배포·검증 완료(2회)** — ① 한글 표어 교체, 약관 요약 문구 방향 수정, 사진 없는
-카드의 빈 상태와 이미지 로딩 실패 폴백. ② `201d7da` 테마 Provider 수정 — 토글로 다크↔라이트를
-바꾸면 로고 워드마크가 배경에 묻히던 버그(`useTheme`가 Provider 없는 훅이라 Header와 Logo가
-각자 state를 가졌다). **미배포 커밋 없음.**
-검증 — 서빙 번들이 로컬 빌드와 바이트 단위 동일(`index-iuREGwEr.js`) / `/`·`/places/1`·
-`/privacy`·`/terms`·`/api/meta/options` 200 / `/internal/sync/status` 404 / 다크 토글 육안 확인.
+**09-21 재배포·검증 완료(2회, `201d7da`까지). 미배포 커밋 없음.** 검증 — 서빙 번들이 로컬
+빌드와 바이트 단위 동일(`index-iuREGwEr.js`) / `/`·`/places/1`·`/privacy`·`/terms`·
+`/api/meta/options` 200 / `/internal/sync/status` 404 / 다크 토글 육안 확인.
 
 ## 지금 이어서 할 것
 
 개발·배포·검증은 끝났다. **남은 것은 제출 자료뿐이다.**
 
-**배포 절차** — `git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'` →
-`docker compose up --build -d app`. 기동에 1~2분 걸려 그동안 502가 난다(장애 아님).
-**운영 서버 ssh는 Claude가 실행할 수 없다 — 사용자가 직접 친다.**
-
-1. **기능설명서 PDF 변환 후 제출** — 이 환경엔 변환 도구가 없다. 파워포인트나 구글 슬라이드로 내보낼 것.
-   **지정 양식 미사용·항목 누락은 심사 제외 사유다**.
-   이미지는 삽입 완료 — `C:\Users\rhqud\Downloads\기능설명서_Hidden Gyeongbuk_이미지삽입.pptx`
-   (4·6·10~13장, 그림 19장). **원본 pptx는 그대로 두었다.** 이 환경엔 렌더러가 없어
-   **시각 확인은 안 했다** — 열어서 표 행 높이에 밀린 그림이 없는지 볼 것
+1. **기능설명서 PDF 변환 후 제출** — 제출본은
+   `C:\Users\rhqud\Downloads\기능설명서_Hidden Gyeongbuk_최종.pptx`(그림 20장). 이전 두 pptx는
+   그대로 두었다. **지정 양식 미사용·항목 누락은 심사 제외 사유다**.
+   이 PC에 **MS Office는 없고 한컴오피스 2022(한쇼)**가 있다 — 한쇼로 열어 PDF로 저장할 것.
+   **이 환경엔 렌더러가 없어 시각 확인은 못 했다**(좌표 계산으로만 검증) — 열어서 6·10~13장의
+   표 겹침과 그림 위치를 볼 것
 2. **제출 폼 입력** — 문구는 `C:\Users\rhqud\Downloads\제출폼_문구.txt`에 저장해 뒀다
 3. 선택 — 제목 localization 1,129건. **우선순위 최하.** 실패해도 구글 제목 유지라 손실 경로 없음
 
@@ -52,8 +46,9 @@ systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인�
 ## 운영 메모
 
 - 서버 접속 `ssh -i ~/.ssh/lightsail.pem ubuntu@13.124.54.154`
-- 코드 갱신은 `git archive`로 tar 전송(저장소가 비공개라 서버에서 clone 불가) 후
-  `docker compose up --build -d app`. **`VITE_KAKAO_MAP_KEY`를 바꾸면 재시작이 아니라 재빌드다**
+- 코드 갱신은 `git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'`(저장소가 비공개라 서버에서
+  clone 불가) 후 `docker compose up --build -d app`. 기동 1~2분 동안 502가 난다(장애 아님).
+  **`VITE_KAKAO_MAP_KEY`를 바꾸면 재시작이 아니라 재빌드다.** **ssh는 사용자가 직접 친다**
 - 운영 `.env`(chmod 600)의 진짜 비밀은 **DB 비밀번호뿐**. `TOURAPI_/TRANSLATE_/GEMINI_`는 빈 값
   (prod엔 쓰는 코드가 없다). DB 비밀번호는 로컬과 다른 새 값이다
 - DB 백업 정본은 **덤프**다 — 로컬 `~/hg-dump.sql`, 서버 `~/hg-dump.sql`(09-19 시점).

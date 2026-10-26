@@ -6,11 +6,11 @@
 (기록이 아니라 인수인계다). 검증하지 않은 것을 검증한 것처럼 적지 않는다.
 결정의 근거는 `docs/adr/`, 설계는 Notion, 미해결 이슈는 Notion 이슈 로그 — **여기 옮겨 적지 않는다.**
 
-**갱신** 2026-09-21 · **마감 2026-09-21(월) 16:00 정각** · 단독 개발
+**갱신** 2026-10-26 · 단독 개발
 
 ## 배포됨 — https://hiddengyeongbuk.com
 
-P0~P4 ✅ · **P5 마감 제출만 남음**
+P0~P5 ✅
 
 place 1,302 · `place_image` 7,418 · `festival_detail` 38 · 영문 커버리지 100% ·
 제목 localize 잔여 1,129건(미실행, **배포를 막지 않음**)
@@ -20,8 +20,6 @@ place 1,302 · `place_image` 7,418 · `festival_detail` 38 · 영문 커버리�
 systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인은 Cloudflare Registrar.
 **인바운드로 열린 포트는 SSH 22 하나** — 8080·3306은 루프백 바인딩. 자동 스냅샷 켜짐.
 
-**표어** — "Gyeongbuk, Where Time Takes Its Time" / "시간이 잠시 머무는 곳, 경북"
-(홈 히어로 + `/about` 태그라인). 파비콘은 로고 마크로 교체됨.
 **09-21 재배포·검증 완료(2회, `201d7da`까지). 미배포 커밋 없음.** 검증 — 서빙 번들이 로컬
 빌드와 바이트 단위 동일(`index-iuREGwEr.js`) / `/`·`/places/1`·`/privacy`·`/terms`·
 `/api/meta/options` 200 / `/internal/sync/status` 404 / 다크 토글 육안 확인.
@@ -32,8 +30,7 @@ systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인�
 
 제출본 — 기능설명서 PDF(13쪽). 원본은 `C:\Users\rhqud\Downloads\기능설명서_Hidden Gyeongbuk_최종.pptx`,
 변환본은 `C:\Users\rhqud\Desktop\기능설명서_Hidden Gyeongbuk_최종.pdf`(한쇼로 내보냄).
-제출 폼 서비스 설명은 239자 안으로 줄여 넣었다(음식점은 수집 대상이 아니라 뺐다 — ADR-025,
-거점은 동대구·안동·포항·북부내륙 4곳). 인증키는 계정당 하나이며 로컬 `.env`가 디코딩 값이다.
+인증키는 계정당 하나이며 로컬 `.env`가 디코딩 값이다.
 
 PDF 검증 결과(좌표 실측) — 13쪽, 넘침·겹침 0, 캡션 12개 제자리, 가이드 문구 0건, "KTO" 0건.
 **한쇼는 pptx의 그림 자르기(`srcRect`)를 무시한다** — 그래서 PNG를 물리적으로 잘라 넣었다.
@@ -54,6 +51,11 @@ PDF 검증 결과(좌표 실측) — 13쪽, 넘침·겹침 0, 캡션 12개 제�
   디스크 스냅샷은 crash-consistent라 덤프를 대신하지 못한다
 - **`docker compose down -v`를 치지 않는다** — `mysql_data` 볼륨이 날아간다
 - 로컬 `mysql` 컨테이너는 원본 데이터라 유지 중
+- `cloudflared`는 apt(`pkg.cloudflare.com`) 설치 — 갱신은 `sudo apt-get install --only-upgrade
+  cloudflared` 후 `systemctl restart cloudflared`. 10-26 eMudhra 인증서 건으로 2026.10.4 적용
+  (`active`·터널 Healthy 확인). 모바일은 Lightsail 브라우저 SSH로 가능
+- **커널 재부팅 대기** — 6.8.0-1063 실행 중, 1066 설치됨. 재부팅 후 `docker compose ps`·
+  사이트 200·`/internal/sync/status` 404를 확인한다(compose는 `restart: unless-stopped`)
 
 ## 절대 하지 말 것
 

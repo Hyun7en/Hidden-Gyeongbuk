@@ -42,8 +42,10 @@ PDF 검증 결과(좌표 실측) — 13쪽, 넘침·겹침 0, 캡션 12개 제�
 ## 운영 메모
 
 - 서버 접속 `ssh -i ~/.ssh/lightsail.pem ubuntu@13.124.54.154`
-- 코드 갱신은 `git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'`(저장소가 비공개라 서버에서
-  clone 불가) 후 `docker compose up --build -d app`. 기동 1~2분 동안 502가 난다(장애 아님).
+- 코드 갱신은 `git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'` 후
+  `docker compose up --build -d app`. 기동 1~2분 동안 502가 난다(장애 아님).
+- **저장소는 공개(public)다** — 공모 심사용으로 전환. 커밋 기록 전체가 공개되므로 비밀값을 절대
+  커밋하지 않는다(11-13 전 기록 178커밋 점검: `.env` 실제 값·키 패턴 0건)
   **`VITE_KAKAO_MAP_KEY`를 바꾸면 재시작이 아니라 재빌드다.** **ssh는 사용자가 직접 친다**
 - 운영 `.env`(chmod 600)의 진짜 비밀은 **DB 비밀번호뿐**. `TOURAPI_/TRANSLATE_/GEMINI_`는 빈 값
   (prod엔 쓰는 코드가 없다). DB 비밀번호는 로컬과 다른 새 값이다

@@ -6,61 +6,53 @@
 (기록이 아니라 인수인계다). 검증하지 않은 것을 검증한 것처럼 적지 않는다.
 결정의 근거는 `docs/adr/`, 설계는 Notion, 미해결 이슈는 Notion 이슈 로그 — **여기 옮겨 적지 않는다.**
 
-**갱신** 2026-10-26 · 단독 개발
+**갱신** 2026-11-18 · 단독 개발
 
 ## 배포됨 — https://hiddengyeongbuk.com
 
-P0~P5 ✅
+P0~P5 ✅ · 공모전 제출 완료(09-21). 제출본 PDF는 `C:\Users\rhqud\Desktop\기능설명서_Hidden Gyeongbuk_최종.pdf`
 
-place 1,302 · `place_image` 7,418 · `festival_detail` 38 · 영문 커버리지 100% ·
-제목 localize 잔여 1,129건(미실행, **배포를 막지 않음**)
+place 1,302 · `place_image` 7,418 · `festival_detail` 38 · 영문 커버리지 100%
 
 **운영 구성** — AWS Lightsail(서울, Ubuntu 22.04, RAM 2GB + 스왑 2GB, 정적 IP 13.124.54.154).
 `~/app`에서 `docker compose`로 app + mysql. HTTPS는 **Cloudflare Tunnel**(`cloudflared`
 systemd 서비스)이 종단하고 `localhost:8080`으로 넘긴다. 도메인은 Cloudflare Registrar.
 **인바운드로 열린 포트는 SSH 22 하나** — 8080·3306은 루프백 바인딩. 자동 스냅샷 켜짐.
 
-**09-21 재배포·검증 완료(2회, `201d7da`까지). 미배포 커밋 없음.** 검증 — 서빙 번들이 로컬
-빌드와 바이트 단위 동일(`index-iuREGwEr.js`) / `/`·`/places/1`·`/privacy`·`/terms`·
-`/api/meta/options` 200 / `/internal/sync/status` 404 / 다크 토글 육안 확인.
+**11-13 재배포(`404dd75`까지, 이후는 문서 커밋뿐) · 11-18 커널 재부팅(6.8.0-1069) 후 검증** —
+서빙 번들 `index-CxY4n3bm.js` / `/`·`/places/1`·`/api/meta/options` 200 / `/internal/sync/status` 404.
 
-## 제출 완료 — 2026-09-21 13:3x (마감 16:00)
+## 남은 일
 
-**P5까지 끝. 공모전 관련 남은 작업 없다.**
-
-제출본 — 기능설명서 PDF(13쪽). 원본은 `C:\Users\rhqud\Downloads\기능설명서_Hidden Gyeongbuk_최종.pptx`,
-변환본은 `C:\Users\rhqud\Desktop\기능설명서_Hidden Gyeongbuk_최종.pdf`(한쇼로 내보냄).
-인증키는 계정당 하나이며 로컬 `.env`가 디코딩 값이다.
-
-PDF 검증 결과(좌표 실측) — 13쪽, 넘침·겹침 0, 캡션 12개 제자리, 가이드 문구 0건, "KTO" 0건.
-**한쇼는 pptx의 그림 자르기(`srcRect`)를 무시한다** — 그래서 PNG를 물리적으로 잘라 넣었다.
-재변환할 일이 생기면 이 함정을 먼저 볼 것.
-
-남은 선택 항목 — 제목 localization 1,129건. **우선순위 최하**, 실패해도 구글 제목이 남아
-손실 경로가 없다. 서비스는 계속 돌고 있으니 급할 것 없다.
+- **Temurin 17.0.21.1 이미지가 Docker Hub에 나오면 app 재빌드** — 서버 접속 후 `cd ~/app &&
+  docker compose build --pull app && docker compose up -d app`. 급하지 않다(아래 Java4Shell 참고)
+- 커밋 서명 미설정 — SSH 서명은 git 2.34+가 필요한데 WSL(Ubuntu 20.04)이 2.25다
 
 ## 운영 메모
 
-- 서버 접속 `ssh -i ~/.ssh/lightsail.pem ubuntu@13.124.54.154`
+- 서버 접속 `ssh -i ~/.ssh/lightsail.pem ubuntu@13.124.54.154`. **ssh는 사용자가 직접 친다**
 - 코드 갱신은 `git archive --format=tar HEAD | ssh … 'tar -x -C ~/app'` 후
   `docker compose up --build -d app`. 기동 1~2분 동안 502가 난다(장애 아님).
-- **저장소는 공개(public)다** — 공모 심사용으로 전환. 커밋 기록 전체가 공개되므로 비밀값을 절대
-  커밋하지 않는다(11-13 전 기록 178커밋 점검: `.env` 실제 값·키 패턴 0건)
-  **`VITE_KAKAO_MAP_KEY`를 바꾸면 재시작이 아니라 재빌드다.** **ssh는 사용자가 직접 친다**
-- 운영 `.env`(chmod 600)의 진짜 비밀은 **DB 비밀번호뿐**. `TOURAPI_/TRANSLATE_/GEMINI_`는 빈 값
-  (prod엔 쓰는 코드가 없다). DB 비밀번호는 로컬과 다른 새 값이다
-- DB 백업 정본은 **덤프**다 — 로컬 `~/hg-dump.sql`, 서버 `~/hg-dump.sql`(09-19 시점).
-  디스크 스냅샷은 crash-consistent라 덤프를 대신하지 못한다
-- **`docker compose down -v`를 치지 않는다** — `mysql_data` 볼륨이 날아간다
-- 로컬 `mysql` 컨테이너는 원본 데이터라 유지 중
-- `cloudflared`는 apt(`pkg.cloudflare.com`) 설치 — 갱신은 `sudo apt-get install --only-upgrade
-  cloudflared` 후 `systemctl restart cloudflared`. 10-26 eMudhra 인증서 건으로 2026.10.4 적용
-  (`active`·터널 Healthy 확인). 모바일은 Lightsail 브라우저 SSH로 가능
+  **`VITE_KAKAO_MAP_KEY`를 바꾸면 재시작이 아니라 재빌드다**
 - 재부팅해도 docker·cloudflared·컨테이너가 자동 복귀한다(11-18 실측, 약 50초). 이후 사이트 200·
   `/internal/sync/status` 404만 확인하면 된다
+- 운영 `.env`(chmod 600)의 진짜 비밀은 **DB 비밀번호뿐**. `TOURAPI_/TRANSLATE_/GEMINI_`는 빈 값
+  (prod엔 쓰는 코드가 없다). DB 비밀번호는 로컬과 다른 새 값이다. TourAPI 인증키는 계정당 하나이며
+  로컬 `.env`가 디코딩 값이다
+- DB 백업 정본은 **덤프**다 — 로컬 `~/hg-dump.sql`, 서버 `~/hg-dump-1113.sql`(11-13 시점).
+  디스크 스냅샷은 crash-consistent라 덤프를 대신하지 못한다. 로컬 `mysql` 컨테이너는 원본 데이터라 유지
+- **`docker compose down -v`를 치지 않는다** — `mysql_data` 볼륨이 날아간다
+- `cloudflared`는 apt(`pkg.cloudflare.com`) 설치 — 갱신은 `sudo apt-get install --only-upgrade
+  cloudflared` 후 `systemctl restart cloudflared`. 모바일은 Lightsail 브라우저 SSH로 가능
 - **Java4Shell(CVE-2026-114938) 해당 없음** — 서버 CPU(Xeon 8259CL)에 `avx512vbmi`가 없다(11-18 확인).
-  현재 Temurin 17.0.21+9. 수정 이미지(17.0.21.1+2)가 Docker Hub에 나오면 `build --pull`로 재빌드.
-  인스턴스를 바꾸면 CPU 플래그부터 다시 확인
+  현재 Temurin 17.0.21+9. 인스턴스를 바꾸면 CPU 플래그부터 다시 확인
+
+## 저장소 보안
+
+- **저장소는 공개(public)다** — 공모 심사용으로 전환. 커밋 기록 전체가 공개되므로 비밀값을 절대
+  커밋하지 않는다(11-13 전 기록 178커밋 점검: `.env` 실제 값·키 패턴 0건)
+- GitHub: Secret Protection·Push protection·Dependabot alerts/security updates 켜짐(보안 패치만,
+  `dependabot.yml` 없음). ruleset `protect-main` = main 삭제·force push 차단만(PR 필수 아님)
 
 ## 절대 하지 말 것
 
@@ -69,22 +61,20 @@ PDF 검증 결과(좌표 실측) — 13쪽, 넘침·겹침 0, 캡션 12개 제�
 - **`SPRING_PROFILES_ACTIVE=prod`를 빠뜨리지 않는다.** `/internal/sync/status`가 404인지로 확인
 - **운영 서버에 TourAPI·Translate·Gemini 키를 두지 않는다**
 
-## 제목 localization이 막힌 이유 (2026-09-19 실측)
+## 제목 localization 잔여 1,129건 — 우선순위 최하, 막힌 이유 (09-19 실측)
 
-Gemini가 **503 UNAVAILABLE "high demand"**를 간헐적으로 돌려준다. 성공률 약 40~50%.
-**쿼터가 아니다** — 쿼터면 429이고, 같은 키로 ListModels는 정상이다.
+실패해도 구글 제목이 남아 손실 경로가 없다. Gemini가 **503 "high demand"**를 간헐적으로 준다
+(성공률 약 40~50%). **쿼터가 아니다** — 쿼터면 429이고, 같은 키로 ListModels는 정상이다.
 
 - ⚠ **`stoppedBy`의 "쿼터 소진 추정"을 믿지 말 것.** 실제 원인은 **로그를 봐야** 안다
 - ⚠ **크기 때문도, 특정 모델 때문도 아니다.** 5건·15건 실패, 30건 성공, 50건 실패로 단조롭지
   않다. **표본 몇 개로 인과를 단정하지 말 것**(09-19에 두 번 틀렸다)
-- 모델은 `GEMINI_MODEL`로 코드 변경 없이 바꾼다(`application.yml:153`). 일일 한도 20회/모델별
-- 재시도가 3회·1초·2초뿐이라(`GeminiClient.java:34-35`) 짧다. `TranslateClient.java:35-36`은
-  4회·3초·6초·12초 — **고칠 값어치는 있으나 마감 후에**
+- 모델은 `GEMINI_MODEL`로 바꾼다(`application.yml:153`, 일일 한도 20회/모델별). 재시도가 3회·1초·2초로
+  짧다(`GeminiClient.java:34-35`, 번역은 4회·3초~12초) — 고칠 값어치는 있으나 미착수
 
 ## 참고 경로 · 링크
 
 - 행동 규칙 [`CLAUDE.md`](CLAUDE.md) · 결정 [`docs/adr/README.md`](docs/adr/README.md)
 - 마이그레이션 현재 **V8** (새 번호는 `ls`로 확인) · 수집 `backend/.../ingest/`
-- Deployment Guide — DevOps Engineer ▸ · Security Checklist —
-  https://app.notion.com/p/3a518ff007d98125930dd9afde0cc04f
+- Deployment Guide — DevOps Engineer ▸ · [Security Checklist](https://app.notion.com/p/3a518ff007d98125930dd9afde0cc04f)
 - 미해결 이슈 — QA Engineer ▸ [이슈 로그](https://app.notion.com/p/bdc1213313254e76a807f9997337d32f)

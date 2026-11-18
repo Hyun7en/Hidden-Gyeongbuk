@@ -56,8 +56,8 @@ PDF 검증 결과(좌표 실측) — 13쪽, 넘침·겹침 0, 캡션 12개 제�
 - `cloudflared`는 apt(`pkg.cloudflare.com`) 설치 — 갱신은 `sudo apt-get install --only-upgrade
   cloudflared` 후 `systemctl restart cloudflared`. 10-26 eMudhra 인증서 건으로 2026.10.4 적용
   (`active`·터널 Healthy 확인). 모바일은 Lightsail 브라우저 SSH로 가능
-- **커널 재부팅 대기** — 6.8.0-1063 실행 중, 1066 설치됨. 재부팅 후 `docker compose ps`·
-  사이트 200·`/internal/sync/status` 404를 확인한다(compose는 `restart: unless-stopped`)
+- 재부팅해도 docker·cloudflared·컨테이너가 자동 복귀한다(11-18 실측, 약 50초). 이후 사이트 200·
+  `/internal/sync/status` 404만 확인하면 된다
 - **Java4Shell(CVE-2026-114938) 해당 없음** — 서버 CPU(Xeon 8259CL)에 `avx512vbmi`가 없다(11-18 확인).
   현재 Temurin 17.0.21+9. 수정 이미지(17.0.21.1+2)가 Docker Hub에 나오면 `build --pull`로 재빌드.
   인스턴스를 바꾸면 CPU 플래그부터 다시 확인
